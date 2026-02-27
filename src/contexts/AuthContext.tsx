@@ -22,13 +22,20 @@ export function useAuth() {
 }
 
 async function fetchUserProfile(userId: string): Promise<UserProfile | null> {
-  const { data: profile } = await supabase
+  const { data: profile, error } = await supabase
     .from("profiles")
     .select("id, full_name, approval_status")
     .eq("id", userId)
-    .single();
+    .maybeSingle();
 
-  if (!profile) return null;
+  if (error) {
+    console.error("Error fetching profile:", error);
+    return null;
+  }
+  if (!profile) {
+    console.warn("No profile found for user", userId);
+    return null;
+  }
 
   const { data: roles } = await supabase
     .from("user_roles")
