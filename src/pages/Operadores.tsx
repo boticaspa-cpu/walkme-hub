@@ -11,6 +11,9 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
@@ -26,9 +29,15 @@ interface OperatorForm {
   phone: string;
   email: string;
   tags: string;
+  exchange_rate: string;
+  base_currency: string;
+  payment_rules: string;
 }
 
-const emptyForm: OperatorForm = { name: "", contact_name: "", phone: "", email: "", tags: "" };
+const emptyForm: OperatorForm = {
+  name: "", contact_name: "", phone: "", email: "", tags: "",
+  exchange_rate: "1", base_currency: "USD", payment_rules: "prepago",
+};
 
 export default function Operadores() {
   const { role } = useAuth();
@@ -88,6 +97,9 @@ export default function Operadores() {
       phone: op.phone,
       email: op.email ?? "",
       tags: op.tags.join(", "),
+      exchange_rate: String(op.exchange_rate ?? 1),
+      base_currency: op.base_currency ?? "USD",
+      payment_rules: op.payment_rules ?? "prepago",
     });
     setLogoPreview(op.logo_url);
     setLogoFile(null);
@@ -127,6 +139,9 @@ export default function Operadores() {
         phone: form.phone.trim(),
         email: form.email.trim() || null,
         tags: form.tags.split(",").map((t) => t.trim()).filter(Boolean),
+        exchange_rate: Number(form.exchange_rate) || 1,
+        base_currency: form.base_currency,
+        payment_rules: form.payment_rules,
         ...(logo_url ? { logo_url } : {}),
       };
 
@@ -188,7 +203,9 @@ export default function Operadores() {
                   <TableHead className="hidden sm:table-cell">Contacto</TableHead>
                   <TableHead className="hidden md:table-cell">Teléfono</TableHead>
                   <TableHead>Tours</TableHead>
-                  <TableHead className="hidden lg:table-cell">Tags</TableHead>
+                  <TableHead className="hidden lg:table-cell">Moneda</TableHead>
+                  <TableHead className="hidden lg:table-cell">T.C.</TableHead>
+                  <TableHead className="hidden xl:table-cell">Pago</TableHead>
                   {isAdmin && <TableHead className="w-24">Activo</TableHead>}
                   {isAdmin && <TableHead className="w-12" />}
                 </TableRow>
@@ -208,11 +225,11 @@ export default function Operadores() {
                     <TableCell className="hidden md:table-cell text-sm">{op.phone}</TableCell>
                     <TableCell>{op.tours?.[0]?.count ?? 0}</TableCell>
                     <TableCell className="hidden lg:table-cell">
-                      <div className="flex flex-wrap gap-1">
-                        {op.tags.map((t) => (
-                          <Badge key={t} variant="outline" className="text-[10px]">{t}</Badge>
-                        ))}
-                      </div>
+                      <Badge variant="outline" className="text-[10px]">{op.base_currency}</Badge>
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell text-sm">{op.exchange_rate}</TableCell>
+                    <TableCell className="hidden xl:table-cell">
+                      <Badge variant="secondary" className="text-[10px]">{op.payment_rules}</Badge>
                     </TableCell>
                     {isAdmin && (
                       <TableCell>
@@ -268,6 +285,36 @@ export default function Operadores() {
                 <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
               </div>
             </div>
+
+            {/* New v2 fields */}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-1.5">
+                <Label>Tipo de Cambio</Label>
+                <Input type="number" value={form.exchange_rate} onChange={(e) => setForm({ ...form, exchange_rate: e.target.value })} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Moneda Base</Label>
+                <Select value={form.base_currency} onValueChange={(v) => setForm({ ...form, base_currency: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="USD">USD</SelectItem>
+                    <SelectItem value="MXN">MXN</SelectItem>
+                    <SelectItem value="EUR">EUR</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Regla de Pago</Label>
+                <Select value={form.payment_rules} onValueChange={(v) => setForm({ ...form, payment_rules: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="prepago">Prepago</SelectItem>
+                    <SelectItem value="mensual">Mensual</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
             <div className="space-y-1.5">
               <Label>Tags (separados por coma)</Label>
               <Input
