@@ -91,16 +91,18 @@ export default function POS() {
     },
   });
 
-  // Load all active price variants
+  // Load all active price variants (role-based)
+  const { role } = useAuth();
+  const variantTable = role === "admin" ? "tour_price_variants" : "tour_price_variants_seller";
   const { data: allVariants = [] } = useQuery({
-    queryKey: ["tour-price-variants-active"],
+    queryKey: ["tour-price-variants-active", variantTable],
     queryFn: async () => {
       const { data, error } = await (supabase as any)
-        .from("tour_price_variants")
+        .from(variantTable)
         .select("*")
         .eq("active", true);
       if (error) throw error;
-      return data as PriceVariant[];
+      return (data || []) as unknown as PriceVariant[];
     },
   });
 
@@ -135,11 +137,7 @@ export default function POS() {
     return s + i.unitPrice * i.qty;
   }, 0);
   const promoDiscount = cart.length >= 3 ? subtotal * 0.15 : 0;
-
-  const totalAgencyMxn = cart.reduce((s, i) => s + i.publicPriceUsd * adminExchangeRate * i.qty, 0);
-  const totalBoardingMxn = cart.reduce((s, i) => s + (i.taxUsd + i.feesUsd) * adminExchangeRate * i.qty, 0);
-  const totalBoardingUsd = cart.reduce((s, i) => s + (i.taxUsd + i.feesUsd) * i.qty, 0);
-  const grandTotal = totalAgencyMxn + totalBoardingMxn - promoDiscount;
+  const grandTotal = subtotal - promoDiscount;
 
   const fmt = (n: number) => n.toLocaleString("es-MX", { style: "currency", currency: "MXN" });
   const fmtUsd = (n: number) => `$${n.toFixed(2)} USD`;
@@ -212,34 +210,33 @@ export default function POS() {
     }
   };
 
-  const addVariantToCart = (variant: PriceVariant, qtyAdults: number, qtyChildren: number) => {
+  const addVariantToCart = (adultVariant: PriceVariant, childVariant: PriceVariant | null, qtyAdults: number, qtyChildren: number) => {
     if (!pendingVariantTour) return;
     const tour = pendingVariantTour;
-    const pkgName = variant.tour_package_id ? pendingPackageNames[variant.tour_package_id] : null;
     const label = [
       tour.title,
-      pkgName,
-      variant.zone,
-      variant.is_mexican ? "Nacional" : "Extranjero",
+      adultVariant.zone,
+      adultVariant.nationality,
     ].filter(Boolean).join(" — ");
+
+    const adultPrice = adultVariant.sale_price;
+    const childPrice = childVariant?.sale_price || 0;
 
     setCart(prev => [...prev, {
       tour_id: tour.id,
       name: label,
       qty: qtyAdults + qtyChildren,
-      unitPrice: variant.price_adult_mxn,
+      unitPrice: adultPrice,
       costUsd: 0,
       feesUsd: 0,
       publicPriceUsd: 0,
       taxUsd: 0,
-      variantId: variant.id,
-      zone: variant.zone,
-      isMexican: variant.is_mexican,
-      priceChildMxn: variant.price_child_mxn,
+      variantId: adultVariant.id,
+      zone: adultVariant.zone,
+      isMexican: adultVariant.nationality === "Mexicano",
+      priceChildMxn: childPrice,
       qtyAdults,
       qtyChildren,
-      packageId: variant.tour_package_id || undefined,
-      packageName: pkgName || undefined,
     }]);
   };
 
@@ -448,19 +445,8 @@ export default function POS() {
                   {/* Desglose de totales */}
                   <div className="space-y-1 text-sm">
                     <div className="flex justify-between">
-                      <span>Pagado a la Agencia</span>
-                      <span className="font-medium">{fmt(totalAgencyMxn)}</span>
-                    </div>
-                    {totalBoardingMxn > 0 && (
-                      <div className="flex justify-between">
-                        <span>Impuestos al Abordar</span>
-                        <span className="font-medium">{fmt(totalBoardingMxn)} <span className="text-muted-foreground text-xs">({fmtUsd(totalBoardingUsd)})</span></span>
-                      </div>
-                    )}
-                    <Separator />
-                    <div className="flex justify-between">
-                      <span>Total de la Experiencia</span>
-                      <span className="font-semibold">{fmt(totalAgencyMxn + totalBoardingMxn)}</span>
+                      <span>Subtotal</span>
+                      <span className="font-medium">{fmt(subtotal)}</span>
                     </div>
                     {promoDiscount > 0 && (
                       <div className="flex justify-between text-green-600">
@@ -468,23 +454,12 @@ export default function POS() {
                         <span>-{fmt(promoDiscount)}</span>
                       </div>
                     )}
+                    <Separator />
                     <div className="flex justify-between text-base font-bold pt-1">
                       <span>TOTAL FINAL</span>
                       <span>{fmt(grandTotal)}</span>
                     </div>
                   </div>
-
-                  {/* OJO alert */}
-                  {totalBoardingMxn > 0 && (
-                    <Alert className="border-yellow-400 bg-yellow-50">
-                      <AlertTriangle className="h-4 w-4 text-yellow-600" />
-                      <AlertTitle className="text-yellow-800 text-xs font-bold">OJO: Informar al cliente</AlertTitle>
-                      <AlertDescription className="text-yellow-700 text-xs space-y-0.5">
-                        <p>• Pagado a la Agencia: <strong>{fmt(totalAgencyMxn)}</strong></p>
-                        <p>• Saldo pendiente al abordar: <strong>{fmt(totalBoardingMxn)}</strong> ({fmtUsd(totalBoardingUsd)})</p>
-                      </AlertDescription>
-                    </Alert>
-                  )}
 
                   <Separator />
                   <div className="space-y-2">
@@ -574,7 +549,6 @@ export default function POS() {
           childAgeMin={pendingVariantTour.child_age_min ?? 4}
           childAgeMax={pendingVariantTour.child_age_max ?? 10}
           variants={pendingVariants}
-          packageNames={pendingPackageNames}
           onAdd={addVariantToCart}
         />
       )}

@@ -44,7 +44,7 @@ interface TourRow {
   commission_percentage: number;
   exchange_rate_tour: number;
   days: string[];
-  image_url: string | null;
+  image_urls: string[];
   short_description: string;
   itinerary: string;
   includes: string[];
@@ -134,7 +134,7 @@ function TourShowroom({ tour, onClose }: { tour: TourRow; onClose: () => void })
         </DialogHeader>
 
         <img
-          src={tour.image_url || PLACEHOLDER_IMG}
+          src={tour.image_urls?.[0] || PLACEHOLDER_IMG}
           alt={tour.title}
           className="w-full aspect-video object-cover rounded-lg bg-muted"
           onError={(e) => { (e.target as HTMLImageElement).src = PLACEHOLDER_IMG; }}
@@ -263,8 +263,10 @@ export default function Tours() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<TourForm>(emptyForm);
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const [parsingDoc, setParsingDoc] = useState(false);
+  const docInputRef = useRef<HTMLInputElement>(null);
   const [saving, setSaving] = useState(false);
   const [packages, setPackages] = useState<PackageForm[]>([]);
   const [variants, setVariants] = useState<VariantForm[]>([]);
@@ -401,8 +403,8 @@ export default function Tours() {
   const openCreate = () => {
     setEditingId(null);
     setForm(emptyForm);
-    setImageFile(null);
-    setImagePreview(null);
+    setImageFiles([]);
+    setImagePreviews([]);
     setPackages([]);
     setVariants([]);
     setDialogOpen(true);
@@ -440,8 +442,8 @@ export default function Tours() {
       recommendations: tour.recommendations ?? "",
       tags: tour.tags.join(", "),
     });
-    setImagePreview(tour.image_url);
-    setImageFile(null);
+    setImagePreviews(tour.image_urls || []);
+    setImageFiles([]);
 
     // Load packages for this tour
     (async () => {
@@ -474,9 +476,9 @@ export default function Tours() {
       }
     })();
 
-    // Load variants for this tour
+    // Load variants for this tour (v2 schema)
     (async () => {
-      const { data } = await (supabase as any)
+      const { data } = await supabase
         .from("tour_price_variants")
         .select("*")
         .eq("tour_id", tour.id)
@@ -484,11 +486,13 @@ export default function Tours() {
       if (data && data.length > 0) {
         setVariants(data.map((v: any) => ({
           id: v.id,
-          tour_package_id: v.tour_package_id || "",
-          is_mexican: v.is_mexican,
+          operator_id: v.operator_id || "",
           zone: v.zone,
-          price_adult_mxn: String(v.price_adult_mxn || ""),
-          price_child_mxn: String(v.price_child_mxn || ""),
+          pax_type: v.pax_type || "Adulto",
+          nationality: v.nationality || "Extranjero",
+          sale_price: String(v.sale_price || ""),
+          net_cost: String(v.net_cost || ""),
+          tax_fee: String(v.tax_fee || ""),
         })));
       } else {
         setVariants([]);
@@ -499,10 +503,72 @@ export default function Tours() {
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    const remaining = 4 - imageFiles.length;
+    const toAdd = files.slice(0, remaining);
+    setImageFiles(prev => [...prev, ...toAdd]);
+    setImagePreviews(prev => [...prev, ...toAdd.map(f => URL.createObjectURL(f))]);
+    if (e.target) e.target.value = "";
+  };
+
+  const removeImage = (index: number) => {
+    setImageFiles(prev => prev.filter((_, i) => i !== index));
+    setImagePreviews(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleDocUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setImageFile(file);
-    setImagePreview(URL.createObjectURL(file));
+    setParsingDoc(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/parse-tour-document`,
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` },
+          body: formData,
+        }
+      );
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Error al analizar documento");
+      }
+      const data = await res.json();
+      // Pre-fill form
+      setForm(prev => ({
+        ...prev,
+        title: data.tour_name || prev.title,
+        short_description: data.short_description || prev.short_description,
+        itinerary: data.itinerary || prev.itinerary,
+        includes: data.includes?.join(", ") || prev.includes,
+        excludes: data.excludes?.join(", ") || prev.excludes,
+        meeting_point: data.meeting_point || prev.meeting_point,
+        what_to_bring: data.what_to_bring?.join(", ") || prev.what_to_bring,
+        recommendations: data.recommendations || prev.recommendations,
+      }));
+      // Pre-fill variants
+      if (data.price_variants && data.price_variants.length > 0) {
+        const newVariants: VariantForm[] = data.price_variants.map((pv: any) => ({
+          operator_id: form.operator_id || "",
+          zone: pv.zone || "Cancun",
+          pax_type: pv.pax_type || "Adulto",
+          nationality: pv.nationality || "Extranjero",
+          sale_price: String(pv.sale_price || ""),
+          net_cost: String(pv.net_cost || ""),
+          tax_fee: String(pv.tax_fee || ""),
+        }));
+        setVariants(newVariants);
+      }
+      toast.success(`Documento analizado: ${data.price_variants?.length || 0} precios extraídos`);
+    } catch (err: any) {
+      toast.error(err.message || "Error al procesar documento");
+    } finally {
+      setParsingDoc(false);
+      if (e.target) e.target.value = "";
+    }
   };
 
   const toggleDay = (day: string) => {
@@ -526,18 +592,21 @@ export default function Tours() {
   const csvToArr = (s: string) => s.split(",").map(x => x.trim()).filter(Boolean);
 
   const saveVariants = async (tourId: string) => {
-    await (supabase as any).from("tour_price_variants").delete().eq("tour_id", tourId);
+    await supabase.from("tour_price_variants").delete().eq("tour_id", tourId);
     if (variants.length === 0) return;
-    const rows = variants.map(v => ({
+    const rows = variants.filter(v => v.operator_id).map(v => ({
       tour_id: tourId,
-      tour_package_id: v.tour_package_id && v.tour_package_id !== "none" && v.tour_package_id !== "" ? v.tour_package_id : null,
-      is_mexican: v.is_mexican,
+      operator_id: v.operator_id,
       zone: v.zone,
-      price_adult_mxn: Number(v.price_adult_mxn) || 0,
-      price_child_mxn: Number(v.price_child_mxn) || 0,
+      pax_type: v.pax_type,
+      nationality: v.nationality,
+      sale_price: Number(v.sale_price) || 0,
+      net_cost: Number(v.net_cost) || 0,
+      tax_fee: Number(v.tax_fee) || 0,
       active: true,
     }));
-    const { error } = await (supabase as any).from("tour_price_variants").insert(rows);
+    if (rows.length === 0) return;
+    const { error } = await supabase.from("tour_price_variants").insert(rows);
     if (error) throw error;
   };
 
@@ -576,14 +645,15 @@ export default function Tours() {
     if (!form.title.trim()) { toast.error("El título es obligatorio"); return; }
     setSaving(true);
     try {
-      let image_url: string | undefined;
-      if (imageFile) {
-        const ext = imageFile.name.split(".").pop();
+      // Upload new images and build image_urls array
+      let finalImageUrls = [...imagePreviews.filter(p => p.startsWith("http"))];
+      for (const file of imageFiles) {
+        const ext = file.name.split(".").pop();
         const path = `tours/${crypto.randomUUID()}.${ext}`;
-        const { error: upErr } = await supabase.storage.from("media").upload(path, imageFile, { upsert: true });
+        const { error: upErr } = await supabase.storage.from("media").upload(path, file, { upsert: true });
         if (upErr) throw upErr;
         const { data: urlData } = supabase.storage.from("media").getPublicUrl(path);
-        image_url = urlData.publicUrl;
+        finalImageUrls.push(urlData.publicUrl);
       }
 
       const payload = {
@@ -615,7 +685,7 @@ export default function Tours() {
         what_to_bring: csvToArray(form.what_to_bring),
         recommendations: form.recommendations.trim() || null,
         tags: csvToArray(form.tags),
-        ...(image_url ? { image_url } : {}),
+        image_urls: finalImageUrls,
       };
 
       if (editingId) {
@@ -709,7 +779,7 @@ export default function Tours() {
             >
               <div className="aspect-video w-full overflow-hidden bg-muted">
                 <img
-                  src={tour.image_url || PLACEHOLDER_IMG}
+                  src={tour.image_urls?.[0] || PLACEHOLDER_IMG}
                   alt={tour.title}
                   className="h-full w-full object-cover"
                   loading="lazy"
@@ -980,9 +1050,8 @@ export default function Tours() {
             <PriceVariantEditor
               variants={variants}
               onChange={setVariants}
-              packages={packages}
-              childAgeMin={parseInt(form.child_age_min) || 4}
-              childAgeMax={parseInt(form.child_age_max) || 10}
+              operators={operatorsList}
+              isAdmin={isAdmin}
             />
 
             <Separator />
@@ -1044,19 +1113,46 @@ export default function Tours() {
               <Input value={form.recommendations} onChange={(e) => setForm({ ...form, recommendations: e.target.value })} />
             </div>
 
-            {/* Image upload */}
+            {/* Image upload - up to 4 photos */}
             <div className="space-y-1.5">
-              <Label>Imagen</Label>
-              <div className="flex items-center gap-3">
-                {imagePreview && (
-                  <img src={imagePreview} alt="preview" className="h-16 w-24 rounded object-cover border" />
+              <Label>Imágenes (hasta 4)</Label>
+              <div className="grid grid-cols-4 gap-2">
+                {imagePreviews.map((preview, idx) => (
+                  <div key={idx} className="relative aspect-video rounded border overflow-hidden bg-muted">
+                    <img src={preview} alt={`Foto ${idx + 1}`} className="h-full w-full object-cover" />
+                    <Button
+                      type="button" variant="destructive" size="icon"
+                      className="absolute top-1 right-1 h-5 w-5"
+                      onClick={() => removeImage(idx)}
+                    >×</Button>
+                  </div>
+                ))}
+                {imagePreviews.length < 4 && (
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="aspect-video rounded border-2 border-dashed flex items-center justify-center text-muted-foreground hover:bg-muted/50 transition-colors"
+                  >
+                    <Upload className="h-5 w-5" />
+                  </button>
                 )}
-                <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
-                  <Upload className="mr-2 h-4 w-4" /> Subir imagen
-                </Button>
-                <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
               </div>
+              <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleFileChange} />
             </div>
+
+            {/* AI Document Mapping (admin only) */}
+            {isAdmin && (
+              <div className="space-y-1.5">
+                <Label>Mapeo Inteligente de Documento</Label>
+                <div className="flex items-center gap-3">
+                  <Button type="button" variant="outline" size="sm" onClick={() => docInputRef.current?.click()} disabled={parsingDoc}>
+                    {parsingDoc ? "Analizando…" : "📄 Mapear Documento"}
+                  </Button>
+                  <p className="text-[11px] text-muted-foreground">Sube un PDF o imagen con la ficha del operador para pre-llenar automáticamente.</p>
+                </div>
+                <input ref={docInputRef} type="file" accept="image/*,.pdf" className="hidden" onChange={handleDocUpload} />
+              </div>
+            )}
           </div>
 
           <DialogFooter>
