@@ -1,18 +1,20 @@
 
 
-# Plan: Assign Admin Roles
+# Plan: Insertar roles de admin en user_roles
 
-The read query tool is read-only, so I need to use a database migration to insert the admin roles.
+La tabla `user_roles` está vacía. Los perfiles ya existen. Solo necesito insertar dos filas.
 
-## Migration
+## Acción
+
+Usar la herramienta de inserción de datos para ejecutar:
 
 ```sql
 INSERT INTO public.user_roles (user_id, role)
 VALUES
-  ('c77d5c89-d902-4b37-ac2a-add5eaa75d0e', 'admin'),  -- walkmetravel@gmail.com
-  ('e5190348-e055-4c71-832f-e6db6bb24587', 'admin')    -- boticaspa@gmail.com
+  ('c77d5c89-d902-4b37-ac2a-add5eaa75d0e', 'admin'),
+  ('e5190348-e055-4c71-832f-e6db6bb24587', 'admin')
 ON CONFLICT (user_id, role) DO NOTHING;
 ```
 
-Single migration, no code changes needed. After this, both users will have the admin role and can access all admin features including document mapping.
+Sin cambios de código ni migraciones de esquema.
 
