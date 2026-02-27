@@ -23,9 +23,18 @@ serve(async (req) => {
       });
     }
 
-    // Convert file to base64
+    // Convert file to base64 (chunked to avoid stack overflow)
     const arrayBuffer = await file.arrayBuffer();
-    const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+    const bytes = new Uint8Array(arrayBuffer);
+    let binary = "";
+    const chunkSize = 8192;
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      const chunk = bytes.subarray(i, Math.min(i + chunkSize, bytes.length));
+      for (let j = 0; j < chunk.length; j++) {
+        binary += String.fromCharCode(chunk[j]);
+      }
+    }
+    const base64 = btoa(binary);
     const mimeType = file.type || "application/octet-stream";
 
     const systemPrompt = `You are a tour document analyzer for a travel agency ERP system in Mexico's Riviera Maya.
