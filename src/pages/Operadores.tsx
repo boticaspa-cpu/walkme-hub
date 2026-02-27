@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
-import { Plus, Search, Upload, Pencil } from "lucide-react";
+import { Plus, Search, Upload, Pencil, FileSpreadsheet } from "lucide-react";
+import PriceListImportDialog from "@/components/operators/PriceListImportDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -52,6 +53,7 @@ export default function Operadores() {
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [priceListOp, setPriceListOp] = useState<{ id: string; name: string } | null>(null);
 
   const { data: operators = [], isLoading } = useQuery({
     queryKey: ["operators"],
@@ -243,9 +245,19 @@ export default function Operadores() {
                     )}
                     {isAdmin && (
                       <TableCell>
-                        <Button variant="ghost" size="icon" onClick={() => openEdit(op)}>
-                          <Pencil className="h-4 w-4" />
-                        </Button>
+                        <div className="flex items-center gap-1">
+                          <Button variant="ghost" size="icon" onClick={() => openEdit(op)}>
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title="Mapear Lista de Precios"
+                            onClick={() => setPriceListOp({ id: op.id, name: op.name })}
+                          >
+                            <FileSpreadsheet className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     )}
                   </TableRow>
@@ -351,6 +363,15 @@ export default function Operadores() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Price List Import Dialog */}
+      {priceListOp && (
+        <PriceListImportDialog
+          open={!!priceListOp}
+          onOpenChange={(v) => { if (!v) setPriceListOp(null); }}
+          operator={priceListOp}
+        />
+      )}
     </div>
   );
 }
