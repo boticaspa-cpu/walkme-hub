@@ -2,3 +2,6 @@ project_id = "btxyepcdaeqcbhhndykd"
 
 [functions.parse-tour-document]
 verify_jwt = false
+
+[functions.parse-operator-pricelist]
+verify_jwt = false
