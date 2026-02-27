@@ -309,36 +309,45 @@ export type Database = {
       operators: {
         Row: {
           active: boolean
+          base_currency: string
           contact_name: string
           created_at: string
           email: string | null
+          exchange_rate: number
           id: string
           logo_url: string | null
           name: string
+          payment_rules: string
           phone: string
           tags: string[]
           updated_at: string
         }
         Insert: {
           active?: boolean
+          base_currency?: string
           contact_name?: string
           created_at?: string
           email?: string | null
+          exchange_rate?: number
           id?: string
           logo_url?: string | null
           name: string
+          payment_rules?: string
           phone?: string
           tags?: string[]
           updated_at?: string
         }
         Update: {
           active?: boolean
+          base_currency?: string
           contact_name?: string
           created_at?: string
           email?: string | null
+          exchange_rate?: number
           id?: string
           logo_url?: string | null
           name?: string
+          payment_rules?: string
           phone?: string
           tags?: string[]
           updated_at?: string
@@ -604,6 +613,13 @@ export type Database = {
             referencedRelation: "tour_price_variants"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "sale_items_tour_price_variant_id_fkey"
+            columns: ["tour_price_variant_id"]
+            isOneToOne: false
+            referencedRelation: "tour_price_variants_seller"
+            referencedColumns: ["id"]
+          },
         ]
       }
       sales: {
@@ -773,48 +789,54 @@ export type Database = {
           active: boolean
           created_at: string
           id: string
-          is_mexican: boolean
-          price_adult_mxn: number
-          price_child_mxn: number
+          nationality: string
+          net_cost: number
+          operator_id: string
+          pax_type: string
+          sale_price: number
+          tax_fee: number
           tour_id: string
-          tour_package_id: string | null
           zone: string
         }
         Insert: {
           active?: boolean
           created_at?: string
           id?: string
-          is_mexican?: boolean
-          price_adult_mxn?: number
-          price_child_mxn?: number
+          nationality?: string
+          net_cost?: number
+          operator_id: string
+          pax_type?: string
+          sale_price?: number
+          tax_fee?: number
           tour_id: string
-          tour_package_id?: string | null
           zone?: string
         }
         Update: {
           active?: boolean
           created_at?: string
           id?: string
-          is_mexican?: boolean
-          price_adult_mxn?: number
-          price_child_mxn?: number
+          nationality?: string
+          net_cost?: number
+          operator_id?: string
+          pax_type?: string
+          sale_price?: number
+          tax_fee?: number
           tour_id?: string
-          tour_package_id?: string | null
           zone?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "tour_price_variants_operator_id_fkey"
+            columns: ["operator_id"]
+            isOneToOne: false
+            referencedRelation: "operators"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "tour_price_variants_tour_id_fkey"
             columns: ["tour_id"]
             isOneToOne: false
             referencedRelation: "tours"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "tour_price_variants_tour_package_id_fkey"
-            columns: ["tour_package_id"]
-            isOneToOne: false
-            referencedRelation: "tour_packages"
             referencedColumns: ["id"]
           },
         ]
@@ -833,7 +855,7 @@ export type Database = {
           exchange_rate_tour: number
           excludes: string[]
           id: string
-          image_url: string | null
+          image_urls: string[]
           includes: string[]
           itinerary: string
           mandatory_fees_usd: number
@@ -868,7 +890,7 @@ export type Database = {
           exchange_rate_tour?: number
           excludes?: string[]
           id?: string
-          image_url?: string | null
+          image_urls?: string[]
           includes?: string[]
           itinerary?: string
           mandatory_fees_usd?: number
@@ -903,7 +925,7 @@ export type Database = {
           exchange_rate_tour?: number
           excludes?: string[]
           id?: string
-          image_url?: string | null
+          image_urls?: string[]
           includes?: string[]
           itinerary?: string
           mandatory_fees_usd?: number
@@ -972,7 +994,60 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      tour_price_variants_seller: {
+        Row: {
+          active: boolean | null
+          created_at: string | null
+          id: string | null
+          nationality: string | null
+          operator_id: string | null
+          pax_type: string | null
+          sale_price: number | null
+          tax_fee: number | null
+          tour_id: string | null
+          zone: string | null
+        }
+        Insert: {
+          active?: boolean | null
+          created_at?: string | null
+          id?: string | null
+          nationality?: string | null
+          operator_id?: string | null
+          pax_type?: string | null
+          sale_price?: number | null
+          tax_fee?: number | null
+          tour_id?: string | null
+          zone?: string | null
+        }
+        Update: {
+          active?: boolean | null
+          created_at?: string | null
+          id?: string | null
+          nationality?: string | null
+          operator_id?: string | null
+          pax_type?: string | null
+          sale_price?: number | null
+          tax_fee?: number | null
+          tour_id?: string | null
+          zone?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tour_price_variants_operator_id_fkey"
+            columns: ["operator_id"]
+            isOneToOne: false
+            referencedRelation: "operators"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tour_price_variants_tour_id_fkey"
+            columns: ["tour_id"]
+            isOneToOne: false
+            referencedRelation: "tours"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       has_role: {
