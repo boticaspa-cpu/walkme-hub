@@ -522,8 +522,11 @@ export default function Tours() {
     if (!file) return;
     setParsingDoc(true);
     try {
+      // Compress image before sending
+      const { compressImage } = await import("@/lib/compress-image");
+      const compressed = await compressImage(file);
       const formData = new FormData();
-      formData.append("file", file);
+      formData.append("file", compressed);
       const res = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/parse-tour-document`,
         {
@@ -537,10 +540,10 @@ export default function Tours() {
         throw new Error(err.error || "Error al analizar documento");
       }
       const data = await res.json();
-      // Pre-fill form
+      // Pre-fill ONLY descriptive fields — never overwrite prices/variants
       setForm(prev => ({
         ...prev,
-        title: data.tour_name || prev.title,
+        title: (!editingId && data.tour_name) ? data.tour_name : prev.title,
         short_description: data.short_description || prev.short_description,
         itinerary: data.itinerary || prev.itinerary,
         includes: data.includes?.join(", ") || prev.includes,
@@ -549,20 +552,7 @@ export default function Tours() {
         what_to_bring: data.what_to_bring?.join(", ") || prev.what_to_bring,
         recommendations: data.recommendations || prev.recommendations,
       }));
-      // Pre-fill variants
-      if (data.price_variants && data.price_variants.length > 0) {
-        const newVariants: VariantForm[] = data.price_variants.map((pv: any) => ({
-          operator_id: form.operator_id || "",
-          zone: pv.zone || "Cancun",
-          pax_type: pv.pax_type || "Adulto",
-          nationality: pv.nationality || "Extranjero",
-          sale_price: String(pv.sale_price || ""),
-          net_cost: String(pv.net_cost || ""),
-          tax_fee: String(pv.tax_fee || ""),
-        }));
-        setVariants(newVariants);
-      }
-      toast.success(`Documento analizado: ${data.price_variants?.length || 0} precios extraídos`);
+      toast.success("Documento analizado: campos descriptivos pre-llenados");
     } catch (err: any) {
       toast.error(err.message || "Error al procesar documento");
     } finally {
