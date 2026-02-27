@@ -1,0 +1,424 @@
+import { useState } from "react";
+import { Plus, Search, FileText, Printer, Send, Pencil } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from "@/components/ui/table";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
+} from "@/components/ui/dialog";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import { toast } from "sonner";
+
+/* ── status helpers ── */
+const statusStyles: Record<string, string> = {
+  scheduled: "bg-primary/10 text-primary",
+  completed: "bg-green-100 text-green-700",
+  cancelled: "bg-destructive/10 text-destructive",
+  no_show: "bg-yellow-100 text-yellow-700",
+};
+const statusLabels: Record<string, string> = {
+  scheduled: "Programada",
+  completed: "Completada",
+  cancelled: "Cancelada",
+  no_show: "No Show",
+};
+
+/* ── form defaults ── */
+const emptyForm = {
+  tour_id: "",
+  client_id: "",
+  modality: "shared",
+  reservation_date: "",
+  reservation_time: "",
+  pax: 1,
+  total_mxn: 0,
+  notes: "",
+  status: "scheduled",
+};
+
+export default function Reservas() {
+  const { user, role } = useAuth();
+  const qc = useQueryClient();
+  const isAdmin = role === "admin";
+
+  const [search, setSearch] = useState("");
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState(emptyForm);
+
+  // mini-dialog nuevo cliente
+  const [clientDialogOpen, setClientDialogOpen] = useState(false);
+  const [clientForm, setClientForm] = useState({ name: "", phone: "", email: "" });
+
+  /* ── queries ── */
+  const { data: reservations = [], isLoading } = useQuery({
+    queryKey: ["reservations"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("reservations")
+        .select("*, tours(title), clients(name)")
+        .order("reservation_date", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: tours = [] } = useQuery({
+    queryKey: ["tours-active"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("tours")
+        .select("id, title")
+        .eq("active", true)
+        .order("title");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: clients = [] } = useQuery({
+    queryKey: ["clients-list"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("clients")
+        .select("id, name")
+        .order("name");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  /* ── mutations ── */
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      const payload = {
+        tour_id: form.tour_id || null,
+        client_id: form.client_id || null,
+        modality: form.modality,
+        reservation_date: form.reservation_date,
+        reservation_time: form.reservation_time,
+        pax: form.pax,
+        total_mxn: form.total_mxn,
+        notes: form.notes || null,
+        ...(editingId ? { status: form.status } : { created_by: user?.id }),
+      };
+
+      if (editingId) {
+        const { error } = await supabase.from("reservations").update(payload).eq("id", editingId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("reservations").insert(payload);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["reservations"] });
+      toast.success(editingId ? "Reserva actualizada" : "Reserva creada");
+      closeDialog();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const saveClientMutation = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase
+        .from("clients")
+        .insert({ name: clientForm.name, phone: clientForm.phone, email: clientForm.email || null, created_by: user?.id })
+        .select("id")
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: ["clients-list"] });
+      setForm((prev) => ({ ...prev, client_id: data.id }));
+      toast.success("Cliente creado");
+      setClientDialogOpen(false);
+      setClientForm({ name: "", phone: "", email: "" });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  /* ── helpers ── */
+  const closeDialog = () => {
+    setDialogOpen(false);
+    setEditingId(null);
+    setForm(emptyForm);
+  };
+
+  const openCreate = () => {
+    setForm(emptyForm);
+    setEditingId(null);
+    setDialogOpen(true);
+  };
+
+  const openEdit = (r: any) => {
+    setForm({
+      tour_id: r.tour_id ?? "",
+      client_id: r.client_id ?? "",
+      modality: r.modality,
+      reservation_date: r.reservation_date,
+      reservation_time: r.reservation_time,
+      pax: r.pax,
+      total_mxn: r.total_mxn,
+      notes: r.notes ?? "",
+      status: r.status,
+    });
+    setEditingId(r.id);
+    setDialogOpen(true);
+  };
+
+  /* ── filter ── */
+  const filtered = reservations.filter((r: any) => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    const folio = (r.folio ?? "").toLowerCase();
+    const clientName = (r.clients?.name ?? "").toLowerCase();
+    return folio.includes(q) || clientName.includes(q);
+  });
+
+  return (
+    <div className="space-y-4">
+      {/* header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold font-display">Reservas</h1>
+          <p className="text-sm text-muted-foreground">Gestión de reservas y vouchers</p>
+        </div>
+        <Button onClick={openCreate}><Plus className="mr-2 h-4 w-4" /> Nueva Reserva</Button>
+      </div>
+
+      {/* table card */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="relative max-w-sm">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por folio o nombre..."
+              className="pl-9"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+        </CardHeader>
+        <CardContent className="p-0">
+          {isLoading ? (
+            <p className="p-6 text-sm text-muted-foreground">Cargando reservas…</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Folio</TableHead>
+                  <TableHead>Tour</TableHead>
+                  <TableHead className="hidden sm:table-cell">Cliente</TableHead>
+                  <TableHead className="hidden md:table-cell">Fecha</TableHead>
+                  <TableHead className="hidden lg:table-cell">Modalidad</TableHead>
+                  <TableHead>Estado</TableHead>
+                  <TableHead className="text-right">Acciones</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filtered.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                      No se encontraron reservas
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filtered.map((r: any) => (
+                    <TableRow key={r.id}>
+                      <TableCell className="font-mono text-xs font-bold">{r.folio ?? "—"}</TableCell>
+                      <TableCell className="text-sm font-medium">{r.tours?.title ?? "—"}</TableCell>
+                      <TableCell className="hidden sm:table-cell text-sm">{r.clients?.name ?? "—"}</TableCell>
+                      <TableCell className="hidden md:table-cell text-sm">{r.reservation_date} {r.reservation_time}</TableCell>
+                      <TableCell className="hidden lg:table-cell">
+                        <Badge variant="outline" className="text-xs capitalize">{r.modality === "shared" ? "Compartido" : "Privado"}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={`${statusStyles[r.status] ?? ""} border-0 text-xs`}>
+                          {statusLabels[r.status] ?? r.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1">
+                          {isAdmin && (
+                            <Button variant="ghost" size="icon" className="h-7 w-7" title="Editar" onClick={() => openEdit(r)}>
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                          <Button variant="ghost" size="icon" className="h-7 w-7" title="Voucher PDF">
+                            <FileText className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" title="Imprimir">
+                            <Printer className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" title="Enviar WhatsApp">
+                            <Send className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ── Dialog Crear / Editar Reserva ── */}
+      <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) closeDialog(); }}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editingId ? "Editar Reserva" : "Nueva Reserva"}</DialogTitle>
+            <DialogDescription>
+              {editingId ? "Modifica los datos de la reserva." : "Completa los datos para crear una nueva reserva. El folio se genera automáticamente."}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-4 py-2">
+            {/* Tour */}
+            <div className="space-y-1.5">
+              <Label>Tour *</Label>
+              <Select value={form.tour_id} onValueChange={(v) => setForm((p) => ({ ...p, tour_id: v }))}>
+                <SelectTrigger><SelectValue placeholder="Seleccionar tour" /></SelectTrigger>
+                <SelectContent>
+                  {tours.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>{t.title}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Cliente + "+" */}
+            <div className="space-y-1.5">
+              <Label>Cliente *</Label>
+              <div className="flex gap-2">
+                <Select value={form.client_id} onValueChange={(v) => setForm((p) => ({ ...p, client_id: v }))}>
+                  <SelectTrigger className="flex-1"><SelectValue placeholder="Seleccionar cliente" /></SelectTrigger>
+                  <SelectContent>
+                    {clients.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button type="button" size="icon" variant="outline" onClick={() => setClientDialogOpen(true)} title="Nuevo Cliente">
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Modalidad */}
+            <div className="space-y-1.5">
+              <Label>Modalidad</Label>
+              <Select value={form.modality} onValueChange={(v) => setForm((p) => ({ ...p, modality: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="shared">Compartido</SelectItem>
+                  <SelectItem value="private">Privado</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Fecha + Hora */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Fecha *</Label>
+                <Input type="date" value={form.reservation_date} onChange={(e) => setForm((p) => ({ ...p, reservation_date: e.target.value }))} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Hora</Label>
+                <Input placeholder="6:00 AM" value={form.reservation_time} onChange={(e) => setForm((p) => ({ ...p, reservation_time: e.target.value }))} />
+              </div>
+            </div>
+
+            {/* Pax + Total */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Pasajeros</Label>
+                <Input type="number" min={1} value={form.pax} onChange={(e) => setForm((p) => ({ ...p, pax: parseInt(e.target.value) || 1 }))} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Total MXN</Label>
+                <Input type="number" min={0} step="0.01" value={form.total_mxn} onChange={(e) => setForm((p) => ({ ...p, total_mxn: parseFloat(e.target.value) || 0 }))} />
+              </div>
+            </div>
+
+            {/* Estado (solo edicion) */}
+            {editingId && (
+              <div className="space-y-1.5">
+                <Label>Estado</Label>
+                <Select value={form.status} onValueChange={(v) => setForm((p) => ({ ...p, status: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="scheduled">Programada</SelectItem>
+                    <SelectItem value="completed">Completada</SelectItem>
+                    <SelectItem value="cancelled">Cancelada</SelectItem>
+                    <SelectItem value="no_show">No Show</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Notas */}
+            <div className="space-y-1.5">
+              <Label>Notas</Label>
+              <Textarea value={form.notes} onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))} placeholder="Notas opcionales…" />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={closeDialog}>Cancelar</Button>
+            <Button
+              onClick={() => saveMutation.mutate()}
+              disabled={saveMutation.isPending || !form.tour_id || !form.client_id || !form.reservation_date}
+            >
+              {saveMutation.isPending ? "Guardando…" : editingId ? "Actualizar" : "Crear Reserva"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Mini-dialog Nuevo Cliente ── */}
+      <Dialog open={clientDialogOpen} onOpenChange={setClientDialogOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Nuevo Cliente</DialogTitle>
+            <DialogDescription>Crea un cliente rápido para asignar a esta reserva.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3 py-2">
+            <div className="space-y-1.5">
+              <Label>Nombre *</Label>
+              <Input value={clientForm.name} onChange={(e) => setClientForm((p) => ({ ...p, name: e.target.value }))} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Teléfono</Label>
+              <Input value={clientForm.phone} onChange={(e) => setClientForm((p) => ({ ...p, phone: e.target.value }))} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Email</Label>
+              <Input type="email" value={clientForm.email} onChange={(e) => setClientForm((p) => ({ ...p, email: e.target.value }))} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setClientDialogOpen(false)}>Cancelar</Button>
+            <Button onClick={() => saveClientMutation.mutate()} disabled={saveClientMutation.isPending || !clientForm.name.trim()}>
+              {saveClientMutation.isPending ? "Guardando…" : "Crear Cliente"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

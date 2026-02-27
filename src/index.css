@@ -1,0 +1,163 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Walkme Tours Brand Fonts */
+@font-face {
+  font-family: 'GT Eesti Pro Display';
+  src: url('/fonts/GT_Eesti_Pro_Display_Bold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Travel Soulmates';
+  src: url('/fonts/Travel_Soulmates_Weight.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Walkme Tours Design System — All colors HSL */
+
+@layer base {
+  :root {
+    /* Brand: Verde selva / Dorado */
+    --background: 40 33% 96%;
+    --foreground: 0 0% 18%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 18%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 18%;
+
+    --primary: 97 30% 43%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 40 30% 93%;
+    --secondary-foreground: 0 0% 18%;
+
+    --muted: 40 20% 94%;
+    --muted-foreground: 0 0% 45%;
+
+    --accent: 40 60% 55%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 152 60% 40%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 18%;
+
+    --border: 40 15% 87%;
+    --input: 40 15% 87%;
+    --ring: 97 30% 43%;
+
+    --radius: 0.625rem;
+
+    /* Sidebar */
+    --sidebar-background: 97 25% 18%;
+    --sidebar-foreground: 40 20% 80%;
+    --sidebar-primary: 40 60% 55%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 97 20% 24%;
+    --sidebar-accent-foreground: 40 20% 95%;
+    --sidebar-border: 97 20% 25%;
+    --sidebar-ring: 40 60% 55%;
+
+    /* Chart palette */
+    --chart-1: 97 30% 43%;
+    --chart-2: 40 60% 55%;
+    --chart-3: 152 60% 40%;
+    --chart-4: 38 92% 50%;
+    --chart-5: 0 72% 51%;
+  }
+
+  .dark {
+    --background: 97 15% 8%;
+    --foreground: 40 20% 90%;
+
+    --card: 97 15% 11%;
+    --card-foreground: 40 20% 90%;
+
+    --popover: 97 15% 11%;
+    --popover-foreground: 40 20% 90%;
+
+    --primary: 97 35% 50%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 97 15% 16%;
+    --secondary-foreground: 40 20% 90%;
+
+    --muted: 97 10% 16%;
+    --muted-foreground: 40 10% 55%;
+
+    --accent: 40 55% 50%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 62% 35%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 152 60% 35%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 80% 45%;
+    --warning-foreground: 0 0% 100%;
+
+    --border: 97 10% 20%;
+    --input: 97 10% 20%;
+    --ring: 97 35% 50%;
+
+    --sidebar-background: 97 20% 6%;
+    --sidebar-foreground: 40 20% 80%;
+    --sidebar-primary: 40 55% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 97 15% 12%;
+    --sidebar-accent-foreground: 40 20% 90%;
+    --sidebar-border: 97 15% 12%;
+    --sidebar-ring: 40 55% 50%;
+
+    --chart-1: 97 35% 50%;
+    --chart-2: 40 55% 50%;
+    --chart-3: 152 60% 45%;
+    --chart-4: 38 80% 50%;
+    --chart-5: 0 72% 55%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'GT Eesti Pro Display', system-ui, sans-serif;
+    font-weight: 700;
+  }
+}
+
+/* Scrollbar styling */
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+  }
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground) / 0.3);
+    border-radius: 3px;
+  }
+}
