@@ -1,74 +1,43 @@
 
 
-# Plan: Importador masivo de lista de precios con selector de regla de costo
+# Fix: Stack overflow en edge function + lógica de costos
 
-Ninguno de los componentes necesarios existe aún (ni `PriceListImportDialog`, ni la edge function `parse-operator-pricelist`, ni la utilidad de compresión). Se crean desde cero.
+## Problema raíz
+Línea 29 de `parse-operator-pricelist/index.ts`:
+```
+btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)))
+```
+El operador spread pasa cada byte como argumento individual a `String.fromCharCode()`. Para un archivo de 1MB son ~1 millón de argumentos, lo que excede el límite del call stack (~65K).
+
+## Cambios
+
+### 1. Fix edge function — conversión base64 en chunks
+En `supabase/functions/parse-operator-pricelist/index.ts`, reemplazar línea 29 con una función que procese el array en bloques de 8KB:
+```typescript
+function uint8ToBase64(bytes: Uint8Array): string {
+  let binary = "";
+  const chunkSize = 8192;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.subarray(i, Math.min(i + chunkSize, bytes.length));
+    for (let j = 0; j < chunk.length; j++) {
+      binary += String.fromCharCode(chunk[j]);
+    }
+  }
+  return btoa(binary);
+}
+```
+Y usar: `const base64 = uint8ToBase64(new Uint8Array(arrayBuffer));`
+
+### 2. Compresión de imagen — ya funciona correctamente
+`compress-image.ts` no tiene recursión; el bug está solo en la edge function. La compresión canvas sigue siendo útil para reducir payload.
+
+### 3. Config.toml — registrar función
+Agregar `[functions.parse-operator-pricelist]` con `verify_jwt = false` al config.toml (si no está ya).
+
+### 4. Lógica de costos en PriceListImportDialog — ya implementada
+El componente `PriceListImportDialog.tsx` ya contiene el selector de regla de costo (RadioGroup con "Monto Fijo" y "Porcentaje de Descuento"), el input de porcentaje pre-llenado con `detected_commission_percent`, y el cálculo automático `net_cost = sale_price * (1 - pct/100)`. No requiere cambios adicionales.
 
 ---
 
-## 1. Utilidad de compresión de imagen
-Crear `src/lib/compress-image.ts`:
-- `compressImage(file: File, maxWidth=1200, quality=0.7): Promise<File>`
-- Si el archivo no es imagen (PDF), devolverlo sin modificar
-- Canvas resize + JPEG compress
-
-## 2. Edge Function `parse-operator-pricelist`
-Crear `supabase/functions/parse-operator-pricelist/index.ts`:
-- Recibe FormData con `file` + `operator_id`
-- Envía a Lovable AI (Gemini 2.5 Flash) con prompt para extraer **múltiples tours** de una lista de precios
-- Tool schema incluye:
-  - `detected_commission_percent` (number|null) — detecta frases como "Comisión Agencias: 20%"
-  - `tours[]` con `tour_name` y `price_variants[]` (cada una con `sale_price`, `net_cost`, `tax_fee`, `zone`, `nationality`, `pax_type`)
-- No escribe en DB — devuelve JSON al frontend
-- Registrar en `supabase/config.toml` con `verify_jwt = false`
-
-## 3. Componente `PriceListImportDialog`
-Crear `src/components/operators/PriceListImportDialog.tsx`:
-- Props: `open`, `onOpenChange`, `operator: {id, name}`
-- Flujo: subir archivo → comprimir si es imagen → llamar edge function → mostrar preview
-- **Selector de regla de costo** (RadioGroup):
-  - "Monto Fijo" — usa `net_cost` tal como viene del documento (o editable)
-  - "Porcentaje de Descuento" — input numérico pre-llenado con `detected_commission_percent`
-- **Cálculo automático**: cuando se elige porcentaje, `net_cost = sale_price * (1 - pct / 100)` para todas las variantes
-- Tabla preview con tours detectados, # variantes, checkboxes de selección
-- Botón "Importar Seleccionados": para cada tour seleccionado:
-  1. Buscar tour existente por `title` (ilike) + `operator_id`
-  2. Si existe: solo reemplazar variantes
-  3. Si no existe: crear tour mínimo + variantes
-  4. `net_cost` calculado se guarda en `tour_price_variants.net_cost` (columna ya existe)
-
-## 4. Integrar en `Operadores.tsx`
-- Agregar estado `priceListOp` para el operador seleccionado
-- Botón "📄 Mapear Lista de Precios" por fila (solo admin)
-- Renderizar `<PriceListImportDialog>`
-
-## 5. Refinar mapeo en `Tours.tsx`
-- En `handleDocUpload` (líneas 552-563): eliminar el bloque que sobrescribe variantes (`setVariants`)
-- Solo pre-llenar campos descriptivos, sin tocar precios existentes
-- Aplicar compresión de imagen antes de enviar
-
----
-
-## Detalle técnico
-
-**Edge function tool schema** (extracto clave):
-```text
-detected_commission_percent: number | null
-tours: [{
-  tour_name: string,
-  price_variants: [{
-    zone, pax_type, nationality, sale_price, net_cost, tax_fee
-  }]
-}]
-```
-
-**Cálculo en frontend**:
-```text
-if mode === "percentage":
-  variant.net_cost = round(variant.sale_price * (1 - pct / 100), 2)
-if mode === "fixed":
-  variant.net_cost = valor del documento o editable
-```
-
-**Persistencia**: Los `net_cost` calculados se escriben directamente en `tour_price_variants.net_cost`. No se requieren cambios de esquema.
+**Resumen**: El único cambio real necesario es reemplazar la línea 29 de la edge function con conversión base64 chunked y asegurar que config.toml registre la función.
 
