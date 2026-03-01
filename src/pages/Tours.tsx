@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Search, Filter, MapPin, Clock, Plus, Pencil, Upload, DollarSign } from "lucide-react";
 import PackageEditor, { PackageForm, emptyPackage } from "@/components/tours/PackageEditor";
 import PriceVariantEditor, { VariantForm, emptyVariant } from "@/components/tours/PriceVariantEditor";
@@ -17,6 +17,8 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
+import { Carousel, CarouselContent, CarouselItem, CarouselPrevious, CarouselNext, type CarouselApi } from "@/components/ui/carousel";
+import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -115,6 +117,61 @@ function csvToArray(csv: string) {
   return csv.split(",").map((s) => s.trim()).filter(Boolean);
 }
 
+// ── Tour Image Carousel ──
+function TourImageCarousel({ images, title }: { images?: string[] | null; title: string }) {
+  const [api, setApi] = useState<CarouselApi>();
+  const [current, setCurrent] = useState(0);
+  const [count, setCount] = useState(0);
+
+  const slides = images?.length ? images : [PLACEHOLDER_IMG];
+
+  useEffect(() => {
+    if (!api) return;
+    setCount(api.scrollSnapList().length);
+    setCurrent(api.selectedScrollSnap());
+    api.on("select", () => setCurrent(api.selectedScrollSnap()));
+  }, [api]);
+
+  return (
+    <div className="space-y-2">
+      <Carousel opts={{ loop: true }} setApi={setApi} className="relative">
+        <CarouselContent>
+          {slides.map((url, i) => (
+            <CarouselItem key={i}>
+              <AspectRatio ratio={16 / 9}>
+                <img
+                  src={url}
+                  alt={`${title} - ${i + 1}`}
+                  className="w-full h-full object-cover rounded-lg bg-muted"
+                  onError={(e) => { (e.target as HTMLImageElement).src = PLACEHOLDER_IMG; }}
+                />
+              </AspectRatio>
+            </CarouselItem>
+          ))}
+        </CarouselContent>
+        {slides.length > 1 && (
+          <>
+            <CarouselPrevious className="absolute left-2 top-1/2 -translate-y-1/2 h-8 w-8 bg-background/80 hover:bg-background" />
+            <CarouselNext className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 bg-background/80 hover:bg-background" />
+          </>
+        )}
+      </Carousel>
+      {count > 1 && (
+        <div className="flex justify-center gap-1.5">
+          {Array.from({ length: count }).map((_, i) => (
+            <button
+              key={i}
+              className={`h-2 rounded-full transition-all ${i === current ? "w-4 bg-primary" : "w-2 bg-muted-foreground/30"}`}
+              onClick={() => api?.scrollTo(i)}
+              aria-label={`Ir a imagen ${i + 1}`}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Showroom detail dialog ──
 function TourShowroom({ tour, onClose }: { tour: TourRow; onClose: () => void }) {
   return (
@@ -133,12 +190,7 @@ function TourShowroom({ tour, onClose }: { tour: TourRow; onClose: () => void })
           </div>
         </DialogHeader>
 
-        <img
-          src={tour.image_urls?.[0] || PLACEHOLDER_IMG}
-          alt={tour.title}
-          className="w-full aspect-video object-cover rounded-lg bg-muted"
-          onError={(e) => { (e.target as HTMLImageElement).src = PLACEHOLDER_IMG; }}
-        />
+        <TourImageCarousel images={tour.image_urls} title={tour.title} />
 
         {/* USD Pricing info */}
         {(tour.price_adult_usd > 0 || tour.public_price_adult_usd > 0 || tour.mandatory_fees_usd > 0) && (
