@@ -21,6 +21,7 @@ import CierreDiario from "./pages/CierreDiario";
 import Comisiones from "./pages/Comisiones";
 import Reportes from "./pages/Reportes";
 import Configuracion from "./pages/Configuracion";
+import Gastos from "./pages/Gastos";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -51,6 +52,7 @@ const App = () => (
               <Route path="/comisiones" element={<Comisiones />} />
               <Route path="/reportes" element={<Reportes />} />
               <Route path="/configuracion" element={<Configuracion />} />
+              <Route path="/gastos" element={<Gastos />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>

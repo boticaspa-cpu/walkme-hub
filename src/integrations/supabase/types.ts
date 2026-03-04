@@ -334,6 +334,116 @@ export type Database = {
         }
         Relationships: []
       }
+      expense_concepts: {
+        Row: {
+          active: boolean
+          category: string | null
+          created_at: string
+          default_due_date: string | null
+          default_due_day: number | null
+          estimated_amount_mxn: number
+          expense_type: Database["public"]["Enums"]["expense_type"]
+          frequency: Database["public"]["Enums"]["expense_frequency"]
+          id: string
+          name: string
+          notes: string | null
+        }
+        Insert: {
+          active?: boolean
+          category?: string | null
+          created_at?: string
+          default_due_date?: string | null
+          default_due_day?: number | null
+          estimated_amount_mxn?: number
+          expense_type?: Database["public"]["Enums"]["expense_type"]
+          frequency?: Database["public"]["Enums"]["expense_frequency"]
+          id?: string
+          name: string
+          notes?: string | null
+        }
+        Update: {
+          active?: boolean
+          category?: string | null
+          created_at?: string
+          default_due_date?: string | null
+          default_due_day?: number | null
+          estimated_amount_mxn?: number
+          expense_type?: Database["public"]["Enums"]["expense_type"]
+          frequency?: Database["public"]["Enums"]["expense_frequency"]
+          id?: string
+          name?: string
+          notes?: string | null
+        }
+        Relationships: []
+      }
+      expense_items: {
+        Row: {
+          concept_id: string
+          created_at: string
+          created_by: string | null
+          due_date: string
+          estimated_amount_mxn: number
+          id: string
+          notes: string | null
+          paid_amount_mxn: number | null
+          paid_at: string | null
+          payment_method:
+            | Database["public"]["Enums"]["expense_payment_method"]
+            | null
+          period_month: string
+          proof_image_path: string | null
+          proof_image_url: string | null
+          reference: string | null
+          status: Database["public"]["Enums"]["expense_status"]
+        }
+        Insert: {
+          concept_id: string
+          created_at?: string
+          created_by?: string | null
+          due_date: string
+          estimated_amount_mxn?: number
+          id?: string
+          notes?: string | null
+          paid_amount_mxn?: number | null
+          paid_at?: string | null
+          payment_method?:
+            | Database["public"]["Enums"]["expense_payment_method"]
+            | null
+          period_month: string
+          proof_image_path?: string | null
+          proof_image_url?: string | null
+          reference?: string | null
+          status?: Database["public"]["Enums"]["expense_status"]
+        }
+        Update: {
+          concept_id?: string
+          created_at?: string
+          created_by?: string | null
+          due_date?: string
+          estimated_amount_mxn?: number
+          id?: string
+          notes?: string | null
+          paid_amount_mxn?: number | null
+          paid_at?: string | null
+          payment_method?:
+            | Database["public"]["Enums"]["expense_payment_method"]
+            | null
+          period_month?: string
+          proof_image_path?: string | null
+          proof_image_url?: string | null
+          reference?: string | null
+          status?: Database["public"]["Enums"]["expense_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expense_items_concept_id_fkey"
+            columns: ["concept_id"]
+            isOneToOne: false
+            referencedRelation: "expense_concepts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leads: {
         Row: {
           assigned_to: string | null
@@ -1328,6 +1438,10 @@ export type Database = {
         | "withdrawal"
         | "adjustment"
       cash_session_status: "open" | "closed"
+      expense_frequency: "monthly" | "one_time"
+      expense_payment_method: "cash" | "bank_transfer" | "card" | "other"
+      expense_status: "planned" | "paid"
+      expense_type: "fixed" | "variable"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1467,6 +1581,10 @@ export const Constants = {
         "adjustment",
       ],
       cash_session_status: ["open", "closed"],
+      expense_frequency: ["monthly", "one_time"],
+      expense_payment_method: ["cash", "bank_transfer", "card", "other"],
+      expense_status: ["planned", "paid"],
+      expense_type: ["fixed", "variable"],
     },
   },
 } as const
