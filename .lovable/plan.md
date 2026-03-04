@@ -1,69 +1,50 @@
 
 
-# Plan: Fix Mapeo de Lista de Precios + Pricing sin Paquete
+# Plan: Fix — Derivar campos faltantes (costo, edades, impuestos) desde variantes
 
-## Problema Actual
+## Problema
 
-1. **Edge Function `parse-operator-pricelist`**: Extrae `tour_name` y `price_variants` (zone/nationality/pax_type/sale_price/net_cost/tax_fee), pero el **cliente** (`PriceListImportDialog`) solo usa `tour_name` para crear el tour — no llena campos generales como `public_price_adult_usd`, `public_price_child_usd`, `tax_adult_usd`, `tax_child_usd`, `child_age_min/max`, `exchange_rate_tour`, etc.
+El código ya envía `tax_adult_usd`, `child_age_min/max`, `price_adult_usd` (net cost) al tour, **pero depende de que la IA los extraiga correctamente a nivel tour**. Si la IA devuelve 0 o vacío para esos campos (cosa frecuente), no hay fallback desde los datos de variantes que SÍ extrae bien.
 
-2. **Checkout $0**: `computeTourPrice` hace fallback a `tour.price_mxn` / `tour.suggested_price_mxn`, pero estos campos están en 0 si nadie los llenó manualmente. Los campos USD (`public_price_adult_usd`) sí pueden estar llenos pero no se usan en el fallback.
+## Solución
 
-## Cambios
+Agregar lógica de **fallback en el cliente** (`PriceListImportDialog.tsx`) para derivar campos generales desde las variantes cuando la IA no los devuelve a nivel tour:
 
-### 1. Edge Function — Extraer campos generales del tour
+### Cambios en `PriceListImportDialog.tsx` — dentro de `handleImport`, después de línea 170
 
-Actualizar el schema de la tool call para que la IA también extraiga por tour:
-- `public_price_adult_usd` — precio público adulto (el más representativo de la tabla)
-- `public_price_child_usd`
-- `tax_adult_usd` (fee muelle/parque adulto)
-- `tax_child_usd` (fee muelle/parque niño)
-- `child_age_range` (texto como "4-11" para parsear)
-- `exchange_rate` (si el documento lo menciona)
+```typescript
+// Fallback: derive general fields from variants if AI didn't extract them at tour level
+// Tax: use tax_fee from first adult/child variant
+const taxAdultFinal = taxAdult > 0 ? taxAdult 
+  : (firstAdultVariant?.tax_fee ?? 0);
+const taxChildFinal = taxChild > 0 ? taxChild 
+  : (firstChildVariant?.tax_fee ?? 0);
 
-Estos se derivan de los datos que YA extrae (variants), tomando el primer adulto/niño Extranjero como "precio público representativo" y las tax_fee.
+// Public price: use sale_price from first adult/child variant  
+const pubAdultFinal = pubAdult > 0 ? pubAdult 
+  : (firstAdultVariant?.sale_price ?? 0);
+const pubChildFinal = pubChild > 0 ? pubChild 
+  : (firstChildVariant?.sale_price ?? 0);
 
-**Archivo**: `supabase/functions/parse-operator-pricelist/index.ts`
+// Net cost: always compute if commission mode, else use variant net_cost
+const netAdult = useCommission 
+  ? Math.round(pubAdultFinal * (1 - pct / 100) * 100) / 100
+  : (firstAdultVariant?.net_cost ?? 0);
+const netChild = useCommission
+  ? Math.round(pubChildFinal * (1 - pct / 100) * 100) / 100
+  : (firstChildVariant?.net_cost ?? 0);
+```
 
-### 2. PriceListImportDialog — Llenar campos generales al importar
+Then use `taxAdultFinal`, `pubAdultFinal`, `netAdult`, etc. in the payload instead of the raw AI values. Also **always set** `price_adult_usd` and `price_child_usd` (remove the `> 0` guard).
 
-En `handleImport`, al hacer insert/update del tour, incluir los campos generales extraídos:
-- `public_price_adult_usd`, `public_price_child_usd` 
-- `tax_adult_usd`, `tax_child_usd`
-- `child_age_min`, `child_age_max` (parseados de `child_age_range`)
-- `exchange_rate_tour` (del operador si no viene en documento)
-- `price_mxn` = `public_price_adult_usd × exchange_rate` (para fallback MXN)
-- `suggested_price_mxn` = `public_price_child_usd × exchange_rate`
-- `calculation_mode` y `commission_percentage` si el operador usa comisión
-- `price_adult_usd` / `price_child_usd` = net_cost si viene
+### Edge Function — strengthen prompt
 
-Además, al crear/actualizar tour, incluir estos campos en el upsert payload.
+Add explicit instruction: "IMPORTANT: If the document shows a fee/tax column (like 'Muelle', 'Impuesto', 'Fee', 'Dock Fee'), extract those values into tax_adult_usd and tax_child_usd. If child age range is shown anywhere (header, footer, notes), extract it into child_age_range."
 
-**Archivo**: `src/components/operators/PriceListImportDialog.tsx`
+## Files
 
-### 3. Fix `computeTourPrice` — Usar precios USD con TC
-
-Actualizar la interfaz `TourBase` y la función para incluir los precios USD y TC:
-- Si `price_mxn` > 0 → usar como está (ya funciona)
-- Si `price_mxn` = 0 pero `public_price_adult_usd > 0` → calcular `public_price_adult_usd × exchange_rate_tour`
-- Mismo para child
-
-**Archivo**: `src/lib/tour-pricing.ts`
-
-### 4. Actualizar queries que alimentan `computeTourPrice`
-
-En `Reservas.tsx` y `ReservationCheckout.tsx`, expandir la query de tours para incluir `public_price_adult_usd, public_price_child_usd, exchange_rate_tour, tax_adult_usd, tax_child_usd`.
-
-**Archivos**: `src/pages/Reservas.tsx`, `src/components/reservations/ReservationCheckout.tsx`
-
-## Archivos
-
-| Archivo | Acción |
+| File | Action |
 |---|---|
-| `supabase/functions/parse-operator-pricelist/index.ts` | Agregar campos generales al schema de extracción |
-| `src/components/operators/PriceListImportDialog.tsx` | Llenar campos generales del tour al importar |
-| `src/lib/tour-pricing.ts` | Fallback USD→MXN con TC |
-| `src/pages/Reservas.tsx` | Expandir query de tours |
-| `src/components/reservations/ReservationCheckout.tsx` | Expandir query de tours |
-
-No hay cambios de DB — todos los campos ya existen en la tabla `tours`.
+| `src/components/operators/PriceListImportDialog.tsx` | Add variant-based fallbacks for tax, public price, net cost, ages |
+| `supabase/functions/parse-operator-pricelist/index.ts` | Strengthen prompt for taxes and age extraction |
 
