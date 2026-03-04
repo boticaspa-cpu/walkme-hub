@@ -45,7 +45,15 @@ Also detect if the document mentions a general agency commission (e.g. "Comisió
 If net_cost is not explicitly stated, leave it as 0.
 Common zones: Cancun, Riviera Maya, Playa del Carmen, Costa Mujeres.
 Common nationalities: Nacional, Extranjero.
-Common pax types: Adulto, Niño, Infante.`;
+Common pax types: Adulto, Niño, Infante.
+
+For each tour, also extract general/representative fields:
+- public_price_adult_usd: the most representative adult public price (typically the Extranjero adult price)
+- public_price_child_usd: the most representative child public price
+- tax_adult_usd: dock/park fee for adults if present in the table, 0 otherwise
+- tax_child_usd: dock/park fee for children if present, 0 otherwise  
+- child_age_range: text like "4-11" or "4 a 11 años" if the document mentions it, empty string otherwise
+- exchange_rate: if the document mentions an exchange rate (tipo de cambio), extract it as a number, 0 otherwise`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -85,12 +93,21 @@ Common pax types: Adulto, Niño, Infante.`;
                     description:
                       "General agency commission percentage if mentioned in document (e.g. 20 for '20% comisión'). Null if not found.",
                   },
+                  detected_exchange_rate: {
+                    type: "number",
+                    description: "Exchange rate (tipo de cambio) if mentioned in the document. 0 if not found.",
+                  },
                   tours: {
                     type: "array",
                     items: {
                       type: "object",
                       properties: {
                         tour_name: { type: "string", description: "Name of the tour" },
+                        public_price_adult_usd: { type: "number", description: "Representative adult public sale price in USD (typically from Extranjero row). 0 if not found." },
+                        public_price_child_usd: { type: "number", description: "Representative child public sale price in USD. 0 if not found." },
+                        tax_adult_usd: { type: "number", description: "Dock/park fee for adults in USD. 0 if not stated." },
+                        tax_child_usd: { type: "number", description: "Dock/park fee for children in USD. 0 if not stated." },
+                        child_age_range: { type: "string", description: "Child age range text like '4-11' or '4 a 11'. Empty string if not found." },
                         price_variants: {
                           type: "array",
                           items: {
@@ -107,7 +124,7 @@ Common pax types: Adulto, Niño, Infante.`;
                           },
                         },
                       },
-                      required: ["tour_name", "price_variants"],
+                      required: ["tour_name", "price_variants", "public_price_adult_usd", "public_price_child_usd", "tax_adult_usd", "tax_child_usd", "child_age_range"],
                     },
                   },
                 },

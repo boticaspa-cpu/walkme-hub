@@ -131,7 +131,7 @@ export default function Reservas() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("tours")
-        .select("id, title, price_mxn, suggested_price_mxn")
+        .select("id, title, price_mxn, suggested_price_mxn, public_price_adult_usd, public_price_child_usd, exchange_rate_tour, tax_adult_usd, tax_child_usd")
         .eq("active", true)
         .order("title");
       if (error) throw error;

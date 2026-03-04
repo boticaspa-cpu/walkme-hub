@@ -42,7 +42,7 @@ export default function ReservationCheckout({ reservation, open, onOpenChange, o
   const { data: toursForPricing = [] } = useQuery({
     queryKey: ["tours-pricing-checkout"],
     queryFn: async () => {
-      const { data } = await supabase.from("tours").select("id, price_mxn, suggested_price_mxn").eq("active", true);
+      const { data } = await supabase.from("tours").select("id, price_mxn, suggested_price_mxn, public_price_adult_usd, public_price_child_usd, exchange_rate_tour, tax_adult_usd, tax_child_usd").eq("active", true);
       return data ?? [];
     },
     enabled: open && (reservation?.total_mxn ?? 0) === 0,
