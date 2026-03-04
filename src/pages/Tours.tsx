@@ -318,6 +318,8 @@ export default function Tours() {
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [parsingDoc, setParsingDoc] = useState(false);
+  const [mappingPackages, setMappingPackages] = useState(false);
+  const [mappingVariants, setMappingVariants] = useState(false);
   const docInputRef = useRef<HTMLInputElement>(null);
   const [saving, setSaving] = useState(false);
   const [packages, setPackages] = useState<PackageForm[]>([]);
@@ -610,6 +612,99 @@ export default function Tours() {
     } finally {
       setParsingDoc(false);
       if (e.target) e.target.value = "";
+    }
+  };
+
+  // ── AI mapping: packages ──
+  const handlePackageDocUpload = async (file: File) => {
+    setMappingPackages(true);
+    try {
+      const { compressImage } = await import("@/lib/compress-image");
+      const compressed = await compressImage(file);
+      const fd = new FormData();
+      fd.append("file", compressed);
+      fd.append("mode", "packages");
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/parse-tour-pricing`,
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` },
+          body: fd,
+        }
+      );
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Error al analizar documento");
+      }
+      const data = await res.json();
+      if (data.packages?.length) {
+        const mapped: PackageForm[] = data.packages.map((p: any) => ({
+          ...emptyPackage,
+          name: p.name || "",
+          service_type: p.service_type || "with_transport",
+          public_price_adult_usd: String(p.public_price_adult_usd || ""),
+          public_price_child_usd: String(p.public_price_child_usd || ""),
+          cost_adult_usd: String(p.cost_adult_usd || ""),
+          cost_child_usd: String(p.cost_child_usd || ""),
+          mandatory_fees_usd: String(p.mandatory_fees_usd || ""),
+          includes: (p.includes || []).join(", "),
+          excludes: (p.excludes || []).join(", "),
+        }));
+        setPackages(prev => [...prev, ...mapped]);
+        toast.success(`${mapped.length} paquete(s) extraído(s) del documento`);
+      } else {
+        toast.info("No se encontraron paquetes en el documento");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Error al procesar documento");
+    } finally {
+      setMappingPackages(false);
+    }
+  };
+
+  // ── AI mapping: variants ──
+  const handleVariantDocUpload = async (file: File) => {
+    setMappingVariants(true);
+    try {
+      const { compressImage } = await import("@/lib/compress-image");
+      const compressed = await compressImage(file);
+      const fd = new FormData();
+      fd.append("file", compressed);
+      fd.append("mode", "variants");
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/parse-tour-pricing`,
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` },
+          body: fd,
+        }
+      );
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Error al analizar documento");
+      }
+      const data = await res.json();
+      if (data.variants?.length) {
+        const defaultOpId = operatorsList.length > 0 ? operatorsList[0].id : "";
+        const mapped: VariantForm[] = data.variants.map((v: any) => ({
+          ...emptyVariant,
+          operator_id: form.operator_id || defaultOpId,
+          zone: v.zone || "Cancun",
+          pax_type: v.pax_type || "Adulto",
+          nationality: v.nationality || "Extranjero",
+          sale_price: String(v.sale_price || ""),
+          net_cost: String(v.net_cost || ""),
+          tax_fee: String(v.tax_fee || ""),
+        }));
+        setVariants(prev => [...prev, ...mapped]);
+        toast.success(`${mapped.length} variante(s) extraída(s) del documento`);
+      } else {
+        toast.info("No se encontraron variantes de precio en el documento");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Error al procesar documento");
+    } finally {
+      setMappingVariants(false);
     }
   };
 
@@ -1085,6 +1180,8 @@ export default function Tours() {
               tourExchangeRate={parseFloat(form.exchange_rate_tour) || exchangeRateUsd}
               tourTaxAdultUsd={parseFloat(form.tax_adult_usd) || 0}
               tourTaxChildUsd={parseFloat(form.tax_child_usd) || 0}
+              onDocUpload={isAdmin ? handlePackageDocUpload : undefined}
+              isMapping={mappingPackages}
             />
 
             <Separator />
@@ -1094,6 +1191,8 @@ export default function Tours() {
               onChange={setVariants}
               operators={operatorsList}
               isAdmin={isAdmin}
+              onDocUpload={isAdmin ? handleVariantDocUpload : undefined}
+              isMapping={mappingVariants}
             />
 
             <Separator />

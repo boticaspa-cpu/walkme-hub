@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Plus, Trash2, ChevronDown, ChevronRight, Package, Info } from "lucide-react";
+import { useState, useRef } from "react";
+import { Plus, Trash2, ChevronDown, ChevronRight, Package, Info, FileText, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -51,6 +51,8 @@ interface Props {
   tourExchangeRate: number;
   tourTaxAdultUsd: number;
   tourTaxChildUsd: number;
+  onDocUpload?: (file: File) => Promise<void>;
+  isMapping?: boolean;
 }
 
 function calcMxn(pubUsd: string, taxUsd: number, tc: number): string {
@@ -59,8 +61,9 @@ function calcMxn(pubUsd: string, taxUsd: number, tc: number): string {
   return result > 0 ? result.toFixed(2) : "0";
 }
 
-export default function PackageEditor({ packages, onChange, tourExchangeRate, tourTaxAdultUsd, tourTaxChildUsd }: Props) {
+export default function PackageEditor({ packages, onChange, tourExchangeRate, tourTaxAdultUsd, tourTaxChildUsd, onDocUpload, isMapping }: Props) {
   const [openIndexes, setOpenIndexes] = useState<Set<number>>(new Set());
+  const docInputRef = useRef<HTMLInputElement>(null);
 
   const toggle = (i: number) => {
     setOpenIndexes(prev => {
@@ -109,9 +112,36 @@ export default function PackageEditor({ packages, onChange, tourExchangeRate, to
         <p className="text-sm font-semibold flex items-center gap-1.5">
           <Package className="h-4 w-4" /> Paquetes del Tour
         </p>
-        <Button type="button" variant="outline" size="sm" onClick={add} disabled={packages.length >= 6}>
-          <Plus className="mr-1 h-3 w-3" /> Agregar Paquete
-        </Button>
+        <div className="flex gap-2">
+          {onDocUpload && (
+            <>
+              <input
+                ref={docInputRef}
+                type="file"
+                accept="image/*,.pdf"
+                className="hidden"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (file && onDocUpload) await onDocUpload(file);
+                  if (e.target) e.target.value = "";
+                }}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => docInputRef.current?.click()}
+                disabled={isMapping}
+              >
+                {isMapping ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <FileText className="mr-1 h-3 w-3" />}
+                Mapear Documento
+              </Button>
+            </>
+          )}
+          <Button type="button" variant="outline" size="sm" onClick={add} disabled={packages.length >= 6}>
+            <Plus className="mr-1 h-3 w-3" /> Agregar Paquete
+          </Button>
+        </div>
       </div>
 
       {packages.length === 0 && (
