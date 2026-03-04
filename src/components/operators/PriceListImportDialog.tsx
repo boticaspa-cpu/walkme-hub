@@ -27,12 +27,24 @@ interface PriceVariant {
 interface DetectedTour {
   tour_name: string;
   price_variants: PriceVariant[];
+  public_price_adult_usd?: number;
+  public_price_child_usd?: number;
+  tax_adult_usd?: number;
+  tax_child_usd?: number;
+  child_age_range?: string;
 }
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  operator: { id: string; name: string };
+  operator: { id: string; name: string; exchange_rate?: number };
+}
+
+function parseAgeRange(text: string): { min: number; max: number } | null {
+  if (!text) return null;
+  const match = text.match(/(\d+)\s*[-–aA]\s*(\d+)/);
+  if (match) return { min: parseInt(match[1]), max: parseInt(match[2]) };
+  return null;
 }
 
 export default function PriceListImportDialog({ open, onOpenChange, operator }: Props) {
@@ -44,6 +56,7 @@ export default function PriceListImportDialog({ open, onOpenChange, operator }: 
   const [costMode, setCostMode] = useState<"fixed" | "percentage">("fixed");
   const [commissionPct, setCommissionPct] = useState("");
   const [detectedPct, setDetectedPct] = useState<number | null>(null);
+  const [detectedExchangeRate, setDetectedExchangeRate] = useState<number>(0);
 
   const reset = () => {
     setTours([]);
@@ -51,6 +64,7 @@ export default function PriceListImportDialog({ open, onOpenChange, operator }: 
     setCostMode("fixed");
     setCommissionPct("");
     setDetectedPct(null);
+    setDetectedExchangeRate(0);
   };
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -80,6 +94,10 @@ export default function PriceListImportDialog({ open, onOpenChange, operator }: 
       const extractedTours: DetectedTour[] = data.tours || [];
       setTours(extractedTours);
       setSelected(new Set(extractedTours.map((_, i) => i)));
+
+      if (data.detected_exchange_rate && data.detected_exchange_rate > 0) {
+        setDetectedExchangeRate(data.detected_exchange_rate);
+      }
 
       if (data.detected_commission_percent) {
         setDetectedPct(data.detected_commission_percent);
@@ -128,9 +146,61 @@ export default function PriceListImportDialog({ open, onOpenChange, operator }: 
     setImporting(true);
     let created = 0, updated = 0, errors = 0;
 
+    // Determine exchange rate: detected from doc > operator > fallback 17.5
+    const exchangeRate = detectedExchangeRate > 0
+      ? detectedExchangeRate
+      : (operator.exchange_rate && operator.exchange_rate > 0 ? operator.exchange_rate : 17.5);
+
+    const pct = parseFloat(commissionPct) || 0;
+    const useCommission = costMode === "percentage" && pct > 0;
+
     try {
       for (const tour of toImport) {
         const processedVariants = getProcessedVariants(tour.price_variants);
+
+        // Compute general fields
+        const pubAdult = tour.public_price_adult_usd ?? 0;
+        const pubChild = tour.public_price_child_usd ?? 0;
+        const taxAdult = tour.tax_adult_usd ?? 0;
+        const taxChild = tour.tax_child_usd ?? 0;
+        const ages = parseAgeRange(tour.child_age_range ?? "");
+
+        // Derive net cost from first adult variant if available
+        const firstAdultVariant = processedVariants.find(v => v.pax_type === "Adulto");
+        const firstChildVariant = processedVariants.find(v => v.pax_type === "Niño");
+
+        const tourPayload: Record<string, any> = {
+          title: tour.tour_name,
+          operator_id: operator.id,
+          public_price_adult_usd: pubAdult,
+          public_price_child_usd: pubChild,
+          tax_adult_usd: taxAdult,
+          tax_child_usd: taxChild,
+          exchange_rate_tour: exchangeRate,
+          // MXN fallback = (public_price + tax) × TC
+          price_mxn: Math.round((pubAdult + taxAdult) * exchangeRate * 100) / 100,
+          suggested_price_mxn: Math.round((pubChild + taxChild) * exchangeRate * 100) / 100,
+        };
+
+        if (ages) {
+          tourPayload.child_age_min = ages.min;
+          tourPayload.child_age_max = ages.max;
+        }
+
+        if (useCommission) {
+          tourPayload.calculation_mode = "commission";
+          tourPayload.commission_percentage = pct;
+        } else {
+          tourPayload.calculation_mode = "net_cost";
+        }
+
+        // Net cost fields from first variant
+        if (firstAdultVariant && firstAdultVariant.net_cost > 0) {
+          tourPayload.price_adult_usd = firstAdultVariant.net_cost;
+        }
+        if (firstChildVariant && firstChildVariant.net_cost > 0) {
+          tourPayload.price_child_usd = firstChildVariant.net_cost;
+        }
 
         // Check if tour already exists for this operator
         const { data: existing } = await supabase
@@ -144,15 +214,22 @@ export default function PriceListImportDialog({ open, onOpenChange, operator }: 
 
         if (existing && existing.length > 0) {
           tourId = existing[0].id;
+          // Update existing tour with general fields
+          const { error: updErr } = await supabase
+            .from("tours")
+            .update(tourPayload)
+            .eq("id", tourId);
+          if (updErr) {
+            console.error("Error updating tour:", updErr);
+            errors++;
+            continue;
+          }
           updated++;
         } else {
-          // Create minimal tour
+          // Create tour with all general fields
           const { data: newTour, error: insertErr } = await supabase
             .from("tours")
-            .insert({
-              title: tour.tour_name,
-              operator_id: operator.id,
-            })
+            .insert(tourPayload as any)
             .select("id")
             .single();
           if (insertErr) {
@@ -239,6 +316,11 @@ export default function PriceListImportDialog({ open, onOpenChange, operator }: 
                 IA detectó comisión: <span className="font-semibold">{detectedPct}%</span>
               </p>
             )}
+            {detectedExchangeRate > 0 && (
+              <p className="text-xs text-muted-foreground">
+                TC detectado: <span className="font-semibold">${detectedExchangeRate}</span>
+              </p>
+            )}
             <RadioGroup
               value={costMode}
               onValueChange={(v) => setCostMode(v as "fixed" | "percentage")}
@@ -288,15 +370,14 @@ export default function PriceListImportDialog({ open, onOpenChange, operator }: 
                   <TableRow>
                     <TableHead className="w-10" />
                     <TableHead>Tour</TableHead>
+                    <TableHead className="text-right">Pub. Adulto</TableHead>
+                    <TableHead className="text-right">Pub. Niño</TableHead>
+                    <TableHead className="text-right">Tax Ad.</TableHead>
                     <TableHead className="text-right">Variantes</TableHead>
-                    <TableHead className="text-right">Ej. Sale Price</TableHead>
-                    <TableHead className="text-right">Ej. Net Cost</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {tours.map((t, i) => {
-                    const processed = getProcessedVariants(t.price_variants);
-                    const sample = processed[0];
                     return (
                       <TableRow key={i}>
                         <TableCell>
@@ -306,13 +387,16 @@ export default function PriceListImportDialog({ open, onOpenChange, operator }: 
                           />
                         </TableCell>
                         <TableCell className="font-medium text-sm">{t.tour_name}</TableCell>
+                        <TableCell className="text-right text-sm">
+                          {t.public_price_adult_usd ? `$${t.public_price_adult_usd}` : "—"}
+                        </TableCell>
+                        <TableCell className="text-right text-sm">
+                          {t.public_price_child_usd ? `$${t.public_price_child_usd}` : "—"}
+                        </TableCell>
+                        <TableCell className="text-right text-sm">
+                          {t.tax_adult_usd ? `$${t.tax_adult_usd}` : "—"}
+                        </TableCell>
                         <TableCell className="text-right text-sm">{t.price_variants.length}</TableCell>
-                        <TableCell className="text-right text-sm">
-                          {sample ? `$${sample.sale_price}` : "—"}
-                        </TableCell>
-                        <TableCell className="text-right text-sm">
-                          {sample ? `$${sample.net_cost}` : "—"}
-                        </TableCell>
                       </TableRow>
                     );
                   })}
