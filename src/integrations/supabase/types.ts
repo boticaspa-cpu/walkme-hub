@@ -581,6 +581,7 @@ export type Database = {
           qty_adults: number
           qty_children: number
           sale_id: string
+          tour_date: string | null
           tour_id: string | null
           tour_package_id: string | null
           tour_price_variant_id: string | null
@@ -593,6 +594,7 @@ export type Database = {
           qty_adults?: number
           qty_children?: number
           sale_id: string
+          tour_date?: string | null
           tour_id?: string | null
           tour_package_id?: string | null
           tour_price_variant_id?: string | null
@@ -605,6 +607,7 @@ export type Database = {
           qty_adults?: number
           qty_children?: number
           sale_id?: string
+          tour_date?: string | null
           tour_id?: string | null
           tour_package_id?: string | null
           tour_price_variant_id?: string | null
