@@ -158,28 +158,42 @@ export default function PriceListImportDialog({ open, onOpenChange, operator }: 
       for (const tour of toImport) {
         const processedVariants = getProcessedVariants(tour.price_variants);
 
-        // Compute general fields
-        const pubAdult = tour.public_price_adult_usd ?? 0;
-        const pubChild = tour.public_price_child_usd ?? 0;
-        const taxAdult = tour.tax_adult_usd ?? 0;
-        const taxChild = tour.tax_child_usd ?? 0;
-        const ages = parseAgeRange(tour.child_age_range ?? "");
-
         // Derive net cost from first adult variant if available
         const firstAdultVariant = processedVariants.find(v => v.pax_type === "Adulto");
         const firstChildVariant = processedVariants.find(v => v.pax_type === "Niño");
 
+        // Fallback: derive general fields from variants if AI didn't extract them at tour level
+        const rawPubAdult = tour.public_price_adult_usd ?? 0;
+        const rawPubChild = tour.public_price_child_usd ?? 0;
+        const rawTaxAdult = tour.tax_adult_usd ?? 0;
+        const rawTaxChild = tour.tax_child_usd ?? 0;
+
+        const pubAdultFinal = rawPubAdult > 0 ? rawPubAdult : (firstAdultVariant?.sale_price ?? 0);
+        const pubChildFinal = rawPubChild > 0 ? rawPubChild : (firstChildVariant?.sale_price ?? 0);
+        const taxAdultFinal = rawTaxAdult > 0 ? rawTaxAdult : (firstAdultVariant?.tax_fee ?? 0);
+        const taxChildFinal = rawTaxChild > 0 ? rawTaxChild : (firstChildVariant?.tax_fee ?? 0);
+
+        const netAdult = useCommission
+          ? Math.round(pubAdultFinal * (1 - pct / 100) * 100) / 100
+          : (firstAdultVariant?.net_cost ?? 0);
+        const netChild = useCommission
+          ? Math.round(pubChildFinal * (1 - pct / 100) * 100) / 100
+          : (firstChildVariant?.net_cost ?? 0);
+
+        const ages = parseAgeRange(tour.child_age_range ?? "");
+
         const tourPayload: Record<string, any> = {
           title: tour.tour_name,
           operator_id: operator.id,
-          public_price_adult_usd: pubAdult,
-          public_price_child_usd: pubChild,
-          tax_adult_usd: taxAdult,
-          tax_child_usd: taxChild,
+          public_price_adult_usd: pubAdultFinal,
+          public_price_child_usd: pubChildFinal,
+          tax_adult_usd: taxAdultFinal,
+          tax_child_usd: taxChildFinal,
           exchange_rate_tour: exchangeRate,
-          // MXN fallback = (public_price + tax) × TC
-          price_mxn: Math.round((pubAdult + taxAdult) * exchangeRate * 100) / 100,
-          suggested_price_mxn: Math.round((pubChild + taxChild) * exchangeRate * 100) / 100,
+          price_mxn: Math.round((pubAdultFinal + taxAdultFinal) * exchangeRate * 100) / 100,
+          suggested_price_mxn: Math.round((pubChildFinal + taxChildFinal) * exchangeRate * 100) / 100,
+          price_adult_usd: netAdult,
+          price_child_usd: netChild,
         };
 
         if (ages) {
@@ -192,14 +206,6 @@ export default function PriceListImportDialog({ open, onOpenChange, operator }: 
           tourPayload.commission_percentage = pct;
         } else {
           tourPayload.calculation_mode = "net_cost";
-        }
-
-        // Net cost fields from first variant
-        if (firstAdultVariant && firstAdultVariant.net_cost > 0) {
-          tourPayload.price_adult_usd = firstAdultVariant.net_cost;
-        }
-        if (firstChildVariant && firstChildVariant.net_cost > 0) {
-          tourPayload.price_child_usd = firstChildVariant.net_cost;
         }
 
         // Check if tour already exists for this operator
