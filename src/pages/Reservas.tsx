@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Plus, Search, FileText, Printer, Send, Pencil } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import VoucherPrintView from "@/components/reservations/VoucherPrintView";
+import { buildWhatsAppMessage, openWhatsApp } from "@/components/reservations/whatsapp-message";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -62,6 +64,8 @@ export default function Reservas() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
+  const [voucherReservation, setVoucherReservation] = useState<any>(null);
+  const voucherRef = useRef<HTMLDivElement>(null);
 
   // mini-dialog nuevo cliente
   const [clientDialogOpen, setClientDialogOpen] = useState(false);
@@ -73,7 +77,7 @@ export default function Reservas() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("reservations")
-        .select("*, tours(title), clients(name)")
+        .select("*, tours(title, includes, meeting_point, short_description), clients(name, phone, email)")
         .order("reservation_date", { ascending: false });
       if (error) throw error;
       return data;
@@ -193,6 +197,31 @@ export default function Reservas() {
     setDialogOpen(true);
   };
 
+  /* ── voucher helpers ── */
+  const handlePrint = (r: any) => {
+    setVoucherReservation(r);
+    setTimeout(() => {
+      const content = document.getElementById("voucher-content");
+      if (!content) return;
+      const w = window.open("", "_blank", "width=800,height=600");
+      if (!w) return;
+      w.document.write(`<!DOCTYPE html><html><head><title>Voucher ${r.folio ?? ""}</title>
+        <style>body{font-family:Arial,sans-serif;padding:24px;margin:0}
+        table{border-collapse:collapse}th,td{padding:6px 12px}
+        .print\\:hidden{display:none!important}</style></head>
+        <body>${content.outerHTML}</body></html>`);
+      w.document.close();
+      w.focus();
+      w.print();
+      setVoucherReservation(null);
+    }, 100);
+  };
+
+  const handleWhatsApp = (r: any) => {
+    const msg = buildWhatsAppMessage(r, "es");
+    openWhatsApp(r.clients?.phone, msg);
+  };
+
   /* ── filter ── */
   const filtered = reservations.filter((r: any) => {
     if (!search) return true;
@@ -271,15 +300,15 @@ export default function Reservas() {
                               <Pencil className="h-3.5 w-3.5" />
                             </Button>
                           )}
-                          <Button variant="ghost" size="icon" className="h-7 w-7" title="Voucher PDF">
-                            <FileText className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="h-7 w-7" title="Imprimir">
-                            <Printer className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="h-7 w-7" title="Enviar WhatsApp">
-                            <Send className="h-3.5 w-3.5" />
-                          </Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" title="Voucher PDF" onClick={() => setVoucherReservation(r)}>
+                             <FileText className="h-3.5 w-3.5" />
+                           </Button>
+                           <Button variant="ghost" size="icon" className="h-7 w-7" title="Imprimir" onClick={() => handlePrint(r)}>
+                             <Printer className="h-3.5 w-3.5" />
+                           </Button>
+                           <Button variant="ghost" size="icon" className="h-7 w-7" title="Enviar WhatsApp" onClick={() => handleWhatsApp(r)}>
+                             <Send className="h-3.5 w-3.5" />
+                           </Button>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -459,6 +488,36 @@ export default function Reservas() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* ── Voucher Dialog ── */}
+      <Dialog open={!!voucherReservation} onOpenChange={(open) => { if (!open) setVoucherReservation(null); }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Voucher — {voucherReservation?.folio ?? ""}</DialogTitle>
+            <DialogDescription>Previsualiza e imprime el voucher de la reserva.</DialogDescription>
+          </DialogHeader>
+          {voucherReservation && (
+            <div ref={voucherRef}>
+              <VoucherPrintView reservation={voucherReservation} />
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setVoucherReservation(null)}>Cerrar</Button>
+            <Button onClick={() => handlePrint(voucherReservation)}>
+              <Printer className="mr-2 h-4 w-4" /> Imprimir
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Hidden voucher for print */}
+      {voucherReservation && (
+        <div className="hidden">
+          <div id="voucher-print-hidden">
+            <VoucherPrintView reservation={voucherReservation} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
