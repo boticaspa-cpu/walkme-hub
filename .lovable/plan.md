@@ -1,58 +1,109 @@
 
 
-# Plan: Botones Crear Reserva/Cotización + Fix Pricing Sin Paquete
+# Plan: Módulo de Gastos (Admin Only)
 
-## Problemas Identificados
+## 1. Migración DB
 
-1. **TourShowroom** (Tours.tsx, lineas 296-298): Los botones "Crear Reserva" y "Crear Cotización" no tienen `onClick` — son botones decorativos.
-2. **Reservas**: El campo `total_mxn` es manual (Input type=number, linea 528). No hay auto-pricing. Si el usuario no lo llena, queda en 0.
-3. **Cotizaciones**: SÍ tiene auto-pricing via `lookupPrice()` usando `tour_price_variants`, pero si no hay variante, retorna 0 sin fallback al precio base del tour.
+### Enums + Tablas
+```sql
+CREATE TYPE public.expense_type AS ENUM ('fixed', 'variable');
+CREATE TYPE public.expense_frequency AS ENUM ('monthly', 'one_time');
+CREATE TYPE public.expense_status AS ENUM ('planned', 'paid');
+CREATE TYPE public.expense_payment_method AS ENUM ('cash', 'bank_transfer', 'card', 'other');
 
-## Cambios
+-- expense_concepts
+CREATE TABLE public.expense_concepts (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name text NOT NULL,
+  category text,
+  expense_type expense_type NOT NULL DEFAULT 'fixed',
+  frequency expense_frequency NOT NULL DEFAULT 'monthly',
+  default_due_day int,
+  default_due_date date,
+  estimated_amount_mxn numeric NOT NULL DEFAULT 0,
+  active boolean NOT NULL DEFAULT true,
+  notes text,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
 
-### 1. Nuevo archivo: `src/lib/tour-pricing.ts`
+-- expense_items
+CREATE TABLE public.expense_items (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  concept_id uuid NOT NULL REFERENCES public.expense_concepts(id),
+  period_month text NOT NULL,
+  due_date date NOT NULL,
+  estimated_amount_mxn numeric NOT NULL DEFAULT 0,
+  status expense_status NOT NULL DEFAULT 'planned',
+  paid_amount_mxn numeric,
+  paid_at timestamptz,
+  payment_method expense_payment_method,
+  reference text,
+  proof_image_path text,
+  proof_image_url text,
+  notes text,
+  created_by uuid,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
 
-Función compartida `computeTourPrice`:
-- Recibe: `tourId, zone, nationality, variants[], toursData[]`
-- Lógica:
-  1. Buscar en `tour_price_variants` match exacto por tour+zone+nationality+pax_type
-  2. Si NO hay match → fallback a `tour.price_mxn` (adulto) y `tour.suggested_price_mxn` (niño) del catálogo
-- Retorna `{ adultPrice: number, childPrice: number, source: 'variant' | 'tour_base' }`
+-- Unique constraint for monthly concepts
+CREATE UNIQUE INDEX uq_monthly_concept_period 
+  ON public.expense_items (concept_id, period_month);
+```
 
-### 2. Tours.tsx — Conectar botones del Showroom
+### RLS — Admin only (both tables)
+```sql
+ALTER TABLE public.expense_concepts ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Admin full concepts" ON public.expense_concepts FOR ALL TO authenticated
+  USING (has_role(auth.uid(), 'admin')) WITH CHECK (has_role(auth.uid(), 'admin'));
 
-Agregar estado para abrir modals de reserva y cotización directamente desde TourShowroom:
-- **"Crear Reserva"**: Navegar a `/reservas` con query params `?tour_id={id}&action=create` (o usar un estado global/callback)
-  - Alternativa más simple: El TourShowroom recibe callbacks `onCreateReservation(tourId)` y `onCreateQuote(tourId)`. El componente padre `Tours` abre un mini-modal inline de creación rápida (reutilizando la misma lógica de Reservas/Cotizaciones), o navega con `useNavigate`.
-  - **Enfoque elegido**: `useNavigate` a `/reservas?tour_id={tourId}` y `/cotizaciones?tour_id={tourId}`. Las páginas destino detectan el param y abren el dialog de creación con el tour preseleccionado.
+ALTER TABLE public.expense_items ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Admin full items" ON public.expense_items FOR ALL TO authenticated
+  USING (has_role(auth.uid(), 'admin')) WITH CHECK (has_role(auth.uid(), 'admin'));
+```
 
-### 3. Reservas.tsx — Auto-pricing + detección de query param
+### Storage bucket
+```sql
+INSERT INTO storage.buckets (id, name, public) VALUES ('expense-proofs', 'expense-proofs', false);
+-- RLS: admin only upload/read
+CREATE POLICY "Admin upload proofs" ON storage.objects FOR INSERT TO authenticated
+  WITH CHECK (bucket_id = 'expense-proofs' AND has_role(auth.uid(), 'admin'));
+CREATE POLICY "Admin read proofs" ON storage.objects FOR SELECT TO authenticated
+  USING (bucket_id = 'expense-proofs' AND has_role(auth.uid(), 'admin'));
+```
 
-- Importar `computeTourPrice` y la query de `tour_price_variants`
-- Expandir query de `tours-active` para incluir `price_mxn, suggested_price_mxn`
-- Agregar `useEffect` que recalcule `form.total_mxn` cuando cambien `tour_id`, `zone`, `nationality`, `pax_adults`, `pax_children`
-- Detectar `?tour_id=` en URL al montar → abrir dialog con tour preseleccionado
-- El campo Total MXN sigue siendo editable (override manual) pero se auto-llena
+## 2. Pages
 
-### 4. Cotizaciones.tsx — Fallback pricing + detección de query param
+### `src/pages/Gastos.tsx`
+Single page with 3 tabs (using shadcn Tabs): **Conceptos**, **Mes**, **Reportes**.
 
-- Expandir query de `tours-active` para incluir `price_mxn, suggested_price_mxn`
-- En `lookupPrice`: si no encuentra variante, hacer fallback a `tour.price_mxn` / `tour.suggested_price_mxn`
-- Detectar `?tour_id=` → abrir dialog con una línea pre-creada para ese tour
+**Tab Conceptos** — follows Destinos pattern:
+- Card list with name, category, type badge (fijo/variable), frequency, due day, estimated amount, active toggle
+- Dialog for create/edit concept
 
-### 5. ReservationCheckout.tsx — Recalcular si total=0
+**Tab Mes** — month selector + auto-generation:
+- On month select, query `expense_items` for that `period_month`
+- For each active monthly concept without an item → insert planned item (client-side upsert)
+- Table: Concepto, Categoría, Tipo, Vence, Estimado, Pagado, Status, Acciones
+- "Marcar Pagado" button → Dialog with: monto pagado, fecha, método, referencia, upload comprobante
+- Image upload uses `supabase.storage.from('expense-proofs').upload()`
 
-- Al abrir el checkout, si `reservation.total_mxn === 0`, recalcular usando `computeTourPrice` con los datos de la reserva y actualizar el registro antes de mostrar el monto.
+**Tab Reportes** — date range selector (last 6/12 months):
+- Bar chart: total expenses per month (recharts BarChart)
+- Stacked bar: fixed vs variable per month
+- Pie/donut: distribution by category for selected month
+- Summary cards: Total, Fijos, Variables
 
-## Archivos
+## 3. Routing + Navigation
 
-| Archivo | Acción |
+- **App.tsx**: Add `<Route path="/gastos" element={<Gastos />} />`
+- **AppSidebar.tsx**: Add `{ title: "Gastos", url: "/gastos", icon: Receipt }` to `adminNav` only (not sellerNav) — positioned after "Reportes"
+
+## 4. Files Changed
+
+| File | Action |
 |---|---|
-| `src/lib/tour-pricing.ts` | **Nuevo** — función `computeTourPrice` |
-| `src/pages/Tours.tsx` | Conectar onClick de botones Showroom con `useNavigate` |
-| `src/pages/Reservas.tsx` | Auto-pricing + detectar `?tour_id` para abrir dialog |
-| `src/pages/Cotizaciones.tsx` | Fallback pricing + detectar `?tour_id` |
-| `src/components/reservations/ReservationCheckout.tsx` | Recalcular si total=0 |
-
-No hay cambios de DB — los campos ya existen.
+| Migration SQL | New tables + enums + storage bucket + RLS |
+| `src/pages/Gastos.tsx` | **New** — 3-tab page (Conceptos, Mes, Reportes) |
+| `src/App.tsx` | Add route `/gastos` |
+| `src/components/layout/AppSidebar.tsx` | Add "Gastos" to adminNav |
 
