@@ -38,6 +38,7 @@ interface CartItem {
   priceChildMxn?: number;
   qtyAdults?: number;
   qtyChildren?: number;
+  tourDate?: string;
 }
 
 export default function POS() {
@@ -220,7 +221,7 @@ export default function POS() {
     addToCartDirect(tour);
   };
 
-  const addVariantToCart = (adultVariant: PriceVariant, childVariant: PriceVariant | null, qtyAdults: number, qtyChildren: number) => {
+  const addVariantToCart = (adultVariant: PriceVariant, childVariant: PriceVariant | null, qtyAdults: number, qtyChildren: number, tourDate: string) => {
     if (!pendingVariantTour) return;
     const tour = pendingVariantTour;
     const pkg = pendingSelectedPackage;
@@ -251,6 +252,7 @@ export default function POS() {
       qtyChildren,
       packageId: pkg?.id,
       packageName: pkg?.name,
+      tourDate,
     }]);
     setPendingSelectedPackage(null);
   };
@@ -291,6 +293,7 @@ export default function POS() {
           unit_price_child_mxn: i.priceChildMxn || 0,
           tour_package_id: i.packageId || null,
           tour_price_variant_id: i.variantId || null,
+          tour_date: i.tourDate || null,
         }))
       );
       if (ie) throw ie;

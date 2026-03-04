@@ -1,0 +1,1 @@
+ALTER TABLE public.sale_items ADD COLUMN tour_date date;

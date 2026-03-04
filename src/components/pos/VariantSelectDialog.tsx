@@ -1,9 +1,14 @@
 import { useState, useMemo, useEffect } from "react";
-import { Minus, Plus } from "lucide-react";
+import { Minus, Plus, CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
@@ -31,7 +36,7 @@ interface Props {
   childAgeMin: number;
   childAgeMax: number;
   variants: PriceVariant[];
-  onAdd: (adultVariant: PriceVariant, childVariant: PriceVariant | null, qtyAdults: number, qtyChildren: number) => void;
+  onAdd: (adultVariant: PriceVariant, childVariant: PriceVariant | null, qtyAdults: number, qtyChildren: number, tourDate: string) => void;
 }
 
 export default function VariantSelectDialog({
@@ -42,6 +47,7 @@ export default function VariantSelectDialog({
   const [nationality, setNationality] = useState<string>("");
   const [qtyAdults, setQtyAdults] = useState(1);
   const [qtyChildren, setQtyChildren] = useState(0);
+  const [tourDate, setTourDate] = useState<Date>();
 
   useEffect(() => {
     if (open) {
@@ -49,6 +55,7 @@ export default function VariantSelectDialog({
       setNationality("");
       setQtyAdults(1);
       setQtyChildren(0);
+      setTourDate(undefined);
     }
   }, [open]);
 
@@ -71,7 +78,6 @@ export default function VariantSelectDialog({
     if (nationality && !nationalities.includes(nationality)) setNationality("");
   }, [nationalities, nationality]);
 
-  // Find adult + child variants for selected zone + nationality
   const adultVariant = useMemo(() => {
     if (!zone || !nationality) return null;
     return variants.find(v => v.zone === zone && v.nationality === nationality && v.pax_type === "Adulto") || null;
@@ -95,27 +101,50 @@ export default function VariantSelectDialog({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="text-base">{packageName ? `${tourTitle} — ${packageName}` : tourTitle}</DialogTitle>
-          <DialogDescription>Selecciona zona y nacionalidad para obtener el precio</DialogDescription>
+          <DialogDescription>Selecciona fecha, zona y nacionalidad</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3">
-          {/* Zone */}
-          {zones.length > 1 && (
-            <div className="space-y-1">
-              <Label className="text-xs">Zona</Label>
-              <Select value={zone} onValueChange={(v) => { setZone(v); setNationality(""); }}>
-                <SelectTrigger><SelectValue placeholder="Seleccionar zona" /></SelectTrigger>
-                <SelectContent>
-                  {zones.map(z => (
-                    <SelectItem key={z} value={z}>{z}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
+          {/* Tour Date */}
+          <div className="space-y-1">
+            <Label className="text-xs">Fecha del Tour</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn("w-full justify-start text-left font-normal", !tourDate && "text-muted-foreground")}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {tourDate ? format(tourDate, "PPP", { locale: es }) : "Seleccionar fecha"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={tourDate}
+                  onSelect={setTourDate}
+                  initialFocus
+                  className={cn("p-3 pointer-events-auto")}
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
 
-          {/* Nationality */}
-          {zone && nationalities.length > 1 && (
+          {/* Zone — always visible */}
+          <div className="space-y-1">
+            <Label className="text-xs">Zona de Pickup</Label>
+            <Select value={zone} onValueChange={(v) => { setZone(v); setNationality(""); }}>
+              <SelectTrigger><SelectValue placeholder="Seleccionar zona" /></SelectTrigger>
+              <SelectContent>
+                {zones.map(z => (
+                  <SelectItem key={z} value={z}>{z}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Nationality — always visible when zone selected */}
+          {zone && (
             <div className="space-y-1">
               <Label className="text-xs">Nacionalidad</Label>
               <Select value={nationality} onValueChange={setNationality}>
@@ -179,8 +208,14 @@ export default function VariantSelectDialog({
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
           <Button
-            disabled={!adultVariant || (qtyAdults === 0 && qtyChildren === 0)}
-            onClick={() => { if (adultVariant) { onAdd(adultVariant, childVariant, qtyAdults, qtyChildren); onOpenChange(false); } }}
+            disabled={!adultVariant || !tourDate || (qtyAdults === 0 && qtyChildren === 0)}
+            onClick={() => {
+              if (adultVariant && tourDate) {
+                const dateStr = format(tourDate, "yyyy-MM-dd");
+                onAdd(adultVariant, childVariant, qtyAdults, qtyChildren, dateStr);
+                onOpenChange(false);
+              }
+            }}
           >
             Agregar al Carrito
           </Button>
