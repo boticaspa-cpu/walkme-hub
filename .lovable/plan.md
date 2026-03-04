@@ -1,111 +1,58 @@
 
 
-# Plan: Unificar Cobro desde Reservas + Transformar POS
+# Plan: Botones Crear Reserva/Cotización + Fix Pricing Sin Paquete
 
-## Resumen
-Mover el cobro al flujo de Reservas ("Confirmar y Cobrar"), vincular cada venta a una reserva, y convertir POS en un buscador de reservas pendientes. Crear tabla `operator_payables` para cuentas por pagar a proveedores.
+## Problemas Identificados
 
----
+1. **TourShowroom** (Tours.tsx, lineas 296-298): Los botones "Crear Reserva" y "Crear Cotización" no tienen `onClick` — son botones decorativos.
+2. **Reservas**: El campo `total_mxn` es manual (Input type=number, linea 528). No hay auto-pricing. Si el usuario no lo llena, queda en 0.
+3. **Cotizaciones**: SÍ tiene auto-pricing via `lookupPrice()` usando `tour_price_variants`, pero si no hay variante, retorna 0 sin fallback al precio base del tour.
 
-## 1. Migración DB
+## Cambios
 
-### A) Agregar columnas a `reservations`
-```sql
-ALTER TABLE public.reservations
-  ADD COLUMN confirmation_status text NOT NULL DEFAULT 'scheduled',
-  ADD COLUMN payment_status text NOT NULL DEFAULT 'unpaid',
-  ADD COLUMN confirmed_at timestamptz,
-  ADD COLUMN sale_id uuid REFERENCES public.sales(id);
-```
+### 1. Nuevo archivo: `src/lib/tour-pricing.ts`
 
-### B) Agregar `receipt_number` a `sales`
-```sql
-ALTER TABLE public.sales ADD COLUMN receipt_number text;
-```
+Función compartida `computeTourPrice`:
+- Recibe: `tourId, zone, nationality, variants[], toursData[]`
+- Lógica:
+  1. Buscar en `tour_price_variants` match exacto por tour+zone+nationality+pax_type
+  2. Si NO hay match → fallback a `tour.price_mxn` (adulto) y `tour.suggested_price_mxn` (niño) del catálogo
+- Retorna `{ adultPrice: number, childPrice: number, source: 'variant' | 'tour_base' }`
 
-### C) Crear `operator_payables`
-```sql
-CREATE TABLE public.operator_payables (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  reservation_id uuid NOT NULL REFERENCES public.reservations(id),
-  operator_id uuid NOT NULL REFERENCES public.operators(id),
-  service_date date NOT NULL,
-  payment_rule_snapshot text NOT NULL DEFAULT 'prepago',
-  due_date date NOT NULL,
-  payable_month text,
-  amount_mxn numeric NOT NULL DEFAULT 0,
-  amount_fx numeric,
-  currency_fx text DEFAULT 'USD',
-  status text NOT NULL DEFAULT 'pending',
-  paid_at timestamptz,
-  notes text,
-  created_at timestamptz NOT NULL DEFAULT now()
-);
-ALTER TABLE public.operator_payables ENABLE ROW LEVEL SECURITY;
--- Admin full, sellers read
-CREATE POLICY "Admin full payables" ON public.operator_payables FOR ALL TO authenticated
-  USING (has_role(auth.uid(),'admin')) WITH CHECK (has_role(auth.uid(),'admin'));
-CREATE POLICY "Auth read payables" ON public.operator_payables FOR SELECT TO authenticated USING (true);
-```
+### 2. Tours.tsx — Conectar botones del Showroom
 
----
+Agregar estado para abrir modals de reserva y cotización directamente desde TourShowroom:
+- **"Crear Reserva"**: Navegar a `/reservas` con query params `?tour_id={id}&action=create` (o usar un estado global/callback)
+  - Alternativa más simple: El TourShowroom recibe callbacks `onCreateReservation(tourId)` y `onCreateQuote(tourId)`. El componente padre `Tours` abre un mini-modal inline de creación rápida (reutilizando la misma lógica de Reservas/Cotizaciones), o navega con `useNavigate`.
+  - **Enfoque elegido**: `useNavigate` a `/reservas?tour_id={tourId}` y `/cotizaciones?tour_id={tourId}`. Las páginas destino detectan el param y abren el dialog de creación con el tour preseleccionado.
 
-## 2. Nuevo componente: `ReservationCheckout`
+### 3. Reservas.tsx — Auto-pricing + detección de query param
 
-**File**: `src/components/reservations/ReservationCheckout.tsx`
+- Importar `computeTourPrice` y la query de `tour_price_variants`
+- Expandir query de `tours-active` para incluir `price_mxn, suggested_price_mxn`
+- Agregar `useEffect` que recalcule `form.total_mxn` cuando cambien `tour_id`, `zone`, `nationality`, `pax_adults`, `pax_children`
+- Detectar `?tour_id=` en URL al montar → abrir dialog con tour preseleccionado
+- El campo Total MXN sigue siendo editable (override manual) pero se auto-llena
 
-Dialog/Drawer reutilizable (usado por Reservas y POS):
-- **Ticket summary**: Tour, Pax (adultos/niños), Total MXN, Zona, Nacionalidad
-- **Payment method**: cash / card / transfer (radio buttons)
-- **Si cash + divisa**: currency selector + exchange rate + amount in FX
-- **Validación**: Si método incluye efectivo → requiere `cash_session` abierta (via `useCashSession`)
-- **On confirm**:
-  1. Upsert `sale` con `reservation_id`, `cash_session_id`, `payment_method`, totales, `sold_by`
-  2. Crear `cash_movement(s)` en la sesión activa
-  3. Actualizar `reservation`: `confirmation_status='confirmed'`, `payment_status='paid'`, `confirmed_at=now()`, `sale_id`
-  4. Crear `operator_payable`: usa `reservation.tour_id → tour.operator_id`, `service_date = reservation.reservation_date`, `due_date` según `operator.payment_rule`
-  5. Invalidar queries
+### 4. Cotizaciones.tsx — Fallback pricing + detección de query param
 
-Props: `reservation`, `onSuccess`, `open`, `onOpenChange`
+- Expandir query de `tours-active` para incluir `price_mxn, suggested_price_mxn`
+- En `lookupPrice`: si no encuentra variante, hacer fallback a `tour.price_mxn` / `tour.suggested_price_mxn`
+- Detectar `?tour_id=` → abrir dialog con una línea pre-creada para ese tour
 
----
+### 5. ReservationCheckout.tsx — Recalcular si total=0
 
-## 3. Actualizar `Reservas.tsx`
+- Al abrir el checkout, si `reservation.total_mxn === 0`, recalcular usando `computeTourPrice` con los datos de la reserva y actualizar el registro antes de mostrar el monto.
 
-- Expandir query: incluir `tours(title, includes, meeting_point, short_description, operator_id)` y `operators` via tour
-- Agregar columnas a la tabla: **Pago** (badge unpaid/paid/deposit)
-- Agregar botón **"Confirmar y Cobrar"** por fila (solo si `confirmation_status='scheduled'`)
-- Si ya confirmada: mostrar "Ver Ticket" en vez de cobrar
-- Bloquear voucher/WhatsApp si operador es prepago y `operator_payable.status='pending'` (warning toast)
-- Estado `checkoutReservation` para abrir `ReservationCheckout`
-
----
-
-## 4. Transformar `POS.tsx`
-
-- **Eliminar catálogo de tours** (grid de botones "Agregar Tours")
-- **Reemplazar por**: Buscador de reservas pendientes (`confirmation_status='scheduled'` OR `payment_status != 'paid'`)
-- Mostrar tabla: Folio, Tour, Cliente, Fecha, Total, Acciones → "Cobrar"
-- Al click "Cobrar" → abrir `ReservationCheckout` con esa reserva
-- Mantener el gate de caja abierta existente
-- Admin toggle "Venta rápida" (opcional, se puede implementar después)
-
----
-
-## 5. Archivos modificados
+## Archivos
 
 | Archivo | Acción |
 |---|---|
-| Migración SQL | Nuevas columnas + tabla `operator_payables` |
-| `src/components/reservations/ReservationCheckout.tsx` | **Nuevo** — checkout reutilizable |
-| `src/pages/Reservas.tsx` | Agregar botón cobrar + columna pago + bloqueo voucher prepago |
-| `src/pages/POS.tsx` | Reescribir: buscador de reservas pendientes en vez de catálogo tours |
+| `src/lib/tour-pricing.ts` | **Nuevo** — función `computeTourPrice` |
+| `src/pages/Tours.tsx` | Conectar onClick de botones Showroom con `useNavigate` |
+| `src/pages/Reservas.tsx` | Auto-pricing + detectar `?tour_id` para abrir dialog |
+| `src/pages/Cotizaciones.tsx` | Fallback pricing + detectar `?tour_id` |
+| `src/components/reservations/ReservationCheckout.tsx` | Recalcular si total=0 |
 
----
-
-## Notas técnicas
-- Se mantiene compatibilidad con `sales`, `cash_sessions`, `cash_movements` existentes
-- `operator_payables` usa `reservation.reservation_date` como `service_date`; `due_date` se calcula: prepago = `service_date - 1 day`, mensual = último día del mes
-- No se borran tablas ni columnas existentes
-- El componente `ReservationCheckout` se comparte entre Reservas y POS para evitar duplicación
+No hay cambios de DB — los campos ya existen.
 
