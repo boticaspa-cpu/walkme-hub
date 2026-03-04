@@ -1,4 +1,5 @@
-import { Plus, Trash2, Grid3X3, Wand2 } from "lucide-react";
+import { useRef } from "react";
+import { Plus, Trash2, Grid3X3, Wand2, FileText, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -39,9 +40,12 @@ interface Props {
   onChange: (variants: VariantForm[]) => void;
   operators: Operator[];
   isAdmin: boolean;
+  onDocUpload?: (file: File) => Promise<void>;
+  isMapping?: boolean;
 }
 
-export default function PriceVariantEditor({ variants, onChange, operators, isAdmin }: Props) {
+export default function PriceVariantEditor({ variants, onChange, operators, isAdmin, onDocUpload, isMapping }: Props) {
+  const docInputRef = useRef<HTMLInputElement>(null);
   const add = () => {
     onChange([...variants, { ...emptyVariant }]);
   };
@@ -85,6 +89,31 @@ export default function PriceVariantEditor({ variants, onChange, operators, isAd
           <Grid3X3 className="h-4 w-4" /> Matriz de Precios v2
         </p>
         <div className="flex gap-2">
+          {onDocUpload && (
+            <>
+              <input
+                ref={docInputRef}
+                type="file"
+                accept="image/*,.pdf"
+                className="hidden"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (file && onDocUpload) await onDocUpload(file);
+                  if (e.target) e.target.value = "";
+                }}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => docInputRef.current?.click()}
+                disabled={isMapping}
+              >
+                {isMapping ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <FileText className="mr-1 h-3 w-3" />}
+                Mapear
+              </Button>
+            </>
+          )}
           <Button type="button" variant="outline" size="sm" onClick={generateAll} disabled={operators.length === 0}>
             <Wand2 className="mr-1 h-3 w-3" /> Generar Combinaciones
           </Button>
