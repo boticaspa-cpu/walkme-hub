@@ -792,6 +792,7 @@ export type Database = {
           nationality: string
           net_cost: number
           operator_id: string
+          package_name: string | null
           pax_type: string
           sale_price: number
           tax_fee: number
@@ -805,6 +806,7 @@ export type Database = {
           nationality?: string
           net_cost?: number
           operator_id: string
+          package_name?: string | null
           pax_type?: string
           sale_price?: number
           tax_fee?: number
@@ -818,6 +820,7 @@ export type Database = {
           nationality?: string
           net_cost?: number
           operator_id?: string
+          package_name?: string | null
           pax_type?: string
           sale_price?: number
           tax_fee?: number

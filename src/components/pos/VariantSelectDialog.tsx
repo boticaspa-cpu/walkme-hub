@@ -27,6 +27,7 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   tourTitle: string;
+  packageName?: string;
   childAgeMin: number;
   childAgeMax: number;
   variants: PriceVariant[];
@@ -34,7 +35,7 @@ interface Props {
 }
 
 export default function VariantSelectDialog({
-  open, onOpenChange, tourTitle, childAgeMin, childAgeMax,
+  open, onOpenChange, tourTitle, packageName, childAgeMin, childAgeMax,
   variants, onAdd,
 }: Props) {
   const [zone, setZone] = useState<string>("");
@@ -93,7 +94,7 @@ export default function VariantSelectDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-base">{tourTitle}</DialogTitle>
+          <DialogTitle className="text-base">{packageName ? `${tourTitle} — ${packageName}` : tourTitle}</DialogTitle>
           <DialogDescription>Selecciona zona y nacionalidad para obtener el precio</DialogDescription>
         </DialogHeader>
 

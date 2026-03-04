@@ -63,7 +63,7 @@ export default function POS() {
   const [variantDialogOpen, setVariantDialogOpen] = useState(false);
   const [pendingVariants, setPendingVariants] = useState<PriceVariant[]>([]);
   const [pendingVariantTour, setPendingVariantTour] = useState<any>(null);
-  const [pendingPackageNames, setPendingPackageNames] = useState<Record<string, string>>({});
+  const [pendingSelectedPackage, setPendingSelectedPackage] = useState<TourPackage | null>(null);
   // Load admin exchange rate from settings
   const { data: adminExchangeRate = 17.5 } = useQuery({
     queryKey: ["settings-exchange-usd"],
@@ -161,8 +161,19 @@ export default function POS() {
   };
 
   const addPackageToCart = (tour: any, pkg: TourPackage) => {
+    // Check if there are variants for this package
+    const pkgVariants = allVariants.filter((v: any) => v.tour_id === tour.id && v.package_name === pkg.name);
+    if (pkgVariants.length > 0) {
+      // Chain: close package dialog, open variant dialog filtered by package
+      setPackageDialogOpen(false);
+      setPendingSelectedPackage(pkg);
+      setPendingVariantTour(tour);
+      setPendingVariants(pkgVariants);
+      setVariantDialogOpen(true);
+      return;
+    }
+    // No variants for this package — add directly
     const unitPrice = pkg.price_adult_mxn;
-    const cartKey = `${tour.id}-${pkg.id}`;
     setCart(prev => {
       const existing = prev.find(i => i.tour_id === tour.id && i.packageId === pkg.id);
       if (existing) return prev.map(i => i.tour_id === tour.id && i.packageId === pkg.id ? { ...i, qty: i.qty + 1 } : i);
@@ -184,37 +195,38 @@ export default function POS() {
   };
 
   const handleTourClick = (tour: any) => {
-    // Check if tour has variants
+    const tourPkgs = allPackages.filter((p: TourPackage) => p.tour_id === tour.id);
     const tourVariants = allVariants.filter((v: PriceVariant) => v.tour_id === tour.id);
+
+    if (tourPkgs.length > 0) {
+      // Has packages — always show package selection first
+      setPendingTour(tour);
+      setPendingPackages(tourPkgs);
+      setPendingSelectedPackage(null);
+      setPackageDialogOpen(true);
+      return;
+    }
+
     if (tourVariants.length > 0) {
-      // Use variant lookup flow
+      // No packages but has variants — show variant dialog directly
       setPendingVariantTour(tour);
       setPendingVariants(tourVariants);
-      // Build package name map
-      const tourPkgs = allPackages.filter((p: TourPackage) => p.tour_id === tour.id);
-      const nameMap: Record<string, string> = {};
-      tourPkgs.forEach((p: TourPackage) => { nameMap[p.id] = p.name; });
-      setPendingPackageNames(nameMap);
+      setPendingSelectedPackage(null);
       setVariantDialogOpen(true);
       return;
     }
 
-    // Fallback: package flow or direct
-    const tourPkgs = allPackages.filter((p: TourPackage) => p.tour_id === tour.id);
-    if (tourPkgs.length > 0) {
-      setPendingTour(tour);
-      setPendingPackages(tourPkgs);
-      setPackageDialogOpen(true);
-    } else {
-      addToCartDirect(tour);
-    }
+    // No packages, no variants — add directly
+    addToCartDirect(tour);
   };
 
   const addVariantToCart = (adultVariant: PriceVariant, childVariant: PriceVariant | null, qtyAdults: number, qtyChildren: number) => {
     if (!pendingVariantTour) return;
     const tour = pendingVariantTour;
+    const pkg = pendingSelectedPackage;
     const label = [
       tour.title,
+      pkg?.name,
       adultVariant.zone,
       adultVariant.nationality,
     ].filter(Boolean).join(" — ");
@@ -237,7 +249,10 @@ export default function POS() {
       priceChildMxn: childPrice,
       qtyAdults,
       qtyChildren,
+      packageId: pkg?.id,
+      packageName: pkg?.name,
     }]);
+    setPendingSelectedPackage(null);
   };
 
   const cartItemKey = (item: CartItem) => `${item.tour_id}-${item.packageId || "direct"}-${item.variantId || ""}`;
@@ -546,6 +561,7 @@ export default function POS() {
           open={variantDialogOpen}
           onOpenChange={setVariantDialogOpen}
           tourTitle={pendingVariantTour.title}
+          packageName={pendingSelectedPackage?.name}
           childAgeMin={pendingVariantTour.child_age_min ?? 4}
           childAgeMax={pendingVariantTour.child_age_max ?? 10}
           variants={pendingVariants}
