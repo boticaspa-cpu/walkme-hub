@@ -14,6 +14,133 @@ export type Database = {
   }
   public: {
     Tables: {
+      cash_movements: {
+        Row: {
+          amount_fx: number | null
+          amount_mxn: number
+          created_at: string
+          created_by: string
+          currency_fx: string | null
+          id: string
+          reference: string | null
+          session_id: string
+          type: Database["public"]["Enums"]["cash_movement_type"]
+        }
+        Insert: {
+          amount_fx?: number | null
+          amount_mxn?: number
+          created_at?: string
+          created_by: string
+          currency_fx?: string | null
+          id?: string
+          reference?: string | null
+          session_id: string
+          type: Database["public"]["Enums"]["cash_movement_type"]
+        }
+        Update: {
+          amount_fx?: number | null
+          amount_mxn?: number
+          created_at?: string
+          created_by?: string
+          currency_fx?: string | null
+          id?: string
+          reference?: string | null
+          session_id?: string
+          type?: Database["public"]["Enums"]["cash_movement_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cash_movements_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "cash_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cash_registers: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      cash_sessions: {
+        Row: {
+          business_date: string
+          closed_at: string | null
+          closed_by: string | null
+          counted_cash_mxn: number | null
+          created_at: string
+          expected_cash_mxn: number | null
+          id: string
+          notes: string | null
+          opened_at: string
+          opened_by: string
+          opening_float_mxn: number
+          opening_fx: Json | null
+          register_id: string
+          status: Database["public"]["Enums"]["cash_session_status"]
+          variance_mxn: number | null
+        }
+        Insert: {
+          business_date?: string
+          closed_at?: string | null
+          closed_by?: string | null
+          counted_cash_mxn?: number | null
+          created_at?: string
+          expected_cash_mxn?: number | null
+          id?: string
+          notes?: string | null
+          opened_at?: string
+          opened_by: string
+          opening_float_mxn?: number
+          opening_fx?: Json | null
+          register_id: string
+          status?: Database["public"]["Enums"]["cash_session_status"]
+          variance_mxn?: number | null
+        }
+        Update: {
+          business_date?: string
+          closed_at?: string | null
+          closed_by?: string | null
+          counted_cash_mxn?: number | null
+          created_at?: string
+          expected_cash_mxn?: number | null
+          id?: string
+          notes?: string | null
+          opened_at?: string
+          opened_by?: string
+          opening_float_mxn?: number
+          opening_fx?: Json | null
+          register_id?: string
+          status?: Database["public"]["Enums"]["cash_session_status"]
+          variance_mxn?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cash_sessions_register_id_fkey"
+            columns: ["register_id"]
+            isOneToOne: false
+            referencedRelation: "cash_registers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       categories: {
         Row: {
           active: boolean
@@ -654,6 +781,7 @@ export type Database = {
       }
       sales: {
         Row: {
+          cash_session_id: string | null
           client_id: string | null
           currency: string
           discount_mxn: number
@@ -667,6 +795,7 @@ export type Database = {
           total_mxn: number
         }
         Insert: {
+          cash_session_id?: string | null
           client_id?: string | null
           currency?: string
           discount_mxn?: number
@@ -680,6 +809,7 @@ export type Database = {
           total_mxn?: number
         }
         Update: {
+          cash_session_id?: string | null
           client_id?: string | null
           currency?: string
           discount_mxn?: number
@@ -693,6 +823,13 @@ export type Database = {
           total_mxn?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "sales_cash_session_id_fkey"
+            columns: ["cash_session_id"]
+            isOneToOne: false
+            referencedRelation: "cash_sessions"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "sales_client_id_fkey"
             columns: ["client_id"]
@@ -1093,6 +1230,16 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "seller"
+      cash_movement_type:
+        | "sale_cash"
+        | "sale_card"
+        | "sale_transfer"
+        | "in_cash"
+        | "out_cash"
+        | "refund"
+        | "withdrawal"
+        | "adjustment"
+      cash_session_status: "open" | "closed"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1221,6 +1368,17 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "seller"],
+      cash_movement_type: [
+        "sale_cash",
+        "sale_card",
+        "sale_transfer",
+        "in_cash",
+        "out_cash",
+        "refund",
+        "withdrawal",
+        "adjustment",
+      ],
+      cash_session_status: ["open", "closed"],
     },
   },
 } as const
