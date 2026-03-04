@@ -17,6 +17,7 @@ interface VariantRow {
   nationality: string;
   pax_type: string;
   sale_price: number;
+  package_name?: string | null;
 }
 
 interface TourBase {
@@ -35,29 +36,34 @@ export function computeTourPrice(
   zone: string,
   nationality: string,
   variants: VariantRow[],
-  toursData: TourBase[]
+  toursData: TourBase[],
+  packageName?: string
 ): TourPriceResult {
-  const adultVariant = variants.find(
-    (v) =>
-      v.tour_id === tourId &&
-      v.zone === zone &&
-      v.nationality === nationality &&
-      v.pax_type === "Adulto"
-  );
-  const childVariant = variants.find(
-    (v) =>
-      v.tour_id === tourId &&
-      v.zone === zone &&
-      v.nationality === nationality &&
-      v.pax_type === "Niño"
-  );
+  const findVariant = (paxType: string, pkgMatch: (pn: string | null | undefined) => boolean) =>
+    variants.find(
+      (v) =>
+        v.tour_id === tourId &&
+        v.zone === zone &&
+        v.nationality === nationality &&
+        v.pax_type === paxType &&
+        pkgMatch(v.package_name)
+    );
 
+  // 1) Exact package match
+  if (packageName) {
+    const adult = findVariant("Adulto", (pn) => pn === packageName);
+    if (adult) {
+      const child = findVariant("Niño", (pn) => pn === packageName);
+      return { adultPrice: adult.sale_price ?? 0, childPrice: child?.sale_price ?? 0, source: "variant" };
+    }
+  }
+
+  // 2) General (no package) match
+  const isGeneral = (pn: string | null | undefined) => !pn || pn === "";
+  const adultVariant = findVariant("Adulto", isGeneral);
   if (adultVariant) {
-    return {
-      adultPrice: adultVariant.sale_price ?? 0,
-      childPrice: childVariant?.sale_price ?? 0,
-      source: "variant",
-    };
+    const childVariant = findVariant("Niño", isGeneral);
+    return { adultPrice: adultVariant.sale_price ?? 0, childPrice: childVariant?.sale_price ?? 0, source: "variant" };
   }
 
   // Fallback to tour base prices

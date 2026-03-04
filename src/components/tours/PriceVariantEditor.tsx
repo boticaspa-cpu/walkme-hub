@@ -16,8 +16,10 @@ export interface VariantForm {
   tax_fee: string;
 }
 
+export const GENERAL_PACKAGE = "__GENERAL__";
+
 export const emptyVariant: VariantForm = {
-  package_name: "",
+  package_name: GENERAL_PACKAGE,
   zone: "Cancun",
   pax_type: "Adulto",
   nationality: "Extranjero",
@@ -61,9 +63,9 @@ export default function PriceVariantEditor({ variants, onChange, packages, isAdm
   };
 
   const generateAll = () => {
-    if (packages.length === 0) return;
+    const pkgList = packages.length > 0 ? packages : [{ name: GENERAL_PACKAGE }];
     const combos: VariantForm[] = [];
-    for (const pkg of packages) {
+    for (const pkg of pkgList) {
       for (const pax of PAX_TYPES) {
         for (const zone of ZONES) {
           for (const nat of NATIONALITIES) {
@@ -115,7 +117,7 @@ export default function PriceVariantEditor({ variants, onChange, packages, isAdm
               </Button>
             </>
           )}
-          <Button type="button" variant="outline" size="sm" onClick={generateAll} disabled={packages.length === 0}>
+          <Button type="button" variant="outline" size="sm" onClick={generateAll}>
             <Wand2 className="mr-1 h-3 w-3" /> Generar Combinaciones
           </Button>
           <Button type="button" variant="outline" size="sm" onClick={add}>
@@ -156,6 +158,7 @@ export default function PriceVariantEditor({ variants, onChange, packages, isAdm
                         <SelectValue placeholder="Paquete" />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value={GENERAL_PACKAGE}>Sin paquete (General)</SelectItem>
                         {packages.map((pkg) => (
                           <SelectItem key={pkg.name} value={pkg.name}>{pkg.name}</SelectItem>
                         ))}
