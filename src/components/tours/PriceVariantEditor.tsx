@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 
 export interface VariantForm {
   id?: string;
-  operator_id: string;
+  package_name: string;
   zone: string;
   pax_type: string; // "Adulto" | "Niño"
   nationality: string; // "Mexicano" | "Extranjero"
@@ -17,7 +17,7 @@ export interface VariantForm {
 }
 
 export const emptyVariant: VariantForm = {
-  operator_id: "",
+  package_name: "",
   zone: "Cancun",
   pax_type: "Adulto",
   nationality: "Extranjero",
@@ -30,21 +30,21 @@ const ZONES = ["Cancun", "Playa", "Tulum", "Riviera Maya"];
 const PAX_TYPES = ["Adulto", "Niño"];
 const NATIONALITIES = ["Mexicano", "Extranjero"];
 
-interface Operator {
-  id: string;
+interface PackageOption {
+  id?: string;
   name: string;
 }
 
 interface Props {
   variants: VariantForm[];
   onChange: (variants: VariantForm[]) => void;
-  operators: Operator[];
+  packages: PackageOption[];
   isAdmin: boolean;
   onDocUpload?: (file: File) => Promise<void>;
   isMapping?: boolean;
 }
 
-export default function PriceVariantEditor({ variants, onChange, operators, isAdmin, onDocUpload, isMapping }: Props) {
+export default function PriceVariantEditor({ variants, onChange, packages, isAdmin, onDocUpload, isMapping }: Props) {
   const docInputRef = useRef<HTMLInputElement>(null);
   const add = () => {
     onChange([...variants, { ...emptyVariant }]);
@@ -61,21 +61,22 @@ export default function PriceVariantEditor({ variants, onChange, operators, isAd
   };
 
   const generateAll = () => {
-    if (operators.length === 0) return;
-    const opId = operators[0].id;
+    if (packages.length === 0) return;
     const combos: VariantForm[] = [];
-    for (const pax of PAX_TYPES) {
-      for (const zone of ZONES) {
-        for (const nat of NATIONALITIES) {
-          combos.push({
-            operator_id: opId,
-            zone,
-            pax_type: pax,
-            nationality: nat,
-            sale_price: "",
-            net_cost: "",
-            tax_fee: "",
-          });
+    for (const pkg of packages) {
+      for (const pax of PAX_TYPES) {
+        for (const zone of ZONES) {
+          for (const nat of NATIONALITIES) {
+            combos.push({
+              package_name: pkg.name,
+              zone,
+              pax_type: pax,
+              nationality: nat,
+              sale_price: "",
+              net_cost: "",
+              tax_fee: "",
+            });
+          }
         }
       }
     }
@@ -114,7 +115,7 @@ export default function PriceVariantEditor({ variants, onChange, operators, isAd
               </Button>
             </>
           )}
-          <Button type="button" variant="outline" size="sm" onClick={generateAll} disabled={operators.length === 0}>
+          <Button type="button" variant="outline" size="sm" onClick={generateAll} disabled={packages.length === 0}>
             <Wand2 className="mr-1 h-3 w-3" /> Generar Combinaciones
           </Button>
           <Button type="button" variant="outline" size="sm" onClick={add}>
@@ -136,7 +137,7 @@ export default function PriceVariantEditor({ variants, onChange, operators, isAd
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="text-xs">Operador</TableHead>
+                <TableHead className="text-xs">Paquete</TableHead>
                 <TableHead className="text-xs">Zona</TableHead>
                 <TableHead className="text-xs">Tipo Pax</TableHead>
                 <TableHead className="text-xs">Nacionalidad</TableHead>
@@ -150,13 +151,13 @@ export default function PriceVariantEditor({ variants, onChange, operators, isAd
               {variants.map((v, i) => (
                 <TableRow key={i}>
                   <TableCell className="py-1.5">
-                    <Select value={v.operator_id} onValueChange={(val) => update(i, "operator_id", val)}>
+                    <Select value={v.package_name} onValueChange={(val) => update(i, "package_name", val)}>
                       <SelectTrigger className="h-8 text-xs w-32">
-                        <SelectValue placeholder="Operador" />
+                        <SelectValue placeholder="Paquete" />
                       </SelectTrigger>
                       <SelectContent>
-                        {operators.map((op) => (
-                          <SelectItem key={op.id} value={op.id}>{op.name}</SelectItem>
+                        {packages.map((pkg) => (
+                          <SelectItem key={pkg.name} value={pkg.name}>{pkg.name}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
