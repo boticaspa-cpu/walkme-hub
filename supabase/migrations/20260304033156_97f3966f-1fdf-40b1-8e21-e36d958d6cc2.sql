@@ -1,0 +1,1 @@
+ALTER TABLE public.tour_price_variants ADD COLUMN package_name text DEFAULT '';

@@ -540,7 +540,7 @@ export default function Tours() {
       if (data && data.length > 0) {
         setVariants(data.map((v: any) => ({
           id: v.id,
-          package_name: "",
+          package_name: v.package_name || "",
           zone: v.zone,
           pax_type: v.pax_type || "Adulto",
           nationality: v.nationality || "Extranjero",
@@ -733,6 +733,7 @@ export default function Tours() {
     const rows = variants.map(v => ({
       tour_id: tourId,
       operator_id: form.operator_id || "",
+      package_name: v.package_name || "",
       zone: v.zone,
       pax_type: v.pax_type,
       nationality: v.nationality,
