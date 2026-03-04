@@ -1,8 +1,10 @@
 import { useState } from "react";
-import { Minus, Plus, Trash2, Tag, CreditCard, Banknote, DollarSign, AlertTriangle } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Minus, Plus, Trash2, Tag, CreditCard, Banknote, DollarSign, AlertTriangle, ShoppingCart, Lock } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useCashSession } from "@/hooks/useCashSession";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -43,7 +45,9 @@ interface CartItem {
 
 export default function POS() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const qc = useQueryClient();
+  const { activeSession, isSessionOpen, isLoadingSession } = useCashSession();
 
   const [cart, setCart] = useState<CartItem[]>([]);
   const [paymentMethod, setPaymentMethod] = useState("cash");
@@ -270,7 +274,7 @@ export default function POS() {
   const saleMutation = useMutation({
     mutationFn: async () => {
       const er = currency !== "MXN" ? parseFloat(exchangeRate) || 1 : 1;
-      const { data: sale, error } = await supabase.from("sales").insert({
+      const { data: sale, error } = await (supabase as any).from("sales").insert({
         client_id: clientId || null,
         payment_method: paymentMethod,
         currency,
@@ -279,8 +283,21 @@ export default function POS() {
         discount_mxn: promoDiscount,
         total_mxn: grandTotal,
         sold_by: user?.id,
+        cash_session_id: activeSession?.id || null,
       }).select("id").single();
       if (error) throw error;
+
+      // Create cash_movement for the sale
+      if (activeSession?.id) {
+        const movType = paymentMethod === "card" ? "sale_card" : paymentMethod === "transfer" ? "sale_transfer" : "sale_cash";
+        await (supabase as any).from("cash_movements").insert({
+          session_id: activeSession.id,
+          type: movType,
+          amount_mxn: grandTotal,
+          reference: `Venta ${sale.id.slice(0, 8)}`,
+          created_by: user?.id,
+        });
+      }
 
       const { error: ie } = await (supabase as any).from("sale_items").insert(
         cart.map(i => ({
@@ -300,6 +317,8 @@ export default function POS() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["sales"] });
+      qc.invalidateQueries({ queryKey: ["cash-movements"] });
+      qc.invalidateQueries({ queryKey: ["cash-session-sales"] });
       toast.success("Venta registrada");
       setCart([]);
       setClientId("");
@@ -327,11 +346,35 @@ export default function POS() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  // POS gate: block if no cash session open
+  if (!isLoadingSession && !isSessionOpen) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 space-y-4">
+        <Lock className="h-16 w-16 text-muted-foreground" />
+        <h2 className="text-xl font-bold">Caja no abierta</h2>
+        <p className="text-sm text-muted-foreground text-center max-w-sm">
+          Necesitas abrir caja para poder registrar ventas.
+        </p>
+        <Button size="lg" onClick={() => navigate("/cierre-diario")}>
+          Abrir Caja
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-bold font-display">Punto de Venta</h1>
-        <p className="text-sm text-muted-foreground">Carrito inteligente con promociones automáticas</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold font-display">Punto de Venta</h1>
+          <p className="text-sm text-muted-foreground">Carrito inteligente con promociones automáticas</p>
+        </div>
+        {isSessionOpen && activeSession && (
+          <Button variant="outline" size="sm" onClick={() => navigate("/cierre-diario")}>
+            <ShoppingCart className="mr-1 h-3.5 w-3.5" />
+            Caja abierta desde {new Date(activeSession.opened_at).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })}
+          </Button>
+        )}
       </div>
 
       <div className="grid gap-4 lg:grid-cols-5">
