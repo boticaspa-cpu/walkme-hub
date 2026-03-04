@@ -1235,6 +1235,7 @@ export type Database = {
           public_price_adult_usd: number
           public_price_child_usd: number
           recommendations: string | null
+          service_type: string
           short_description: string
           suggested_price_mxn: number
           tags: string[]
@@ -1270,6 +1271,7 @@ export type Database = {
           public_price_adult_usd?: number
           public_price_child_usd?: number
           recommendations?: string | null
+          service_type?: string
           short_description?: string
           suggested_price_mxn?: number
           tags?: string[]
@@ -1305,6 +1307,7 @@ export type Database = {
           public_price_adult_usd?: number
           public_price_child_usd?: number
           recommendations?: string | null
+          service_type?: string
           short_description?: string
           suggested_price_mxn?: number
           tags?: string[]
