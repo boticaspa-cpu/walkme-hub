@@ -20,6 +20,9 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 
+const ZONES = ["Cancún", "Playa del Carmen", "Riviera Maya", "Tulum"];
+const NATIONALITIES = ["Nacional", "Extranjero"];
+
 /* ── status helpers ── */
 const statusStyles: Record<string, string> = {
   scheduled: "bg-primary/10 text-primary",
@@ -41,7 +44,10 @@ const emptyForm = {
   modality: "shared",
   reservation_date: "",
   reservation_time: "",
-  pax: 1,
+  pax_adults: 1,
+  pax_children: 0,
+  zone: "",
+  nationality: "",
   total_mxn: 0,
   notes: "",
   status: "scheduled",
@@ -102,13 +108,18 @@ export default function Reservas() {
   /* ── mutations ── */
   const saveMutation = useMutation({
     mutationFn: async () => {
+      const pax = form.pax_adults + form.pax_children;
       const payload = {
         tour_id: form.tour_id || null,
         client_id: form.client_id || null,
         modality: form.modality,
         reservation_date: form.reservation_date,
         reservation_time: form.reservation_time,
-        pax: form.pax,
+        pax,
+        pax_adults: form.pax_adults,
+        pax_children: form.pax_children,
+        zone: form.zone,
+        nationality: form.nationality,
         total_mxn: form.total_mxn,
         notes: form.notes || null,
         ...(editingId ? { status: form.status } : { created_by: user?.id }),
@@ -170,7 +181,10 @@ export default function Reservas() {
       modality: r.modality,
       reservation_date: r.reservation_date,
       reservation_time: r.reservation_time,
-      pax: r.pax,
+      pax_adults: r.pax_adults ?? r.pax ?? 1,
+      pax_children: r.pax_children ?? 0,
+      zone: r.zone ?? "",
+      nationality: r.nationality ?? "",
       total_mxn: r.total_mxn,
       notes: r.notes ?? "",
       status: r.status,
@@ -319,6 +333,28 @@ export default function Reservas() {
               </div>
             </div>
 
+            {/* Zona + Nacionalidad */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Zona de pickup</Label>
+                <Select value={form.zone} onValueChange={(v) => setForm((p) => ({ ...p, zone: v }))}>
+                  <SelectTrigger><SelectValue placeholder="Seleccionar zona" /></SelectTrigger>
+                  <SelectContent>
+                    {ZONES.map(z => <SelectItem key={z} value={z}>{z}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Nacionalidad</Label>
+                <Select value={form.nationality} onValueChange={(v) => setForm((p) => ({ ...p, nationality: v }))}>
+                  <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
+                  <SelectContent>
+                    {NATIONALITIES.map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
             {/* Modalidad */}
             <div className="space-y-1.5">
               <Label>Modalidad</Label>
@@ -343,11 +379,15 @@ export default function Reservas() {
               </div>
             </div>
 
-            {/* Pax + Total */}
-            <div className="grid grid-cols-2 gap-3">
+            {/* Adultos + Niños + Total */}
+            <div className="grid grid-cols-3 gap-3">
               <div className="space-y-1.5">
-                <Label>Pasajeros</Label>
-                <Input type="number" min={1} value={form.pax} onChange={(e) => setForm((p) => ({ ...p, pax: parseInt(e.target.value) || 1 }))} />
+                <Label>Adultos</Label>
+                <Input type="number" min={0} value={form.pax_adults} onChange={(e) => setForm((p) => ({ ...p, pax_adults: parseInt(e.target.value) || 0 }))} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Niños</Label>
+                <Input type="number" min={0} value={form.pax_children} onChange={(e) => setForm((p) => ({ ...p, pax_children: parseInt(e.target.value) || 0 }))} />
               </div>
               <div className="space-y-1.5">
                 <Label>Total MXN</Label>

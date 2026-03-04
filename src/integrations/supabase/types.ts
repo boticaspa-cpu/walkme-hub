@@ -382,26 +382,41 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          nationality: string
           qty: number
+          qty_adults: number
+          qty_children: number
           quote_id: string
           tour_id: string | null
+          unit_price_child_mxn: number
           unit_price_mxn: number
+          zone: string
         }
         Insert: {
           created_at?: string
           id?: string
+          nationality?: string
           qty?: number
+          qty_adults?: number
+          qty_children?: number
           quote_id: string
           tour_id?: string | null
+          unit_price_child_mxn?: number
           unit_price_mxn?: number
+          zone?: string
         }
         Update: {
           created_at?: string
           id?: string
+          nationality?: string
           qty?: number
+          qty_adults?: number
+          qty_children?: number
           quote_id?: string
           tour_id?: string | null
+          unit_price_child_mxn?: number
           unit_price_mxn?: number
+          zone?: string
         }
         Relationships: [
           {
@@ -482,14 +497,18 @@ export type Database = {
           folio: string | null
           id: string
           modality: string
+          nationality: string
           notes: string | null
           pax: number
+          pax_adults: number
+          pax_children: number
           reservation_date: string
           reservation_time: string
           status: string
           total_mxn: number
           tour_id: string | null
           updated_at: string
+          zone: string
         }
         Insert: {
           client_id?: string | null
@@ -498,14 +517,18 @@ export type Database = {
           folio?: string | null
           id?: string
           modality?: string
+          nationality?: string
           notes?: string | null
           pax?: number
+          pax_adults?: number
+          pax_children?: number
           reservation_date: string
           reservation_time?: string
           status?: string
           total_mxn?: number
           tour_id?: string | null
           updated_at?: string
+          zone?: string
         }
         Update: {
           client_id?: string | null
@@ -514,14 +537,18 @@ export type Database = {
           folio?: string | null
           id?: string
           modality?: string
+          nationality?: string
           notes?: string | null
           pax?: number
+          pax_adults?: number
+          pax_children?: number
           reservation_date?: string
           reservation_time?: string
           status?: string
           total_mxn?: number
           tour_id?: string | null
           updated_at?: string
+          zone?: string
         }
         Relationships: [
           {
