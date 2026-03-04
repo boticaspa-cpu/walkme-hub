@@ -43,6 +43,8 @@ Analyze the document and extract ALL tours with their price variants.
 Look for patterns like tables with zones, nationalities, adult/child prices, taxes/fees.
 Also detect if the document mentions a general agency commission (e.g. "Comisión Agencias: 20%", "Agency Discount: 15%").
 If net_cost is not explicitly stated, leave it as 0.
+IMPORTANT: If the document shows a fee/tax column (like 'Muelle', 'Impuesto', 'Fee', 'Dock Fee', 'Derecho de muelle'), extract those values into tax_fee per variant AND into tax_adult_usd/tax_child_usd at tour level.
+If child age range is shown anywhere (header, footer, notes, e.g. "Menores de 4 a 11 años", "Niños 4-11"), extract it into child_age_range.
 Common zones: Cancun, Riviera Maya, Playa del Carmen, Costa Mujeres.
 Common nationalities: Nacional, Extranjero.
 Common pax types: Adulto, Niño, Infante.
