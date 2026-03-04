@@ -1,0 +1,1 @@
+ALTER TABLE public.quotes ADD COLUMN reservation_id uuid REFERENCES public.reservations(id) ON DELETE SET NULL;

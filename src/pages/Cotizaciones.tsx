@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Plus, Search, FileText, Send, Pencil, Trash2 } from "lucide-react";
+import { Plus, Search, FileText, Send, Pencil, Trash2, CheckCircle, ExternalLink } from "lucide-react";
+import SendQuoteDialog from "@/components/cotizaciones/SendQuoteDialog";
+import AcceptQuoteDialog from "@/components/cotizaciones/AcceptQuoteDialog";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -58,6 +60,10 @@ export default function Cotizaciones() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [items, setItems] = useState<QuoteItem[]>([]);
+
+  // Send & Accept dialogs
+  const [sendQuote, setSendQuote] = useState<any>(null);
+  const [acceptQuote, setAcceptQuote] = useState<any>(null);
 
   // mini-dialog client
   const [clientDialogOpen, setClientDialogOpen] = useState(false);
@@ -321,8 +327,18 @@ export default function Cotizaciones() {
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(q)}><Pencil className="h-3.5 w-3.5" /></Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7" title="Ver PDF"><FileText className="h-3.5 w-3.5" /></Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7" title="Enviar"><Send className="h-3.5 w-3.5" /></Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" title="Ver PDF" onClick={() => window.open(`/cotizaciones/${q.id}/pdf`, '_blank')}><FileText className="h-3.5 w-3.5" /></Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" title="Enviar" onClick={() => setSendQuote(q)}><Send className="h-3.5 w-3.5" /></Button>
+                        {(q.status === "draft" || q.status === "sent") && (
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-green-600" title="Aceptar y crear reserva" onClick={() => setAcceptQuote(q)}>
+                            <CheckCircle className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                        {(q as any).reservation_id && (
+                          <Button variant="ghost" size="icon" className="h-7 w-7" title="Ver reserva" onClick={() => window.location.href = `/reservas?highlight=${(q as any).reservation_id}`}>
+                            <ExternalLink className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -475,6 +491,14 @@ export default function Cotizaciones() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Send & Accept dialogs */}
+      {sendQuote && (
+        <SendQuoteDialog open={!!sendQuote} onOpenChange={(o) => { if (!o) setSendQuote(null); }} quote={sendQuote} />
+      )}
+      {acceptQuote && (
+        <AcceptQuoteDialog open={!!acceptQuote} onOpenChange={(o) => { if (!o) setAcceptQuote(null); }} quote={acceptQuote} />
+      )}
     </div>
   );
 }

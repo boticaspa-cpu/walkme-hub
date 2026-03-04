@@ -747,6 +747,7 @@ export type Database = {
           folio: string | null
           id: string
           notes: string | null
+          reservation_id: string | null
           status: string
           total_mxn: number
           updated_at: string
@@ -759,6 +760,7 @@ export type Database = {
           folio?: string | null
           id?: string
           notes?: string | null
+          reservation_id?: string | null
           status?: string
           total_mxn?: number
           updated_at?: string
@@ -771,6 +773,7 @@ export type Database = {
           folio?: string | null
           id?: string
           notes?: string | null
+          reservation_id?: string | null
           status?: string
           total_mxn?: number
           updated_at?: string
@@ -788,6 +791,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotes_reservation_id_fkey"
+            columns: ["reservation_id"]
+            isOneToOne: false
+            referencedRelation: "reservations"
             referencedColumns: ["id"]
           },
         ]
