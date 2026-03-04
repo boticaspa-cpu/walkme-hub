@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { AppLayout } from "@/components/layout/AppLayout";
 import Login from "./pages/Login";
+import CotizacionPDF from "./pages/CotizacionPDF";
 import Dashboard from "./pages/Dashboard";
 import Leads from "./pages/Leads";
 import Clientes from "./pages/Clientes";
@@ -35,6 +36,7 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/cotizaciones/:id/pdf" element={<CotizacionPDF />} />
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route element={<AppLayout />}>
               <Route path="/dashboard" element={<Dashboard />} />
