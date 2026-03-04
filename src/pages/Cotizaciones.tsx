@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Plus, Search, FileText, Send, Pencil, Trash2 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -49,6 +50,7 @@ const emptyForm = { client_id: "", client_name: "", notes: "", status: "draft", 
 export default function Cotizaciones() {
   const { user, role } = useAuth();
   const qc = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
   const isAdmin = role === "admin";
 
   const [search, setSearch] = useState("");
@@ -85,7 +87,7 @@ export default function Cotizaciones() {
   const { data: tours = [] } = useQuery({
     queryKey: ["tours-active"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("tours").select("id, title, price_mxn").eq("active", true).order("title");
+      const { data, error } = await supabase.from("tours").select("id, title, price_mxn, suggested_price_mxn").eq("active", true).order("title");
       if (error) throw error;
       return data;
     },
@@ -104,12 +106,16 @@ export default function Cotizaciones() {
     },
   });
 
-  // Auto-fill prices when tour+zone+nationality change
+  // Auto-fill prices when tour+zone+nationality change — with fallback to tour base price
   const lookupPrice = (tourId: string, zone: string, nationality: string, paxType: string): number => {
     const v = allVariants.find(
       (v: any) => v.tour_id === tourId && v.zone === zone && v.nationality === nationality && v.pax_type === paxType
     );
-    return v?.sale_price ?? 0;
+    if (v?.sale_price) return v.sale_price;
+    // Fallback to tour base prices
+    const tour = tours.find((t: any) => t.id === tourId);
+    if (!tour) return 0;
+    return paxType === "Niño" ? (tour as any).suggested_price_mxn ?? 0 : (tour as any).price_mxn ?? 0;
   };
 
   const saveMutation = useMutation({
@@ -201,6 +207,29 @@ export default function Cotizaciones() {
 
   const closeDialog = () => { setDialogOpen(false); setEditingId(null); setForm(emptyForm); setItems([]); };
   const openCreate = () => { setForm(emptyForm); setItems([]); setEditingId(null); setDialogOpen(true); };
+
+  // ── Detect ?tour_id= query param to open create dialog with tour pre-selected ──
+  useEffect(() => {
+    const tourId = searchParams.get("tour_id");
+    if (tourId && tours.length > 0) {
+      const tour = tours.find((t: any) => t.id === tourId);
+      if (tour) {
+        setForm({ ...emptyForm });
+        setItems([{
+          tour_id: tourId,
+          qty_adults: 1,
+          qty_children: 0,
+          unit_price_mxn: (tour as any).price_mxn ?? 0,
+          unit_price_child_mxn: (tour as any).suggested_price_mxn ?? 0,
+          zone: "",
+          nationality: "",
+        }]);
+        setEditingId(null);
+        setDialogOpen(true);
+      }
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, tours]);
 
   const openEdit = async (q: any) => {
     setForm({ client_id: q.client_id ?? "", client_name: q.client_name, notes: q.notes ?? "", status: q.status, quote_date: "" });

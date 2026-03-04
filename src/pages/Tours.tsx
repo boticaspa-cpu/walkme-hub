@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { Search, Filter, MapPin, Clock, Plus, Pencil, Upload, DollarSign } from "lucide-react";
 import PackageEditor, { PackageForm, emptyPackage } from "@/components/tours/PackageEditor";
 import PriceVariantEditor, { VariantForm, emptyVariant } from "@/components/tours/PriceVariantEditor";
@@ -173,7 +174,7 @@ function TourImageCarousel({ images, title }: { images?: string[] | null; title:
 }
 
 // ── Showroom detail dialog ──
-function TourShowroom({ tour, onClose }: { tour: TourRow; onClose: () => void }) {
+function TourShowroom({ tour, onClose, onCreateReservation, onCreateQuote }: { tour: TourRow; onClose: () => void; onCreateReservation: (tourId: string) => void; onCreateQuote: (tourId: string) => void }) {
   return (
     <Dialog open onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -293,8 +294,8 @@ function TourShowroom({ tour, onClose }: { tour: TourRow; onClose: () => void })
         )}
 
         <div className="flex gap-2 pt-2">
-          <Button className="flex-1">Crear Reserva</Button>
-          <Button variant="outline" className="flex-1">Crear Cotización</Button>
+          <Button className="flex-1" onClick={() => { onClose(); onCreateReservation(tour.id); }}>Crear Reserva</Button>
+          <Button variant="outline" className="flex-1" onClick={() => { onClose(); onCreateQuote(tour.id); }}>Crear Cotización</Button>
         </div>
       </DialogContent>
     </Dialog>
@@ -304,6 +305,7 @@ function TourShowroom({ tour, onClose }: { tour: TourRow; onClose: () => void })
 // ── Main page ──
 export default function Tours() {
   const { role } = useAuth();
+  const navigate = useNavigate();
   const isAdmin = role === "admin";
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -967,7 +969,7 @@ export default function Tours() {
       )}
 
       {/* Showroom Dialog */}
-      {selectedTour && <TourShowroom tour={selectedTour} onClose={() => setSelectedTour(null)} />}
+      {selectedTour && <TourShowroom tour={selectedTour} onClose={() => setSelectedTour(null)} onCreateReservation={(tourId) => navigate(`/reservas?tour_id=${tourId}`)} onCreateQuote={(tourId) => navigate(`/cotizaciones?tour_id=${tourId}`)} />}
 
       {/* Create / Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

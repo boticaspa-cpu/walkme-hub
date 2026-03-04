@@ -1,7 +1,9 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Plus, Search, FileText, Printer, Send, Pencil, DollarSign, CheckCircle } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { computeTourPrice, computeTotal } from "@/lib/tour-pricing";
 import VoucherPrintView from "@/components/reservations/VoucherPrintView";
 import ReservationCheckout from "@/components/reservations/ReservationCheckout";
 import { buildWhatsAppMessage, openWhatsApp } from "@/components/reservations/whatsapp-message";
@@ -72,6 +74,7 @@ const emptyForm = {
 export default function Reservas() {
   const { user, role } = useAuth();
   const qc = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
   const isAdmin = role === "admin";
 
   const [search, setSearch] = useState("");
@@ -128,9 +131,22 @@ export default function Reservas() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("tours")
-        .select("id, title")
+        .select("id, title, price_mxn, suggested_price_mxn")
         .eq("active", true)
         .order("title");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Load all price variants for auto-pricing
+  const { data: allVariants = [] } = useQuery({
+    queryKey: ["tour-price-variants-all"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("tour_price_variants")
+        .select("tour_id, zone, nationality, pax_type, sale_price")
+        .eq("active", true);
       if (error) throw error;
       return data;
     },
@@ -147,6 +163,25 @@ export default function Reservas() {
       return data;
     },
   });
+
+  // ── Auto-pricing: recalculate total when relevant fields change ──
+  useEffect(() => {
+    if (!form.tour_id) return;
+    const result = computeTourPrice(form.tour_id, form.zone, form.nationality, allVariants as any, tours as any);
+    const total = computeTotal(result.adultPrice, result.childPrice, form.pax_adults, form.pax_children);
+    setForm((p) => ({ ...p, total_mxn: total }));
+  }, [form.tour_id, form.zone, form.nationality, form.pax_adults, form.pax_children, allVariants, tours]);
+
+  // ── Detect ?tour_id= query param to open create dialog ──
+  useEffect(() => {
+    const tourId = searchParams.get("tour_id");
+    if (tourId && tours.length > 0) {
+      setForm({ ...emptyForm, tour_id: tourId });
+      setEditingId(null);
+      setDialogOpen(true);
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, tours]);
 
   /* ── mutations ── */
   const saveMutation = useMutation({

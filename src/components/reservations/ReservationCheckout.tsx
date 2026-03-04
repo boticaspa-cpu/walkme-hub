@@ -1,6 +1,7 @@
-import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { computeTourPrice, computeTotal } from "@/lib/tour-pricing";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCashSession } from "@/hooks/useCashSession";
 import { Button } from "@/components/ui/button";
@@ -33,10 +34,55 @@ export default function ReservationCheckout({ reservation, open, onOpenChange, o
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [currency, setCurrency] = useState("MXN");
   const [exchangeRate, setExchangeRate] = useState("17.50");
+  const [recalculatedTotal, setRecalculatedTotal] = useState<number | null>(null);
 
   const fmt = (n: number) => n.toLocaleString("es-MX", { style: "currency", currency: "MXN" });
 
-  const totalMxn = reservation?.total_mxn ?? 0;
+  // Fetch tours + variants for recalc if total=0
+  const { data: toursForPricing = [] } = useQuery({
+    queryKey: ["tours-pricing-checkout"],
+    queryFn: async () => {
+      const { data } = await supabase.from("tours").select("id, price_mxn, suggested_price_mxn").eq("active", true);
+      return data ?? [];
+    },
+    enabled: open && (reservation?.total_mxn ?? 0) === 0,
+  });
+
+  const { data: variantsForPricing = [] } = useQuery({
+    queryKey: ["variants-pricing-checkout"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("tour_price_variants")
+        .select("tour_id, zone, nationality, pax_type, sale_price")
+        .eq("active", true);
+      return data ?? [];
+    },
+    enabled: open && (reservation?.total_mxn ?? 0) === 0,
+  });
+
+  // Recalculate if total_mxn=0
+  useEffect(() => {
+    if (!reservation || reservation.total_mxn > 0) {
+      setRecalculatedTotal(null);
+      return;
+    }
+    if (!reservation.tour_id || toursForPricing.length === 0) return;
+    const result = computeTourPrice(
+      reservation.tour_id,
+      reservation.zone ?? "",
+      reservation.nationality ?? "",
+      variantsForPricing as any,
+      toursForPricing as any
+    );
+    const total = computeTotal(result.adultPrice, result.childPrice, reservation.pax_adults || 1, reservation.pax_children || 0);
+    if (total > 0) {
+      setRecalculatedTotal(total);
+      // Update reservation in DB
+      (supabase as any).from("reservations").update({ total_mxn: total }).eq("id", reservation.id);
+    }
+  }, [reservation, toursForPricing, variantsForPricing]);
+
+  const totalMxn = recalculatedTotal ?? reservation?.total_mxn ?? 0;
   const needsCashSession = paymentMethod === "cash";
 
   const checkoutMutation = useMutation({
