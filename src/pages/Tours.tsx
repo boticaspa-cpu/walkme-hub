@@ -540,7 +540,7 @@ export default function Tours() {
       if (data && data.length > 0) {
         setVariants(data.map((v: any) => ({
           id: v.id,
-          operator_id: v.operator_id || "",
+          package_name: "",
           zone: v.zone,
           pax_type: v.pax_type || "Adulto",
           nationality: v.nationality || "Extranjero",
@@ -685,10 +685,9 @@ export default function Tours() {
       }
       const data = await res.json();
       if (data.variants?.length) {
-        const defaultOpId = operatorsList.length > 0 ? operatorsList[0].id : "";
         const mapped: VariantForm[] = data.variants.map((v: any) => ({
           ...emptyVariant,
-          operator_id: form.operator_id || defaultOpId,
+          package_name: v.package_name || "",
           zone: v.zone || "Cancun",
           pax_type: v.pax_type || "Adulto",
           nationality: v.nationality || "Extranjero",
@@ -731,9 +730,9 @@ export default function Tours() {
   const saveVariants = async (tourId: string) => {
     await supabase.from("tour_price_variants").delete().eq("tour_id", tourId);
     if (variants.length === 0) return;
-    const rows = variants.filter(v => v.operator_id).map(v => ({
+    const rows = variants.map(v => ({
       tour_id: tourId,
-      operator_id: v.operator_id,
+      operator_id: form.operator_id || "",
       zone: v.zone,
       pax_type: v.pax_type,
       nationality: v.nationality,
@@ -1189,7 +1188,7 @@ export default function Tours() {
             <PriceVariantEditor
               variants={variants}
               onChange={setVariants}
-              operators={operatorsList}
+              packages={packages.map(p => ({ id: p.id, name: p.name }))}
               isAdmin={isAdmin}
               onDocUpload={isAdmin ? handleVariantDocUpload : undefined}
               isMapping={mappingVariants}
