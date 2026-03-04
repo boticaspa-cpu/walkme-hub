@@ -1,45 +1,52 @@
 
 
-# Plan: Flujo POS con Paquetes → Zona/Nacionalidad/Pasajeros
+# Plan: Agregar Adultos, Niños, Zona y Nacionalidad a Cotizaciones y Reservas
 
-## Problema
-Cuando un tour tiene **paquetes**, el POS muestra `PackageSelectDialog` que solo permite elegir el paquete y lo agrega directo al carrito — sin preguntar zona, nacionalidad, ni cantidad de adultos/niños. Los tours **sin paquetes** que tienen variantes sí muestran esas opciones via `VariantSelectDialog`. Se necesita que ambos flujos ofrezcan la misma experiencia.
-
-## Solución
-Cambiar el flujo del POS para tours con paquetes: primero seleccionar paquete, luego abrir `VariantSelectDialog` filtrado por ese paquete. Esto requiere:
-
-1. **Agregar columna `package_name`** a la tabla `tour_price_variants` para vincular cada variante a un paquete específico.
-2. **Guardar `package_name`** al persistir variantes en `Tours.tsx` (actualmente no se guarda).
-3. **Cargar `package_name`** al editar un tour existente (actualmente se hardcodea `""`).
-4. **Modificar flujo POS**: cuando el usuario selecciona un paquete, filtrar variantes por `package_name` y abrir `VariantSelectDialog` con esas variantes filtradas.
+## Contexto
+Actualmente Cotizaciones tiene un solo campo `qty` y un `unit_price_mxn` por línea, sin diferenciar adultos/niños, zona de pickup ni nacionalidad. Reservas tiene un campo genérico `pax` sin desglose. Se necesita capturar estos datos como en la referencia (similar al sitio de Xcaret).
 
 ## Cambios
 
 ### 1. Migración DB
 ```sql
-ALTER TABLE public.tour_price_variants ADD COLUMN package_name text DEFAULT '';
+-- quote_items: agregar campos de desglose
+ALTER TABLE public.quote_items ADD COLUMN qty_adults integer NOT NULL DEFAULT 1;
+ALTER TABLE public.quote_items ADD COLUMN qty_children integer NOT NULL DEFAULT 0;
+ALTER TABLE public.quote_items ADD COLUMN unit_price_child_mxn numeric NOT NULL DEFAULT 0;
+ALTER TABLE public.quote_items ADD COLUMN zone text NOT NULL DEFAULT '';
+ALTER TABLE public.quote_items ADD COLUMN nationality text NOT NULL DEFAULT '';
+
+-- reservations: agregar campos de desglose
+ALTER TABLE public.reservations ADD COLUMN pax_adults integer NOT NULL DEFAULT 1;
+ALTER TABLE public.reservations ADD COLUMN pax_children integer NOT NULL DEFAULT 0;
+ALTER TABLE public.reservations ADD COLUMN zone text NOT NULL DEFAULT '';
+ALTER TABLE public.reservations ADD COLUMN nationality text NOT NULL DEFAULT '';
 ```
 
-### 2. `Tours.tsx` — Persistir y cargar `package_name`
-- En `saveVariants`: agregar `package_name: v.package_name` al objeto que se inserta.
-- En el load de variantes (línea 541-543): leer `package_name` del registro en vez de hardcodear `""`.
+### 2. `Cotizaciones.tsx`
+- Actualizar `QuoteItem` interface: agregar `qty_adults`, `qty_children`, `unit_price_child_mxn`, `zone`, `nationality`
+- Cada línea de cotización pasa de una sola fila a un bloque compacto con:
+  - Tour (Select) — fila 1
+  - Zona (Select: Cancún/Playa del Carmen/Riviera Maya/Tulum), Nacionalidad (Select: Nacional/Extranjero) — fila 2
+  - Adultos (number), Precio adulto, Niños (number), Precio niño — fila 3
+- Auto-llenar precios desde `tour_price_variants` cuando se selecciona tour + zona + nacionalidad
+- Calcular total como `(qty_adults × precio_adulto) + (qty_children × precio_niño)`
+- Actualizar `saveMutation` y `openEdit` para persistir/cargar los nuevos campos
+- Agregar campo de **Fecha** al formulario principal de cotización (a nivel de quote, no por línea)
 
-### 3. `POS.tsx` — Flujo paquete → variantes
-Modificar `handleTourClick`:
-- Si el tour tiene paquetes **y** variantes: mostrar `PackageSelectDialog` primero.
-- Cuando el usuario selecciona un paquete: filtrar `allVariants` por `package_name === pkg.name`, luego abrir `VariantSelectDialog` con esas variantes filtradas.
-- Si no hay variantes para ese paquete, usar el flujo actual (agregar directo).
+### 3. `Reservas.tsx`
+- Actualizar `emptyForm`: reemplazar `pax: 1` por `pax_adults: 1`, `pax_children: 0`, `zone: ""`, `nationality: ""`
+- En el formulario agregar:
+  - Selects para Zona (Cancún/Playa del Carmen/Riviera Maya/Tulum) y Nacionalidad (Nacional/Extranjero)
+  - Inputs numéricos para Adultos y Niños (en lugar del campo `pax` genérico)
+- Calcular `pax = pax_adults + pax_children` automáticamente al guardar
+- Actualizar `saveMutation` y `openEdit` para los nuevos campos
 
-Modificar `addPackageToCart` → ya no agrega directo, sino que guarda el paquete seleccionado y abre el dialog de variantes.
-
-Agregar estado `pendingSelectedPackage` para recordar qué paquete se eligió entre los dos dialogs.
-
-### 4. `VariantSelectDialog` — Mostrar nombre del paquete
-Agregar prop opcional `packageName` para mostrar en el título del dialog (ej. "Coco Bongo Regular — LADIES NIGHT").
+### 4. POS — Sin cambios
+El POS ya maneja adultos/niños/zona/nacionalidad via `VariantSelectDialog`. No requiere modificaciones.
 
 ### Archivos modificados
-- Migración SQL — agregar `package_name` a `tour_price_variants`
-- `src/pages/Tours.tsx` — guardar/cargar `package_name`
-- `src/pages/POS.tsx` — flujo paquete → variantes
-- `src/components/pos/VariantSelectDialog.tsx` — mostrar nombre de paquete (menor)
+- Migración SQL (nueva)
+- `src/pages/Cotizaciones.tsx` — campos por línea + auto-precio desde variantes
+- `src/pages/Reservas.tsx` — campos en formulario de reserva
 
