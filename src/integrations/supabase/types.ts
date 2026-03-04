@@ -433,6 +433,72 @@ export type Database = {
         }
         Relationships: []
       }
+      operator_payables: {
+        Row: {
+          amount_fx: number | null
+          amount_mxn: number
+          created_at: string
+          currency_fx: string | null
+          due_date: string
+          id: string
+          notes: string | null
+          operator_id: string
+          paid_at: string | null
+          payable_month: string | null
+          payment_rule_snapshot: string
+          reservation_id: string
+          service_date: string
+          status: string
+        }
+        Insert: {
+          amount_fx?: number | null
+          amount_mxn?: number
+          created_at?: string
+          currency_fx?: string | null
+          due_date: string
+          id?: string
+          notes?: string | null
+          operator_id: string
+          paid_at?: string | null
+          payable_month?: string | null
+          payment_rule_snapshot?: string
+          reservation_id: string
+          service_date: string
+          status?: string
+        }
+        Update: {
+          amount_fx?: number | null
+          amount_mxn?: number
+          created_at?: string
+          currency_fx?: string | null
+          due_date?: string
+          id?: string
+          notes?: string | null
+          operator_id?: string
+          paid_at?: string | null
+          payable_month?: string | null
+          payment_rule_snapshot?: string
+          reservation_id?: string
+          service_date?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "operator_payables_operator_id_fkey"
+            columns: ["operator_id"]
+            isOneToOne: false
+            referencedRelation: "operators"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operator_payables_reservation_id_fkey"
+            columns: ["reservation_id"]
+            isOneToOne: false
+            referencedRelation: "reservations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       operators: {
         Row: {
           active: boolean
@@ -619,6 +685,8 @@ export type Database = {
       reservations: {
         Row: {
           client_id: string | null
+          confirmation_status: string
+          confirmed_at: string | null
           created_at: string
           created_by: string | null
           folio: string | null
@@ -629,8 +697,10 @@ export type Database = {
           pax: number
           pax_adults: number
           pax_children: number
+          payment_status: string
           reservation_date: string
           reservation_time: string
+          sale_id: string | null
           status: string
           total_mxn: number
           tour_id: string | null
@@ -639,6 +709,8 @@ export type Database = {
         }
         Insert: {
           client_id?: string | null
+          confirmation_status?: string
+          confirmed_at?: string | null
           created_at?: string
           created_by?: string | null
           folio?: string | null
@@ -649,8 +721,10 @@ export type Database = {
           pax?: number
           pax_adults?: number
           pax_children?: number
+          payment_status?: string
           reservation_date: string
           reservation_time?: string
+          sale_id?: string | null
           status?: string
           total_mxn?: number
           tour_id?: string | null
@@ -659,6 +733,8 @@ export type Database = {
         }
         Update: {
           client_id?: string | null
+          confirmation_status?: string
+          confirmed_at?: string | null
           created_at?: string
           created_by?: string | null
           folio?: string | null
@@ -669,8 +745,10 @@ export type Database = {
           pax?: number
           pax_adults?: number
           pax_children?: number
+          payment_status?: string
           reservation_date?: string
           reservation_time?: string
+          sale_id?: string | null
           status?: string
           total_mxn?: number
           tour_id?: string | null
@@ -690,6 +768,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reservations_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "sales"
             referencedColumns: ["id"]
           },
           {
@@ -788,6 +873,7 @@ export type Database = {
           exchange_rate: number
           id: string
           payment_method: string
+          receipt_number: string | null
           reservation_id: string | null
           sold_at: string
           sold_by: string | null
@@ -802,6 +888,7 @@ export type Database = {
           exchange_rate?: number
           id?: string
           payment_method?: string
+          receipt_number?: string | null
           reservation_id?: string | null
           sold_at?: string
           sold_by?: string | null
@@ -816,6 +903,7 @@ export type Database = {
           exchange_rate?: number
           id?: string
           payment_method?: string
+          receipt_number?: string | null
           reservation_id?: string | null
           sold_at?: string
           sold_by?: string | null
