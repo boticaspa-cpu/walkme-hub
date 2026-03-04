@@ -1,76 +1,45 @@
 
 
-# Plan: Activar Cotizaciones — PDF + Enviar + Conversión a Reserva
+# Plan: Matriz de Precios v2 — "Sin Paquete (General)"
 
-## Resumen
+## Problema
+The `PriceVariantEditor` package dropdown only shows existing packages. If a tour has no packages, you can't create price variants. The `package_name` field uses text (not a FK), so `NULL`/empty string already works at the DB level.
 
-Activar los botones de PDF y Enviar en la tabla de cotizaciones, agregar conversión a reserva al aceptar, y conectar con leads/clientes.
+## Changes
 
-## Cambios DB
+### 1. `src/components/tours/PriceVariantEditor.tsx` — UI changes
 
-### Migración: agregar `reservation_id` a `quotes`
-```sql
-ALTER TABLE public.quotes 
-  ADD COLUMN reservation_id uuid REFERENCES public.reservations(id) ON DELETE SET NULL;
-```
+**Dropdown**: Add a fixed first option "Sin paquete (General)" with a sentinel value (e.g. `"__GENERAL__"`). When saving, convert this back to empty string `""`.
 
-## Archivos Nuevos
+**Generate Combinations**: If no packages exist, generate combos with `package_name = "__GENERAL__"` (16 rows: 4 zones x 2 nationalities x 2 pax types). Currently blocked by `if (packages.length === 0) return`.
 
-### 1. `src/pages/CotizacionPDF.tsx` — Vista imprimible
+**Empty variant default**: Set `package_name: "__GENERAL__"` in `emptyVariant`.
 
-Ruta standalone `/cotizaciones/:id/pdf` (fuera de AppLayout para impresión limpia).
+### 2. `src/pages/Tours.tsx` — Save logic
 
-- Fetch quote + quote_items + client + tours por id
-- Layout similar a VoucherPrintView: logo WalkMe, folio, datos cliente, tabla de items (tour, pax adultos/niños, zona, nacionalidad, precio unitario, subtotal), total, notas
-- Botones print:hidden: "Imprimir" (`window.print()`) y "Cerrar"
-- CSS `@media print` para layout A4
+In `saveVariants`, convert `package_name === "__GENERAL__"` to `""` before insert. Also when loading variants, convert `""` back to `"__GENERAL__"` for the UI.
 
-### 2. `src/components/cotizaciones/SendQuoteDialog.tsx` — Modal Enviar
+### 3. `src/lib/tour-pricing.ts` — Pricing fallback with package_name
 
-Dialog con:
-- Si quote no tiene client_id → mostrar form inline (nombre + tel/email) → crear cliente + linkear a quote
-- Si tiene client_id → fetch datos contacto (tel, email)
-- Botón "WhatsApp": abre wa.me con mensaje prellenado (folio, items, total, link a PDF)
-- Botón "Email": abre mailto con subject/body y link a PDF
-- Al enviar → update `quotes.status = 'sent'`
+Add `package_name` to `VariantRow` interface. Update `computeTourPrice` to accept optional `packageName` parameter:
 
-### 3. `src/components/cotizaciones/AcceptQuoteDialog.tsx` — Aceptar y Crear Reserva
+1. First try exact match: `tour_id + zone + nationality + pax_type + package_name`
+2. If no match and `packageName` is set, try with `package_name === ""` (General)
+3. Fallback to tour base prices (existing logic)
 
-Dialog que se abre al cambiar status a "accepted" o botón dedicado:
-- Si la cotización tiene solo 1 tour → pedir fecha de viaje (si falta) y crear reserva directamente
-- Si tiene múltiples tours → crear 1 reserva por el primer tour (MVP) con nota sobre los demás
-- Crear reserva: copiar client_id, tour_id, pax_adults, pax_children, zone, nationality, total_mxn, status='scheduled'
-- Guardar `quotes.reservation_id`
-- Redirigir a `/reservas?highlight={reservation_id}`
+### 4. Callers of `computeTourPrice`
 
-## Cambios en Archivos Existentes
+Update calls in `Reservas.tsx` and `ReservationCheckout.tsx` to pass the package name if available (from reservation data or selected package). Since most reservations don't track package, this defaults to undefined which triggers the General fallback — fixing the $0 bug.
 
-### `src/App.tsx`
-- Agregar ruta `/cotizaciones/:id/pdf` → CotizacionPDF (fuera de AppLayout)
+## Files
 
-### `src/pages/Cotizaciones.tsx`
-- Botón PDF: `window.open(\`/cotizaciones/${q.id}/pdf\`, '_blank')`
-- Botón Enviar: abrir SendQuoteDialog con la quote seleccionada
-- Agregar botón "Aceptar" (CheckCircle) visible cuando status es draft/sent → abre AcceptQuoteDialog
-- Mostrar link a reserva si `reservation_id` existe
-
-## Flujo completo
-
-```text
-Cotización (draft) 
-  → Enviar (WhatsApp/Email) → status=sent
-  → Aceptar → crea Reserva → status=accepted, reservation_id guardado
-  → Reserva visible en /reservas → Confirmar y Cobrar (flujo existente)
-```
-
-## Archivos
-
-| Archivo | Acción |
+| File | Change |
 |---|---|
-| Migración SQL | `ADD COLUMN reservation_id` a quotes |
-| `src/pages/CotizacionPDF.tsx` | Crear vista imprimible |
-| `src/components/cotizaciones/SendQuoteDialog.tsx` | Crear modal enviar |
-| `src/components/cotizaciones/AcceptQuoteDialog.tsx` | Crear modal aceptar → reserva |
-| `src/App.tsx` | Agregar ruta PDF |
-| `src/pages/Cotizaciones.tsx` | Conectar botones PDF, Enviar, Aceptar |
+| `src/components/tours/PriceVariantEditor.tsx` | Add "Sin paquete (General)" option, allow generate without packages |
+| `src/pages/Tours.tsx` | Convert sentinel value on save/load |
+| `src/lib/tour-pricing.ts` | Add package_name to lookup + General fallback |
+| `src/pages/Reservas.tsx` | Pass package info to computeTourPrice |
+| `src/components/reservations/ReservationCheckout.tsx` | Pass package info to computeTourPrice |
+
+No DB migration needed — `package_name` is already nullable text.
 
