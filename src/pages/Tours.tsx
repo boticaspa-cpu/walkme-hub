@@ -94,6 +94,7 @@ interface TourForm {
   what_to_bring: string;
   recommendations: string;
   tags: string;
+  service_type: string;
 }
 
 const emptyForm: TourForm = {
@@ -107,7 +108,7 @@ const emptyForm: TourForm = {
   exchange_rate_tour: "",
   days: [], short_description: "", itinerary: "",
   includes: "", excludes: "", meeting_point: "", what_to_bring: "",
-  recommendations: "", tags: "",
+  recommendations: "", tags: "", service_type: "with_transport",
 };
 
 function formatPrice(n: number) {
@@ -497,6 +498,7 @@ export default function Tours() {
       what_to_bring: tour.what_to_bring.join(", "),
       recommendations: tour.recommendations ?? "",
       tags: tour.tags.join(", "),
+      service_type: (tour as any).service_type || "with_transport",
     });
     setImagePreviews(tour.image_urls || []);
     setImageFiles([]);
@@ -825,6 +827,7 @@ export default function Tours() {
         recommendations: form.recommendations.trim() || null,
         tags: csvToArray(form.tags),
         image_urls: finalImageUrls,
+        service_type: form.service_type,
       };
 
       if (editingId) {
@@ -928,9 +931,14 @@ export default function Tours() {
               <CardContent className="p-4 space-y-2">
                 <div className="flex items-start justify-between gap-2">
                   <h3 className="font-semibold text-sm">{tour.title}</h3>
-                  <Badge variant={tour.type === "private" ? "default" : "secondary"} className="text-[10px] shrink-0">
-                    {tour.type === "private" ? "Privado" : "Compartido"}
-                  </Badge>
+                  <div className="flex gap-1 shrink-0">
+                    <Badge variant={tour.type === "private" ? "default" : "secondary"} className="text-[10px]">
+                      {tour.type === "private" ? "Privado" : "Compartido"}
+                    </Badge>
+                    <Badge variant="outline" className="text-[10px]">
+                      {(tour as any).service_type === "entry_only" ? "Solo Entrada" : "Con Transporte"}
+                    </Badge>
+                  </div>
                 </div>
                 <p className="text-xs text-muted-foreground line-clamp-2">{tour.short_description}</p>
                 <div className="flex items-center gap-3 text-xs text-muted-foreground">
@@ -1037,7 +1045,16 @@ export default function Tours() {
                   </SelectContent>
                 </Select>
               </div>
-              <div />
+              <div className="space-y-1.5">
+                <Label>Tipo de Servicio</Label>
+                <Select value={form.service_type} onValueChange={(v) => setForm({ ...form, service_type: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="with_transport">Con Transporte</SelectItem>
+                    <SelectItem value="entry_only">Solo Entrada</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             {/* ── Tipo de Cambio y Precios Finales (MXN) ── */}

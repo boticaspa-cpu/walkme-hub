@@ -1,0 +1,1 @@
+ALTER TABLE public.tours ADD COLUMN service_type text NOT NULL DEFAULT 'with_transport';
