@@ -1,45 +1,59 @@
 
 
-# Plan: Matriz de Precios v2 — "Sin Paquete (General)"
+# Plan: Activar flujo de alta de vendedores con aprobación
 
-## Problema
-The `PriceVariantEditor` package dropdown only shows existing packages. If a tour has no packages, you can't create price variants. The `package_name` field uses text (not a FK), so `NULL`/empty string already works at the DB level.
+## Problema actual
 
-## Changes
+1. El botón "Invitar Vendedor" está `disabled` y no hace nada
+2. El `approval_status` default es `'approved'` — cualquiera que se registre entra directo
+3. No hay forma de que el admin apruebe/rechace usuarios pendientes
+4. El `AuthContext` no bloquea usuarios con status `pending`
 
-### 1. `src/components/tours/PriceVariantEditor.tsx` — UI changes
+## Cambios
 
-**Dropdown**: Add a fixed first option "Sin paquete (General)" with a sentinel value (e.g. `"__GENERAL__"`). When saving, convert this back to empty string `""`.
+### 1. Migración DB
 
-**Generate Combinations**: If no packages exist, generate combos with `package_name = "__GENERAL__"` (16 rows: 4 zones x 2 nationalities x 2 pax types). Currently blocked by `if (packages.length === 0) return`.
+- Cambiar default de `profiles.approval_status` de `'approved'` a `'pending'`
+- Actualizar `handle_new_user()` para también insertar un `user_roles` row con role `'seller'` (los nuevos usuarios son vendedores por default)
 
-**Empty variant default**: Set `package_name: "__GENERAL__"` in `emptyVariant`.
+```sql
+ALTER TABLE public.profiles ALTER COLUMN approval_status SET DEFAULT 'pending';
 
-### 2. `src/pages/Tours.tsx` — Save logic
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  INSERT INTO public.profiles (id, full_name, approval_status)
+  VALUES (NEW.id, COALESCE(NEW.raw_user_meta_data->>'full_name', ''), 'pending');
+  INSERT INTO public.user_roles (user_id, role) VALUES (NEW.id, 'seller');
+  RETURN NEW;
+END;
+$$;
+```
 
-In `saveVariants`, convert `package_name === "__GENERAL__"` to `""` before insert. Also when loading variants, convert `""` back to `"__GENERAL__"` for the UI.
+### 2. `src/contexts/AuthContext.tsx` — Bloquear usuarios no aprobados
 
-### 3. `src/lib/tour-pricing.ts` — Pricing fallback with package_name
+Después de fetch del profile, si `approval_status !== 'approved'`, no setear el user (tratarlo como no autenticado). Mostrar un mensaje apropiado en Login cuando el signup fue exitoso pero la cuenta está pendiente.
 
-Add `package_name` to `VariantRow` interface. Update `computeTourPrice` to accept optional `packageName` parameter:
+### 3. `src/pages/Login.tsx` — Mejorar feedback
 
-1. First try exact match: `tour_id + zone + nationality + pax_type + package_name`
-2. If no match and `packageName` is set, try with `package_name === ""` (General)
-3. Fallback to tour base prices (existing logic)
+- Después del signup, mostrar mensaje claro: "Cuenta creada. Un administrador debe aprobar tu acceso."
+- Si un usuario con status `pending` intenta hacer login, mostrar: "Tu cuenta está pendiente de aprobación."
 
-### 4. Callers of `computeTourPrice`
+### 4. `src/pages/Configuracion.tsx` — Gestión de usuarios
 
-Update calls in `Reservas.tsx` and `ReservationCheckout.tsx` to pass the package name if available (from reservation data or selected package). Since most reservations don't track package, this defaults to undefined which triggers the General fallback — fixing the $0 bug.
+- Activar botón "Invitar Vendedor" (no para invitar por email, sino como indicación de que el vendedor se registra solo — o un dialog con instrucciones)
+- Agregar botones de acción por usuario:
+  - **Aprobar** (si status es `pending`) → update `approval_status = 'approved'`
+  - **Deshabilitar** (si status es `approved`) → update `approval_status = 'disabled'`
+  - Dropdown para cambiar rol (admin/seller)
+- Mostrar badges con colores por status: pending=amarillo, approved=verde, rejected/disabled=rojo
 
-## Files
+## Archivos
 
-| File | Change |
+| Archivo | Cambio |
 |---|---|
-| `src/components/tours/PriceVariantEditor.tsx` | Add "Sin paquete (General)" option, allow generate without packages |
-| `src/pages/Tours.tsx` | Convert sentinel value on save/load |
-| `src/lib/tour-pricing.ts` | Add package_name to lookup + General fallback |
-| `src/pages/Reservas.tsx` | Pass package info to computeTourPrice |
-| `src/components/reservations/ReservationCheckout.tsx` | Pass package info to computeTourPrice |
-
-No DB migration needed — `package_name` is already nullable text.
+| Migración SQL | Default `pending`, trigger inserta role `seller` |
+| `src/contexts/AuthContext.tsx` | Bloquear usuarios no aprobados |
+| `src/pages/Login.tsx` | Feedback para pendiente/rechazado |
+| `src/pages/Configuracion.tsx` | Botones aprobar/deshabilitar/cambiar rol |
 
