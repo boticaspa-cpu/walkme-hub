@@ -159,7 +159,7 @@ export default function PriceVariantEditor({ variants, onChange, packages, isAdm
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value={GENERAL_PACKAGE}>Sin paquete (General)</SelectItem>
-                        {packages.map((pkg) => (
+                        {packages.filter((pkg) => pkg.name && pkg.name !== "").map((pkg) => (
                           <SelectItem key={pkg.name} value={pkg.name}>{pkg.name}</SelectItem>
                         ))}
                       </SelectContent>
