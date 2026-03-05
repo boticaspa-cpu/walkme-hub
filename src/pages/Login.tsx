@@ -11,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function Login() {
-  const { login, signup, isAuthenticated } = useAuth();
+  const { login, signup, isAuthenticated, pendingStatus } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [email, setEmail] = useState("");
@@ -26,12 +26,24 @@ export default function Login() {
     }
   }, [isAuthenticated, navigate]);
 
+  // Show pending status message after login attempt
+  useEffect(() => {
+    if (pendingStatus && pendingStatus !== "approved") {
+      const messages: Record<string, string> = {
+        pending: "Tu cuenta está pendiente de aprobación por un administrador.",
+        disabled: "Tu cuenta ha sido deshabilitada. Contacta al administrador.",
+        rejected: "Tu cuenta ha sido rechazada. Contacta al administrador.",
+      };
+      toast({ title: "Acceso restringido", description: messages[pendingStatus] || "No tienes acceso.", variant: "destructive" });
+    }
+  }, [pendingStatus]);
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
       await login(email, password);
-      // Navigation handled by useEffect above
+      // Navigation handled by useEffect above; pending status shown by useEffect
     } catch (err: any) {
       toast({ title: "Error al iniciar sesión", description: err.message, variant: "destructive" });
     } finally {

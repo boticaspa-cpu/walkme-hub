@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Plus, UserPlus, Pencil, DollarSign } from "lucide-react";
+import { Plus, UserPlus, Pencil, DollarSign, Check, Ban, ShieldCheck, ShieldAlert } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
@@ -29,6 +29,13 @@ const triggerLabels: Record<string, string> = {
 
 const emptyTemplate = { name: "", body: "", trigger_event: "manual", active: true };
 
+const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+  approved: { label: "Aprobado", variant: "default" },
+  pending: { label: "Pendiente", variant: "secondary" },
+  disabled: { label: "Deshabilitado", variant: "destructive" },
+  rejected: { label: "Rechazado", variant: "destructive" },
+};
+
 export default function Configuracion() {
   const { user } = useAuth();
   const qc = useQueryClient();
@@ -36,6 +43,7 @@ export default function Configuracion() {
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
   const [templateForm, setTemplateForm] = useState(emptyTemplate);
+  const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
 
   // Exchange rates state
   const [rateUsd, setRateUsd] = useState("");
@@ -137,6 +145,34 @@ export default function Configuracion() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  // User management mutations
+  const updateApprovalMutation = useMutation({
+    mutationFn: async ({ userId, status }: { userId: string; status: string }) => {
+      const { error } = await supabase.from("profiles").update({ approval_status: status }).eq("id", userId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["config-users"] });
+      toast.success("Estado actualizado");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const updateRoleMutation = useMutation({
+    mutationFn: async ({ userId, newRole }: { userId: string; newRole: string }) => {
+      const { error } = await supabase
+        .from("user_roles")
+        .update({ role: newRole as any })
+        .eq("user_id", userId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["config-users"] });
+      toast.success("Rol actualizado");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const closeTemplateDialog = () => { setTemplateDialogOpen(false); setEditingTemplateId(null); setTemplateForm(emptyTemplate); };
   const openCreateTemplate = () => { setTemplateForm(emptyTemplate); setEditingTemplateId(null); setTemplateDialogOpen(true); };
   const openEditTemplate = (t: any) => {
@@ -156,23 +192,82 @@ export default function Configuracion() {
       <Card>
         <CardHeader className="flex-row items-center justify-between">
           <CardTitle className="text-base">Usuarios del Sistema</CardTitle>
-          <Button size="sm" disabled><UserPlus className="mr-2 h-4 w-4" /> Invitar Vendedor</Button>
+          <Button size="sm" onClick={() => setInviteDialogOpen(true)}>
+            <UserPlus className="mr-2 h-4 w-4" /> Invitar Vendedor
+          </Button>
         </CardHeader>
         <CardContent className="space-y-3">
-          {users.map((u: any) => (
-            <div key={u.id} className="flex items-center justify-between rounded-lg border p-3">
-              <div className="flex items-center gap-3">
-                <Avatar className="h-9 w-9">
-                  <AvatarFallback className="bg-primary/10 text-primary text-sm">{u.full_name?.charAt(0) ?? "?"}</AvatarFallback>
-                </Avatar>
-                <div>
-                  <p className="text-sm font-medium">{u.full_name || "Sin nombre"}</p>
-                  <p className="text-xs text-muted-foreground">{u.approval_status}</p>
+          {users.map((u: any) => {
+            const sc = statusConfig[u.approval_status] ?? statusConfig.pending;
+            const isCurrentUser = u.id === user?.id;
+            return (
+              <div key={u.id} className="flex items-center justify-between rounded-lg border p-3">
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-9 w-9">
+                    <AvatarFallback className="bg-primary/10 text-primary text-sm">{u.full_name?.charAt(0) ?? "?"}</AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <p className="text-sm font-medium">{u.full_name || "Sin nombre"}</p>
+                    <Badge variant={sc.variant} className="text-[10px] mt-0.5">{sc.label}</Badge>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {/* Role selector */}
+                  <Select
+                    value={u.role}
+                    onValueChange={(v) => {
+                      if (!isCurrentUser) updateRoleMutation.mutate({ userId: u.id, newRole: v });
+                    }}
+                    disabled={isCurrentUser}
+                  >
+                    <SelectTrigger className="h-8 w-[110px] text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="admin">Admin</SelectItem>
+                      <SelectItem value="seller">Vendedor</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  {/* Approve button */}
+                  {u.approval_status === "pending" && !isCurrentUser && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-8 text-xs text-green-700 border-green-300 hover:bg-green-50"
+                      onClick={() => updateApprovalMutation.mutate({ userId: u.id, status: "approved" })}
+                    >
+                      <Check className="mr-1 h-3.5 w-3.5" /> Aprobar
+                    </Button>
+                  )}
+
+                  {/* Disable button */}
+                  {u.approval_status === "approved" && !isCurrentUser && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-8 text-xs text-destructive border-destructive/30 hover:bg-destructive/10"
+                      onClick={() => updateApprovalMutation.mutate({ userId: u.id, status: "disabled" })}
+                    >
+                      <Ban className="mr-1 h-3.5 w-3.5" /> Deshabilitar
+                    </Button>
+                  )}
+
+                  {/* Re-enable button */}
+                  {(u.approval_status === "disabled" || u.approval_status === "rejected") && !isCurrentUser && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-8 text-xs text-green-700 border-green-300 hover:bg-green-50"
+                      onClick={() => updateApprovalMutation.mutate({ userId: u.id, status: "approved" })}
+                    >
+                      <Check className="mr-1 h-3.5 w-3.5" /> Aprobar
+                    </Button>
+                  )}
                 </div>
               </div>
-              <Badge variant={u.role === "admin" ? "default" : "secondary"} className="text-xs capitalize">{u.role}</Badge>
-            </div>
-          ))}
+            );
+          })}
         </CardContent>
       </Card>
 
@@ -260,6 +355,35 @@ export default function Configuracion() {
             <Button onClick={() => saveTemplateMutation.mutate()} disabled={saveTemplateMutation.isPending || !templateForm.name.trim()}>
               {saveTemplateMutation.isPending ? "Guardando…" : editingTemplateId ? "Actualizar" : "Crear Plantilla"}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Invite Seller Dialog */}
+      <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Invitar Vendedor</DialogTitle>
+            <DialogDescription>
+              Para dar de alta un vendedor, indícale que se registre en la página de inicio de sesión.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="rounded-lg bg-muted p-3 space-y-2">
+              <p className="text-sm font-medium flex items-center gap-1.5"><ShieldAlert className="h-4 w-4 text-amber-500" /> Proceso:</p>
+              <ol className="text-sm text-muted-foreground list-decimal list-inside space-y-1">
+                <li>El vendedor crea su cuenta en <strong>Registrarse</strong></li>
+                <li>Su cuenta queda como <strong>Pendiente</strong></li>
+                <li>Tú la apruebas aquí en Configuración</li>
+              </ol>
+            </div>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <ShieldCheck className="h-4 w-4 text-green-600" />
+              Ningún vendedor puede acceder sin tu aprobación.
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setInviteDialogOpen(false)}>Entendido</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
