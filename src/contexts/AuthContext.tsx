@@ -8,6 +8,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   role: UserRole | null;
   loading: boolean;
+  pendingStatus: string | null;
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string, fullName: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -55,15 +56,25 @@ async function fetchUserProfile(userId: string): Promise<UserProfile | null> {
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [pendingStatus, setPendingStatus] = useState<string | null>(null);
 
   // Centralized helper – always resolves loading
   const loadProfileForSession = async (session: Session | null) => {
     try {
       if (session?.user) {
         const profile = await fetchUserProfile(session.user.id);
-        setUser(profile);
+        // Block non-approved users
+        if (profile && profile.approval_status !== "approved") {
+          console.warn("User not approved:", profile.approval_status);
+          setUser(null);
+          setPendingStatus(profile.approval_status);
+        } else {
+          setUser(profile);
+          setPendingStatus(null);
+        }
       } else {
         setUser(null);
+        setPendingStatus(null);
       }
     } catch (error) {
       console.error("Error fetching profile:", error);
@@ -134,6 +145,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isAuthenticated: !!user,
         role: user?.role ?? null,
         loading,
+        pendingStatus,
         login,
         signup,
         logout,
