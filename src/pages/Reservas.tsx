@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Plus, Search, FileText, Printer, Send, Pencil, DollarSign, CheckCircle, MoreVertical } from "lucide-react";
+import { Plus, Search, FileText, Printer, Send, Pencil, DollarSign, CheckCircle, MoreVertical, Trash2 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -59,6 +59,9 @@ const paymentLabels: Record<string, string> = {
 };
 
 /* ── form defaults ── */
+const fmt = (n: number) => n.toLocaleString("es-MX", { style: "currency", currency: "MXN" });
+
+/* ── form defaults (edit mode) ── */
 const emptyForm = {
   tour_id: "",
   client_id: "",
@@ -74,6 +77,35 @@ const emptyForm = {
   status: "scheduled",
 };
 
+/* ── multi-tour create types ── */
+interface ResItem {
+  id: string;
+  tour_id: string;
+  reservation_date: string;
+  reservation_time: string;
+  pax_adults: number;
+  pax_children: number;
+  total_mxn: number;
+}
+
+const emptyResItem = (): ResItem => ({
+  id: crypto.randomUUID(),
+  tour_id: "",
+  reservation_date: "",
+  reservation_time: "",
+  pax_adults: 1,
+  pax_children: 0,
+  total_mxn: 0,
+});
+
+const emptyShared = {
+  client_id: "",
+  modality: "shared",
+  zone: "",
+  nationality: "",
+  notes: "",
+};
+
 export default function Reservas() {
   const { user, role } = useAuth();
   const qc = useQueryClient();
@@ -84,9 +116,13 @@ export default function Reservas() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
+  // create-mode multi-tour state
+  const [shared, setShared] = useState(emptyShared);
+  const [items, setItems] = useState<ResItem[]>([emptyResItem()]);
   const [voucherReservation, setVoucherReservation] = useState<any>(null);
   const voucherRef = useRef<HTMLDivElement>(null);
   const [checkoutReservation, setCheckoutReservation] = useState<any>(null);
+  const [highlightId, setHighlightId] = useState<string | null>(null);
 
   // mini-dialog nuevo cliente
   const [clientDialogOpen, setClientDialogOpen] = useState(false);
@@ -167,56 +203,86 @@ export default function Reservas() {
     },
   });
 
-  // ── Auto-pricing: recalculate total when relevant fields change ──
+  // ── Auto-pricing (edit mode only) ──
   useEffect(() => {
-    if (!form.tour_id) return;
+    if (!editingId || !form.tour_id) return;
     const result = computeTourPrice(form.tour_id, form.zone, form.nationality, allVariants as any, tours as any);
     const total = computeTotal(result.adultPrice, result.childPrice, form.pax_adults, form.pax_children);
     setForm((p) => ({ ...p, total_mxn: total }));
-  }, [form.tour_id, form.zone, form.nationality, form.pax_adults, form.pax_children, allVariants, tours]);
+  }, [editingId, form.tour_id, form.zone, form.nationality, form.pax_adults, form.pax_children, allVariants, tours]);
 
   // ── Detect ?tour_id= query param to open create dialog ──
   useEffect(() => {
     const tourId = searchParams.get("tour_id");
     if (tourId && tours.length > 0) {
-      setForm({ ...emptyForm, tour_id: tourId });
+      setShared(emptyShared);
+      setItems([{ ...emptyResItem(), tour_id: tourId }]);
       setEditingId(null);
       setDialogOpen(true);
       setSearchParams({}, { replace: true });
     }
   }, [searchParams, tours]);
 
+  // ── Detect ?highlight= from quote acceptance ──
+  useEffect(() => {
+    const id = searchParams.get("highlight");
+    if (!id || reservations.length === 0) return;
+    setHighlightId(id);
+    setSearchParams({}, { replace: true });
+    setTimeout(() => {
+      document.getElementById(`res-row-${id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 100);
+    setTimeout(() => setHighlightId(null), 3000);
+  }, [searchParams, reservations]);
+
   /* ── mutations ── */
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const pax = form.pax_adults + form.pax_children;
-      const payload = {
-        tour_id: form.tour_id || null,
-        client_id: form.client_id || null,
-        modality: form.modality,
-        reservation_date: form.reservation_date,
-        reservation_time: form.reservation_time,
-        pax,
-        pax_adults: form.pax_adults,
-        pax_children: form.pax_children,
-        zone: form.zone,
-        nationality: form.nationality,
-        total_mxn: form.total_mxn,
-        notes: form.notes || null,
-        ...(editingId ? { status: form.status } : { created_by: user?.id }),
-      };
-
       if (editingId) {
+        // Edit mode: single update
+        const pax = form.pax_adults + form.pax_children;
+        const payload = {
+          tour_id: form.tour_id || null,
+          client_id: form.client_id || null,
+          modality: form.modality,
+          reservation_date: form.reservation_date,
+          reservation_time: form.reservation_time,
+          pax,
+          pax_adults: form.pax_adults,
+          pax_children: form.pax_children,
+          zone: form.zone,
+          nationality: form.nationality,
+          total_mxn: form.total_mxn,
+          notes: form.notes || null,
+          status: form.status,
+        };
         const { error } = await supabase.from("reservations").update(payload).eq("id", editingId);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("reservations").insert(payload);
+        // Create mode: insert one row per tour item
+        const inserts = items.map((item) => ({
+          tour_id: item.tour_id || null,
+          client_id: shared.client_id || null,
+          modality: shared.modality,
+          reservation_date: item.reservation_date,
+          reservation_time: item.reservation_time,
+          pax: item.pax_adults + item.pax_children,
+          pax_adults: item.pax_adults,
+          pax_children: item.pax_children,
+          zone: shared.zone,
+          nationality: shared.nationality,
+          total_mxn: item.total_mxn,
+          notes: shared.notes || null,
+          created_by: user?.id,
+        }));
+        const { error } = await supabase.from("reservations").insert(inserts);
         if (error) throw error;
       }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["reservations"] });
-      toast.success(editingId ? "Reserva actualizada" : "Reserva creada");
+      const count = editingId ? 1 : items.length;
+      toast.success(editingId ? "Reserva actualizada" : `${count} reserva${count > 1 ? "s" : ""} creada${count > 1 ? "s" : ""}`);
       closeDialog();
     },
     onError: (e: Error) => toast.error(e.message),
@@ -234,7 +300,11 @@ export default function Reservas() {
     },
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ["clients-list"] });
-      setForm((prev) => ({ ...prev, client_id: data.id }));
+      if (editingId) {
+        setForm((prev) => ({ ...prev, client_id: data.id }));
+      } else {
+        setShared((prev) => ({ ...prev, client_id: data.id }));
+      }
       toast.success("Cliente creado");
       setClientDialogOpen(false);
       setClientForm({ name: "", phone: "", email: "" });
@@ -247,12 +317,47 @@ export default function Reservas() {
     setDialogOpen(false);
     setEditingId(null);
     setForm(emptyForm);
+    setShared(emptyShared);
+    setItems([emptyResItem()]);
   };
 
   const openCreate = () => {
-    setForm(emptyForm);
+    setShared(emptyShared);
+    setItems([emptyResItem()]);
     setEditingId(null);
     setDialogOpen(true);
+  };
+
+  const updateItem = (id: string, field: keyof ResItem, value: any) => {
+    setItems((prev) =>
+      prev.map((item) => {
+        if (item.id !== id) return item;
+        const updated = { ...item, [field]: value };
+        if (["tour_id", "pax_adults", "pax_children"].includes(field as string) && updated.tour_id && shared.zone && shared.nationality) {
+          const result = computeTourPrice(updated.tour_id, shared.zone, shared.nationality, allVariants as any, tours as any);
+          updated.total_mxn = computeTotal(result.adultPrice, result.childPrice, updated.pax_adults, updated.pax_children);
+        }
+        return updated;
+      })
+    );
+  };
+
+  const updateShared = (field: string, value: string) => {
+    setShared((prev) => {
+      const next = { ...prev, [field]: value };
+      if (field === "zone" || field === "nationality") {
+        const newZone = field === "zone" ? value : prev.zone;
+        const newNat = field === "nationality" ? value : prev.nationality;
+        setItems((prevItems) =>
+          prevItems.map((item) => {
+            if (!item.tour_id || !newZone || !newNat) return item;
+            const result = computeTourPrice(item.tour_id, newZone, newNat, allVariants as any, tours as any);
+            return { ...item, total_mxn: computeTotal(result.adultPrice, result.childPrice, item.pax_adults, item.pax_children) };
+          })
+        );
+      }
+      return next;
+    });
   };
 
   const openEdit = (r: any) => {
@@ -393,7 +498,7 @@ export default function Reservas() {
                     const cStatus = confirmationStatus(r);
                     const pStatus = paymentStatus(r);
                     return (
-                      <TableRow key={r.id}>
+                      <TableRow key={r.id} id={`res-row-${r.id}`} className={highlightId === r.id ? "bg-green-50 transition-colors" : ""}>
                         <TableCell className="font-mono text-xs font-bold">{r.folio ?? "—"}</TableCell>
                         <TableCell className="text-sm font-medium">{r.tours?.title ?? "—"}</TableCell>
                         <TableCell className="hidden sm:table-cell text-sm">{r.clients?.name ?? "—"}</TableCell>
@@ -473,110 +578,94 @@ export default function Reservas() {
 
       {/* ── Dialog Crear / Editar Reserva ── */}
       <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) closeDialog(); }}>
-        <DialogContent className="max-w-lg max-h-[90dvh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingId ? "Editar Reserva" : "Nueva Reserva"}</DialogTitle>
             <DialogDescription>
-              {editingId ? "Modifica los datos de la reserva." : "Completa los datos para crear una nueva reserva. El folio se genera automáticamente."}
+              {editingId ? "Modifica los datos de la reserva." : "Completa los datos del cliente y agrega uno o varios tours."}
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid gap-4 py-2">
-            {/* Tour */}
-            <div className="space-y-1.5">
-              <Label>Tour *</Label>
-              <Select value={form.tour_id} onValueChange={(v) => setForm((p) => ({ ...p, tour_id: v }))}>
-                <SelectTrigger><SelectValue placeholder="Seleccionar tour" /></SelectTrigger>
-                <SelectContent>
-                  {tours.map((t) => (
-                    <SelectItem key={t.id} value={t.id}>{t.title}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Cliente + "+" */}
-            <div className="space-y-1.5">
-              <Label>Cliente *</Label>
-              <div className="flex gap-2">
-                <Select value={form.client_id} onValueChange={(v) => setForm((p) => ({ ...p, client_id: v }))}>
-                  <SelectTrigger className="flex-1"><SelectValue placeholder="Seleccionar cliente" /></SelectTrigger>
-                  <SelectContent>
-                    {clients.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button type="button" size="icon" variant="outline" onClick={() => setClientDialogOpen(true)} title="Nuevo Cliente">
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-
-            {/* Zona + Nacionalidad */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {editingId ? (
+            /* ── EDIT MODE: formulario de un solo tour (igual que antes) ── */
+            <div className="grid gap-4 py-2">
               <div className="space-y-1.5">
-                <Label>Zona de pickup</Label>
-                <Select value={form.zone} onValueChange={(v) => setForm((p) => ({ ...p, zone: v }))}>
-                  <SelectTrigger><SelectValue placeholder="Seleccionar zona" /></SelectTrigger>
+                <Label>Tour *</Label>
+                <Select value={form.tour_id} onValueChange={(v) => setForm((p) => ({ ...p, tour_id: v }))}>
+                  <SelectTrigger><SelectValue placeholder="Seleccionar tour" /></SelectTrigger>
                   <SelectContent>
-                    {ZONES.map(z => <SelectItem key={z} value={z}>{z}</SelectItem>)}
+                    {tours.map((t) => <SelectItem key={t.id} value={t.id}>{t.title}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
+
               <div className="space-y-1.5">
-                <Label>Nacionalidad</Label>
-                <Select value={form.nationality} onValueChange={(v) => setForm((p) => ({ ...p, nationality: v }))}>
-                  <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
+                <Label>Cliente *</Label>
+                <div className="flex gap-2">
+                  <Select value={form.client_id} onValueChange={(v) => setForm((p) => ({ ...p, client_id: v }))}>
+                    <SelectTrigger className="flex-1"><SelectValue placeholder="Seleccionar cliente" /></SelectTrigger>
+                    <SelectContent>
+                      {clients.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <Button type="button" size="icon" variant="outline" onClick={() => setClientDialogOpen(true)}><Plus className="h-4 w-4" /></Button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Zona de pickup</Label>
+                  <Select value={form.zone} onValueChange={(v) => setForm((p) => ({ ...p, zone: v }))}>
+                    <SelectTrigger><SelectValue placeholder="Seleccionar zona" /></SelectTrigger>
+                    <SelectContent>{ZONES.map(z => <SelectItem key={z} value={z}>{z}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Nacionalidad</Label>
+                  <Select value={form.nationality} onValueChange={(v) => setForm((p) => ({ ...p, nationality: v }))}>
+                    <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
+                    <SelectContent>{NATIONALITIES.map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label>Modalidad</Label>
+                <Select value={form.modality} onValueChange={(v) => setForm((p) => ({ ...p, modality: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {NATIONALITIES.map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}
+                    <SelectItem value="shared">Compartido</SelectItem>
+                    <SelectItem value="private">Privado</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-            </div>
 
-            {/* Modalidad */}
-            <div className="space-y-1.5">
-              <Label>Modalidad</Label>
-              <Select value={form.modality} onValueChange={(v) => setForm((p) => ({ ...p, modality: v }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="shared">Compartido</SelectItem>
-                  <SelectItem value="private">Privado</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Fecha *</Label>
+                  <Input type="date" value={form.reservation_date} onChange={(e) => setForm((p) => ({ ...p, reservation_date: e.target.value }))} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Hora</Label>
+                  <Input placeholder="6:00 AM" value={form.reservation_time} onChange={(e) => setForm((p) => ({ ...p, reservation_time: e.target.value }))} />
+                </div>
+              </div>
 
-            {/* Fecha + Hora */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label>Fecha *</Label>
-                <Input type="date" value={form.reservation_date} onChange={(e) => setForm((p) => ({ ...p, reservation_date: e.target.value }))} />
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Adultos</Label>
+                  <Input type="number" min={0} value={form.pax_adults} onChange={(e) => setForm((p) => ({ ...p, pax_adults: parseInt(e.target.value) || 0 }))} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Niños</Label>
+                  <Input type="number" min={0} value={form.pax_children} onChange={(e) => setForm((p) => ({ ...p, pax_children: parseInt(e.target.value) || 0 }))} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Total MXN</Label>
+                  <Input type="number" min={0} step="0.01" value={form.total_mxn} onChange={(e) => setForm((p) => ({ ...p, total_mxn: parseFloat(e.target.value) || 0 }))} />
+                </div>
               </div>
-              <div className="space-y-1.5">
-                <Label>Hora</Label>
-                <Input placeholder="6:00 AM" value={form.reservation_time} onChange={(e) => setForm((p) => ({ ...p, reservation_time: e.target.value }))} />
-              </div>
-            </div>
 
-            {/* Adultos + Niños + Total */}
-            <div className="grid grid-cols-3 gap-3 sm:grid-cols-3">
-              <div className="space-y-1.5">
-                <Label>Adultos</Label>
-                <Input type="number" min={0} value={form.pax_adults} onChange={(e) => setForm((p) => ({ ...p, pax_adults: parseInt(e.target.value) || 0 }))} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Niños</Label>
-                <Input type="number" min={0} value={form.pax_children} onChange={(e) => setForm((p) => ({ ...p, pax_children: parseInt(e.target.value) || 0 }))} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Total MXN</Label>
-                <Input type="number" min={0} step="0.01" value={form.total_mxn} onChange={(e) => setForm((p) => ({ ...p, total_mxn: parseFloat(e.target.value) || 0 }))} />
-              </div>
-            </div>
-
-            {/* Estado (solo edicion) */}
-            {editingId && (
               <div className="space-y-1.5">
                 <Label>Estado</Label>
                 <Select value={form.status} onValueChange={(v) => setForm((p) => ({ ...p, status: v }))}>
@@ -589,22 +678,147 @@ export default function Reservas() {
                   </SelectContent>
                 </Select>
               </div>
-            )}
 
-            {/* Notas */}
-            <div className="space-y-1.5">
-              <Label>Notas</Label>
-              <Textarea value={form.notes} onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))} placeholder="Notas opcionales…" />
+              <div className="space-y-1.5">
+                <Label>Notas</Label>
+                <Textarea value={form.notes} onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))} placeholder="Notas opcionales…" />
+              </div>
             </div>
-          </div>
+          ) : (
+            /* ── CREATE MODE: cliente compartido + múltiples tours ── */
+            <div className="grid gap-4 py-2">
+              {/* --- Datos compartidos --- */}
+              <div className="rounded-lg bg-muted/40 p-3 space-y-3">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Datos del grupo</p>
+
+                <div className="space-y-1.5">
+                  <Label>Cliente *</Label>
+                  <div className="flex gap-2">
+                    <Select value={shared.client_id} onValueChange={(v) => setShared((p) => ({ ...p, client_id: v }))}>
+                      <SelectTrigger className="flex-1"><SelectValue placeholder="Seleccionar cliente" /></SelectTrigger>
+                      <SelectContent>
+                        {clients.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                    <Button type="button" size="icon" variant="outline" onClick={() => setClientDialogOpen(true)}><Plus className="h-4 w-4" /></Button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="space-y-1.5">
+                    <Label>Zona de pickup</Label>
+                    <Select value={shared.zone} onValueChange={(v) => updateShared("zone", v)}>
+                      <SelectTrigger><SelectValue placeholder="Zona" /></SelectTrigger>
+                      <SelectContent>{ZONES.map(z => <SelectItem key={z} value={z}>{z}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Nacionalidad</Label>
+                    <Select value={shared.nationality} onValueChange={(v) => updateShared("nationality", v)}>
+                      <SelectTrigger><SelectValue placeholder="Nacionalidad" /></SelectTrigger>
+                      <SelectContent>{NATIONALITIES.map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Modalidad</Label>
+                    <Select value={shared.modality} onValueChange={(v) => setShared((p) => ({ ...p, modality: v }))}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="shared">Compartido</SelectItem>
+                        <SelectItem value="private">Privado</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label>Notas</Label>
+                  <Textarea value={shared.notes} onChange={(e) => setShared((p) => ({ ...p, notes: e.target.value }))} placeholder="Notas opcionales…" rows={2} />
+                </div>
+              </div>
+
+              {/* --- Tours --- */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Tours</p>
+                  <Button type="button" variant="outline" size="sm" className="h-7 text-xs" onClick={() => setItems((p) => [...p, emptyResItem()])}>
+                    <Plus className="mr-1 h-3.5 w-3.5" />Agregar Tour
+                  </Button>
+                </div>
+
+                {items.map((item, idx) => (
+                  <div key={item.id} className="rounded-lg border p-3 space-y-3">
+                    {/* header del item */}
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium text-muted-foreground">Tour {idx + 1}</span>
+                      {items.length > 1 && (
+                        <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive"
+                          onClick={() => setItems((p) => p.filter((i) => i.id !== item.id))}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                    </div>
+
+                    {/* Selector de tour */}
+                    <Select value={item.tour_id} onValueChange={(v) => updateItem(item.id, "tour_id", v)}>
+                      <SelectTrigger><SelectValue placeholder="Seleccionar tour" /></SelectTrigger>
+                      <SelectContent>
+                        {tours.map((t) => <SelectItem key={t.id} value={t.id}>{t.title}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+
+                    {/* Fecha + Hora */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Fecha *</Label>
+                        <Input type="date" value={item.reservation_date} onChange={(e) => updateItem(item.id, "reservation_date", e.target.value)} />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Hora</Label>
+                        <Input placeholder="6:00 AM" value={item.reservation_time} onChange={(e) => updateItem(item.id, "reservation_time", e.target.value)} />
+                      </div>
+                    </div>
+
+                    {/* Adultos + Niños + Total */}
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Adultos</Label>
+                        <Input type="number" min={0} value={item.pax_adults} onChange={(e) => updateItem(item.id, "pax_adults", parseInt(e.target.value) || 0)} />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Niños</Label>
+                        <Input type="number" min={0} value={item.pax_children} onChange={(e) => updateItem(item.id, "pax_children", parseInt(e.target.value) || 0)} />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Total MXN</Label>
+                        <Input type="number" min={0} step="0.01" value={item.total_mxn} onChange={(e) => updateItem(item.id, "total_mxn", parseFloat(e.target.value) || 0)} />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+
+                {/* Total general si hay más de 1 tour */}
+                {items.length > 1 && (
+                  <div className="flex justify-end text-sm font-semibold text-primary pt-1">
+                    Total: {fmt(items.reduce((a, i) => a + i.total_mxn, 0))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           <DialogFooter>
             <Button variant="outline" onClick={closeDialog}>Cancelar</Button>
             <Button
               onClick={() => saveMutation.mutate()}
-              disabled={saveMutation.isPending || !form.tour_id || !form.client_id || !form.reservation_date}
+              disabled={
+                saveMutation.isPending ||
+                (editingId
+                  ? !form.tour_id || !form.client_id || !form.reservation_date
+                  : !shared.client_id || items.some((i) => !i.tour_id || !i.reservation_date))
+              }
             >
-              {saveMutation.isPending ? "Guardando…" : editingId ? "Actualizar" : "Crear Reserva"}
+              {saveMutation.isPending ? "Guardando…" : editingId ? "Actualizar" : items.length > 1 ? `Crear ${items.length} Reservas` : "Crear Reserva"}
             </Button>
           </DialogFooter>
         </DialogContent>

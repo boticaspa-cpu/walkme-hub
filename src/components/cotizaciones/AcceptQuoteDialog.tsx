@@ -30,7 +30,7 @@ export default function AcceptQuoteDialog({ open, onOpenChange, quote }: Props) 
     enabled: !!quote?.id && open,
   });
 
-  // Pre-rellenar fecha con la del primer tour si existe
+  // Pre-fill date from first item if available
   useEffect(() => {
     if (items.length > 0 && (items[0] as any).tour_date) {
       setReservationDate((items[0] as any).tour_date);
@@ -40,49 +40,77 @@ export default function AcceptQuoteDialog({ open, onOpenChange, quote }: Props) 
   const acceptMutation = useMutation({
     mutationFn: async () => {
       if (!reservationDate) throw new Error("Selecciona una fecha de viaje");
-      
-      const firstItem = items[0];
-      if (!firstItem) throw new Error("La cotización no tiene items");
+      if (!items.length) throw new Error("La cotización no tiene items");
 
-      // Calculate total from items
-      const total = items.reduce((s: number, i: any) => s + i.qty_adults * i.unit_price_mxn + i.qty_children * i.unit_price_child_mxn, 0);
+      const total = items.reduce(
+        (s: number, i: any) => s + i.qty_adults * i.unit_price_mxn + i.qty_children * i.unit_price_child_mxn,
+        0
+      );
       const totalPax = items.reduce((s: number, i: any) => s + i.qty_adults + i.qty_children, 0);
+      const firstItem = items[0] as any;
 
-      // Build notes with all tour names if multiple
-      let notes = quote.notes || "";
-      if (items.length > 1) {
-        const tourNames = items.map((i: any, idx: number) => `${idx + 1}. ${i.tours?.title ?? "Tour"}`).join(", ");
-        notes = `Cotización ${quote.folio} con ${items.length} tours: ${tourNames}. ${notes}`.trim();
+      // 1. Create the reservation
+      const { data: reservation, error: rErr } = await supabase
+        .from("reservations")
+        .insert({
+          client_id: quote.client_id || null,
+          tour_id: firstItem.tour_id || null,
+          reservation_date: reservationDate,
+          pax: totalPax,
+          pax_adults: firstItem.qty_adults,
+          pax_children: firstItem.qty_children,
+          zone: firstItem.zone || "",
+          nationality: firstItem.nationality || "",
+          total_mxn: total,
+          status: "confirmed",
+          payment_status: "unpaid",
+          notes: quote.notes || null,
+          created_by: user?.id,
+        })
+        .select("id")
+        .single();
+
+      if (rErr) throw new Error(`Error al crear la reserva: ${rErr.message}`);
+
+      const reservationId = reservation.id;
+
+      // 2. Insert all quote items as reservation_items
+      const reservationItems = items.map((i: any) => ({
+        reservation_id: reservationId,
+        tour_id: i.tour_id || null,
+        tour_date: i.tour_date || reservationDate,
+        qty_adults: i.qty_adults,
+        qty_children: i.qty_children,
+        unit_price_mxn: i.unit_price_mxn,
+        unit_price_child_mxn: i.unit_price_child_mxn,
+        subtotal_mxn: i.qty_adults * i.unit_price_mxn + i.qty_children * i.unit_price_child_mxn,
+        zone: i.zone || "",
+        nationality: i.nationality || "",
+        package_name: i.package_name || null,
+      }));
+
+      const { error: riErr } = await supabase.from("reservation_items").insert(reservationItems);
+
+      if (riErr) {
+        // Rollback: delete the reservation we just created
+        await supabase.from("reservations").delete().eq("id", reservationId);
+        throw new Error(`Error al guardar los tours de la reserva: ${riErr.message}`);
       }
 
-      // Create reservation from first item
-      const { data: reservation, error: rErr } = await supabase.from("reservations").insert({
-        client_id: quote.client_id || null,
-        tour_id: firstItem.tour_id || null,
-        reservation_date: reservationDate,
-        pax: totalPax,
-        pax_adults: firstItem.qty_adults,
-        pax_children: firstItem.qty_children,
-        zone: firstItem.zone || "",
-        nationality: firstItem.nationality || "",
-        total_mxn: total,
-        status: "scheduled",
-        payment_status: "unpaid",
-        notes,
-        created_by: user?.id,
-      }).select("id").single();
+      // 3. Mark quote as accepted and link to reservation
+      const { error: qErr } = await supabase
+        .from("quotes")
+        .update({ status: "accepted", reservation_id: reservationId })
+        .eq("id", quote.id);
 
-      if (rErr) throw rErr;
+      if (qErr) {
+        // Rollback: delete reservation_items and reservation
+        await supabase.from("reservation_items").delete().eq("reservation_id", reservationId);
+        await supabase.from("reservations").delete().eq("id", reservationId);
+        throw new Error(`Error al actualizar la cotización: ${qErr.message}`);
+      }
 
-      // Update quote with reservation_id and accepted status
-      const { error: qErr } = await supabase.from("quotes").update({
-        status: "accepted",
-        reservation_id: reservation.id,
-      }).eq("id", quote.id);
-
-      if (qErr) throw qErr;
-
-      return reservation.id;
+      return reservationId;
     },
     onSuccess: (reservationId) => {
       qc.invalidateQueries({ queryKey: ["quotes"] });
@@ -101,7 +129,9 @@ export default function AcceptQuoteDialog({ open, onOpenChange, quote }: Props) 
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Aceptar Cotización</DialogTitle>
-          <DialogDescription>Se creará una reserva a partir de esta cotización ({quote?.folio}).</DialogDescription>
+          <DialogDescription>
+            Se creará una reserva confirmada a partir de esta cotización ({quote?.folio}).
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -113,28 +143,44 @@ export default function AcceptQuoteDialog({ open, onOpenChange, quote }: Props) 
               <div className="mt-2 space-y-0.5">
                 {items.map((it: any, idx: number) => (
                   <p key={idx} className="text-xs text-muted-foreground">
-                    • {it.tours?.title ?? "Tour"} — {it.qty_adults} ad.{it.qty_children > 0 ? `, ${it.qty_children} niños` : ""}{it.tour_date ? ` — ${it.tour_date}` : ""}
+                    • {it.tours?.title ?? "Tour"} — {it.qty_adults} ad.
+                    {it.qty_children > 0 ? `, ${it.qty_children} niños` : ""}
+                    {it.tour_date ? ` — ${it.tour_date}` : ""}
                   </p>
                 ))}
               </div>
-            )}
-            {items.length > 1 && (
-              <p className="text-xs text-amber-600 mt-2">
-                ⚠ Se creará 1 reserva con el primer tour. Los demás tours se incluyen en las notas.
-              </p>
             )}
           </div>
 
           {/* Date picker */}
           <div className="space-y-1.5">
             <Label>Fecha de viaje *</Label>
-            <Input type="date" value={reservationDate} onChange={e => setReservationDate(e.target.value)} min={new Date().toISOString().split("T")[0]} />
+            <Input
+              type="date"
+              value={reservationDate}
+              onChange={(e) => setReservationDate(e.target.value)}
+              min={new Date().toISOString().split("T")[0]}
+            />
+            {items.length > 1 && (
+              <p className="text-xs text-muted-foreground">
+                Esta fecha se usa como respaldo para items sin fecha específica.
+              </p>
+            )}
           </div>
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={() => acceptMutation.mutate()} disabled={acceptMutation.isPending || !reservationDate}>
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={acceptMutation.isPending}
+          >
+            Cancelar
+          </Button>
+          <Button
+            onClick={() => acceptMutation.mutate()}
+            disabled={acceptMutation.isPending || !reservationDate}
+          >
             {acceptMutation.isPending ? "Creando reserva…" : "Aceptar y Crear Reserva"}
           </Button>
         </DialogFooter>

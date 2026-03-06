@@ -681,6 +681,69 @@ export type Database = {
         }
         Relationships: []
       }
+      reservation_items: {
+        Row: {
+          created_at: string
+          id: string
+          nationality: string
+          package_name: string | null
+          qty_adults: number
+          qty_children: number
+          reservation_id: string
+          subtotal_mxn: number
+          tour_date: string | null
+          tour_id: string | null
+          unit_price_child_mxn: number
+          unit_price_mxn: number
+          zone: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          nationality?: string
+          package_name?: string | null
+          qty_adults?: number
+          qty_children?: number
+          reservation_id: string
+          subtotal_mxn?: number
+          tour_date?: string | null
+          tour_id?: string | null
+          unit_price_child_mxn?: number
+          unit_price_mxn?: number
+          zone?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          nationality?: string
+          package_name?: string | null
+          qty_adults?: number
+          qty_children?: number
+          reservation_id?: string
+          subtotal_mxn?: number
+          tour_date?: string | null
+          tour_id?: string | null
+          unit_price_child_mxn?: number
+          unit_price_mxn?: number
+          zone?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reservation_items_reservation_id_fkey"
+            columns: ["reservation_id"]
+            isOneToOne: false
+            referencedRelation: "reservations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reservation_items_tour_id_fkey"
+            columns: ["tour_id"]
+            isOneToOne: false
+            referencedRelation: "tours"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quote_items: {
         Row: {
           created_at: string

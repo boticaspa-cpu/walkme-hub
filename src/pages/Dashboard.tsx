@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  DollarSign, CalendarCheck, Users, TrendingUp, Map, ShoppingCart, ArrowRight,
+  DollarSign, CalendarCheck, Users, TrendingUp, Map, FileText, ArrowRight,
 } from "lucide-react";
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -92,7 +92,7 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <Link to="/pos"><Card className="cursor-pointer border-dashed hover:border-primary hover:bg-primary/5 transition-colors"><CardContent className="flex items-center gap-3 p-4"><ShoppingCart className="h-5 w-5 text-primary" /><span className="font-medium text-sm">Nueva Venta</span></CardContent></Card></Link>
+        <Link to="/cotizaciones"><Card className="cursor-pointer border-dashed hover:border-primary hover:bg-primary/5 transition-colors"><CardContent className="flex items-center gap-3 p-4"><FileText className="h-5 w-5 text-primary" /><span className="font-medium text-sm">Nueva Cotización</span></CardContent></Card></Link>
         <Link to="/reservas"><Card className="cursor-pointer border-dashed hover:border-primary hover:bg-primary/5 transition-colors"><CardContent className="flex items-center gap-3 p-4"><CalendarCheck className="h-5 w-5 text-primary" /><span className="font-medium text-sm">Nueva Reserva</span></CardContent></Card></Link>
         <Link to="/tours"><Card className="cursor-pointer border-dashed hover:border-primary hover:bg-primary/5 transition-colors"><CardContent className="flex items-center gap-3 p-4"><Map className="h-5 w-5 text-primary" /><span className="font-medium text-sm">Ver Catálogo</span></CardContent></Card></Link>
         <Link to="/leads"><Card className="cursor-pointer border-dashed hover:border-primary hover:bg-primary/5 transition-colors"><CardContent className="flex items-center gap-3 p-4"><Users className="h-5 w-5 text-primary" /><span className="font-medium text-sm">Nuevo Lead</span></CardContent></Card></Link>
