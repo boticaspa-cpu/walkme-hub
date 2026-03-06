@@ -124,7 +124,7 @@ export default function Categorias() {
         </div>
         {isAdmin && (
           <Button onClick={openCreate}>
-            <Plus className="mr-2 h-4 w-4" /> Nueva Categoría
+            <Plus className="mr-2 h-4 w-4" /><span className="hidden sm:inline">Nueva Categoría</span><span className="sm:hidden">Nueva</span>
           </Button>
         )}
       </div>

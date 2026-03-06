@@ -280,7 +280,7 @@ export default function Configuracion() {
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-xs text-muted-foreground">Define los tipos de cambio que se usan para calcular los precios sugeridos de los tours.</p>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             <div className="space-y-1.5">
               <Label className="text-xs">USD → MXN</Label>
               <Input type="number" step="0.01" value={rateUsd} onChange={(e) => setRateUsd(e.target.value)} />

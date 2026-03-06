@@ -12,11 +12,11 @@ export function Topbar() {
     <header className="flex h-14 items-center gap-3 border-b border-border bg-card px-4">
       <SidebarTrigger />
 
-      <div className="relative flex-1 max-w-md">
+      <div className="relative hidden sm:flex flex-1 max-w-md">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           placeholder="Buscar tours, clientes, reservas..."
-          className="pl-9 h-9 bg-secondary border-0"
+          className="pl-9 h-9 bg-secondary border-0 w-full"
         />
       </div>
 

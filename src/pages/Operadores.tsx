@@ -175,7 +175,7 @@ export default function Operadores() {
         </div>
         {isAdmin && (
           <Button onClick={openCreate}>
-            <Plus className="mr-2 h-4 w-4" /> Nuevo Operador
+            <Plus className="mr-2 h-4 w-4" /><span className="hidden sm:inline">Nuevo Operador</span><span className="sm:hidden">Nuevo</span>
           </Button>
         )}
       </div>
@@ -270,7 +270,7 @@ export default function Operadores() {
 
       {/* Create / Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingId ? "Editar Operador" : "Nuevo Operador"}</DialogTitle>
             <DialogDescription>
@@ -287,7 +287,7 @@ export default function Operadores() {
               <Label>Contacto</Label>
               <Input value={form.contact_name} onChange={(e) => setForm({ ...form, contact_name: e.target.value })} />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Teléfono</Label>
                 <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
@@ -299,7 +299,7 @@ export default function Operadores() {
             </div>
 
             {/* New v2 fields */}
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               <div className="space-y-1.5">
                 <Label>Tipo de Cambio</Label>
                 <Input type="number" value={form.exchange_rate} onChange={(e) => setForm({ ...form, exchange_rate: e.target.value })} />

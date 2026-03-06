@@ -79,7 +79,7 @@ export function AppSidebar() {
   const navItems = role === "admin" ? adminNav : sellerNav;
 
   return (
-    <Sidebar>
+    <Sidebar collapsible="offcanvas">
       <SidebarHeader className="p-4">
         <div className="flex items-center gap-2">
           <img src={walkmeLogo} alt="Walkme Tours" className="h-9 w-9 rounded-lg object-cover" />

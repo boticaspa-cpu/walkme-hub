@@ -12,6 +12,8 @@ interface VoucherProps {
     pax_adults: number;
     pax_children: number;
     total_mxn: number;
+    unit_price_mxn?: number;
+    unit_price_child_mxn?: number;
     modality: string;
     zone: string;
     nationality: string;
@@ -23,9 +25,9 @@ interface VoucherProps {
   lang?: "es" | "en";
 }
 
-const DEFAULT_POLICY_ES = `Cualquier cambio o cancelación deberá realizarse con al menos 24 horas de anticipación. Cancelaciones con menos de 24 horas de anticipación o no shows no son reembolsables. WalkMe Tours se reserva el derecho de modificar horarios o itinerarios por condiciones climáticas o de seguridad. Menores de edad deben ir acompañados de un adulto responsable.`;
+const DEFAULT_POLICY_ES = `Cualquier cambio o cancelación deberá realizarse con al menos 48 horas de anticipación. Cancelaciones con menos de 48 horas de anticipación o no shows no son reembolsables. WalkMe Tours se reserva el derecho de modificar horarios o itinerarios por condiciones climáticas o de seguridad. Menores de edad deben ir acompañados de un adulto responsable.`;
 
-const DEFAULT_POLICY_EN = `Any change or cancellation must be made at least 24 hours in advance. Cancellations with less than 24 hours notice or no-shows are non-refundable. WalkMe Tours reserves the right to modify schedules or itineraries due to weather or safety conditions. Minors must be accompanied by a responsible adult.`;
+const DEFAULT_POLICY_EN = `Any change or cancellation must be made at least 48 hours in advance. Cancellations with less than 48 hours notice or no-shows are non-refundable. WalkMe Tours reserves the right to modify schedules or itineraries due to weather or safety conditions. Minors must be accompanied by a responsible adult.`;
 
 const t = {
   es: {
@@ -40,6 +42,9 @@ const t = {
     departure: "Lugar y hora de salida",
     tourDate: "Fecha del tour",
     includes: "Incluye",
+    priceAdult: "Precio adulto",
+    priceChild: "Precio menor",
+    subtotal: "Subtotal",
     total: "Total a pagar",
     notes: "Notas",
     cancellation: "Políticas de cancelación",
@@ -61,6 +66,9 @@ const t = {
     departure: "Departure place & time",
     tourDate: "Tour date",
     includes: "Includes",
+    priceAdult: "Adult price",
+    priceChild: "Minor price",
+    subtotal: "Subtotal",
     total: "Amount to pay",
     notes: "Notes",
     cancellation: "Cancellation policies",
@@ -195,12 +203,42 @@ export default function VoucherPrintView({ reservation, lang: initialLang = "es"
         </div>
       )}
 
-      {/* Total */}
-      <div className="flex justify-between items-center border-t-2 border-b-2 py-2 mb-4" style={{ borderColor: "#2d5a27" }}>
-        <span className="text-sm font-bold">{l.total}</span>
-        <span className="text-lg font-bold" style={{ color: "#2d5a27" }}>
-          ${r.total_mxn.toLocaleString("es-MX", { minimumFractionDigits: 2 })} MXN
-        </span>
+      {/* Price breakdown + Total */}
+      <div className="mb-4 border border-gray-300">
+        {r.unit_price_mxn !== undefined && r.unit_price_mxn > 0 && (
+          <table className="w-full text-sm">
+            <tbody>
+              {r.pax_adults > 0 && (
+                <tr className="border-b border-gray-200">
+                  <td className="py-1.5 px-3">{r.pax_adults} × {l.priceAdult}</td>
+                  <td className="py-1.5 px-3 text-right">
+                    ${r.unit_price_mxn!.toLocaleString("es-MX", { minimumFractionDigits: 2 })} MXN
+                  </td>
+                  <td className="py-1.5 px-3 text-right font-medium">
+                    ${(r.pax_adults * r.unit_price_mxn!).toLocaleString("es-MX", { minimumFractionDigits: 2 })} MXN
+                  </td>
+                </tr>
+              )}
+              {r.pax_children > 0 && r.unit_price_child_mxn !== undefined && (
+                <tr className="border-b border-gray-200">
+                  <td className="py-1.5 px-3">{r.pax_children} × {l.priceChild}</td>
+                  <td className="py-1.5 px-3 text-right">
+                    ${r.unit_price_child_mxn!.toLocaleString("es-MX", { minimumFractionDigits: 2 })} MXN
+                  </td>
+                  <td className="py-1.5 px-3 text-right font-medium">
+                    ${(r.pax_children * r.unit_price_child_mxn!).toLocaleString("es-MX", { minimumFractionDigits: 2 })} MXN
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        )}
+        <div className="flex justify-between items-center border-t-2 py-2 px-3" style={{ borderColor: "#2d5a27" }}>
+          <span className="text-sm font-bold">{l.total}</span>
+          <span className="text-lg font-bold" style={{ color: "#2d5a27" }}>
+            ${r.total_mxn.toLocaleString("es-MX", { minimumFractionDigits: 2 })} MXN
+          </span>
+        </div>
       </div>
 
       {/* Notes */}

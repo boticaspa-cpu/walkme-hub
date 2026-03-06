@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { MessageSquare, Mail } from "lucide-react";
+import { MessageSquare, Mail, Copy } from "lucide-react";
 import { toast } from "sonner";
 
 interface Props {
@@ -79,18 +79,27 @@ export default function SendQuoteDialog({ open, onOpenChange, quote }: Props) {
   const pdfUrl = `${window.location.origin}/cotizaciones/${quote?.id}/pdf`;
   const fmt = (n: number) => `$${n.toLocaleString("es-MX", { minimumFractionDigits: 2 })}`;
 
+  const fmtDate = (d: string) =>
+    d ? new Date(d + "T12:00:00").toLocaleDateString("es-MX", { day: "2-digit", month: "short" }) : "";
+
   const buildMessage = () => {
+    const clientName = client?.name || contactForm.name || "Cliente";
     const lines = [
-      `📋 *WalkMe Tours — Cotización ${quote?.folio ?? ""}*`,
+      `Hola ${clientName}! 👋`,
+      ``,
+      `Te comparto tu cotización de *WalkMe Tours* (${quote?.folio ?? ""}):`,
       ``,
     ];
     items.forEach((it: any) => {
       const sub = it.qty_adults * it.unit_price_mxn + it.qty_children * it.unit_price_child_mxn;
-      lines.push(`🏝️ ${it.tours?.title ?? "Tour"} — ${it.qty_adults} adultos${it.qty_children ? `, ${it.qty_children} niños` : ""} — ${fmt(sub)} MXN`);
+      const fecha = fmtDate(it.tour_date);
+      const pax = `${it.qty_adults} adulto${it.qty_adults !== 1 ? "s" : ""}${it.qty_children ? `, ${it.qty_children} niño${it.qty_children !== 1 ? "s" : ""}` : ""}`;
+      lines.push(`🏝️ *${it.tours?.title ?? "Tour"}*${fecha ? ` — ${fecha}` : ""}`);
+      lines.push(`   ${pax} — ${fmt(sub)} MXN`);
     });
     lines.push(``, `💰 *Total: ${fmt(quote?.total_mxn ?? 0)} MXN*`);
-    lines.push(``, `📄 Ver cotización: ${pdfUrl}`);
-    lines.push(``, `¡Gracias por elegir WalkMe Tours! 🌴`);
+    lines.push(``, `📄 Cotización completa: ${pdfUrl}`);
+    lines.push(``, `¡Cualquier duda con gusto te atiendo! 😊`);
     return lines.join("\n");
   };
 
@@ -113,11 +122,14 @@ export default function SendQuoteDialog({ open, onOpenChange, quote }: Props) {
     onOpenChange(false);
   };
 
-  const contactReady = !needsContact || (contactForm.name.trim() && (contactForm.phone.trim() || contactForm.email.trim()));
+  const copyMessage = () => {
+    navigator.clipboard.writeText(buildMessage());
+    toast.success("Mensaje copiado");
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>Enviar Cotización</DialogTitle>
           <DialogDescription>{quote?.folio ?? ""} — {fmt(quote?.total_mxn ?? 0)} MXN</DialogDescription>
@@ -138,22 +150,38 @@ export default function SendQuoteDialog({ open, onOpenChange, quote }: Props) {
             </Button>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-4">
             {client && (
               <div className="text-sm bg-muted/50 rounded-md p-3 space-y-1">
-                <p><span className="font-medium">Cliente:</span> {client.name}</p>
-                {client.phone && <p><span className="font-medium">Tel:</span> {client.phone}</p>}
-                {client.email && <p><span className="font-medium">Email:</span> {client.email}</p>}
+                <p><span className="font-medium">Para:</span> {client.name}{client.phone ? ` · ${client.phone}` : ""}</p>
               </div>
             )}
+
+            {/* Preview del mensaje */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs text-muted-foreground">Vista previa del mensaje</Label>
+                <Button type="button" variant="ghost" size="sm" className="h-6 text-xs gap-1 px-2" onClick={copyMessage}>
+                  <Copy className="h-3 w-3" /> Copiar
+                </Button>
+              </div>
+              <pre className="text-xs bg-green-50 border border-green-200 rounded-md p-3 whitespace-pre-wrap font-sans leading-relaxed max-h-52 overflow-y-auto">
+                {buildMessage()}
+              </pre>
+            </div>
+
+            <p className="text-xs text-muted-foreground">
+              💡 Se abrirá WhatsApp Web con este mensaje listo para enviar. Asegúrate de tener el WhatsApp de la agencia conectado en el navegador.
+            </p>
+
             <div className="grid grid-cols-2 gap-3">
-              <Button variant="outline" className="h-20 flex-col gap-1" onClick={handleWhatsApp}>
-                <MessageSquare className="h-6 w-6 text-green-600" />
-                <span className="text-xs">WhatsApp</span>
+              <Button variant="outline" className="h-14 flex-col gap-1" onClick={handleWhatsApp}>
+                <MessageSquare className="h-5 w-5 text-green-600" />
+                <span className="text-xs">Enviar por WhatsApp</span>
               </Button>
-              <Button variant="outline" className="h-20 flex-col gap-1" onClick={handleEmail}>
-                <Mail className="h-6 w-6 text-blue-600" />
-                <span className="text-xs">Email</span>
+              <Button variant="outline" className="h-14 flex-col gap-1" onClick={handleEmail}>
+                <Mail className="h-5 w-5 text-blue-600" />
+                <span className="text-xs">Enviar por Email</span>
               </Button>
             </div>
           </div>

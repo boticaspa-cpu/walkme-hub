@@ -73,7 +73,8 @@ export default function POS() {
         {isSessionOpen && activeSession && (
           <Button variant="outline" size="sm" onClick={() => navigate("/cierre-diario")}>
             <ShoppingCart className="mr-1 h-3.5 w-3.5" />
-            Caja abierta desde {new Date(activeSession.opened_at).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })}
+            <span className="hidden sm:inline">Caja abierta desde </span>
+            {new Date(activeSession.opened_at).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })}
           </Button>
         )}
       </div>

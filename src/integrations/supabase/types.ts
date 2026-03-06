@@ -686,10 +686,12 @@ export type Database = {
           created_at: string
           id: string
           nationality: string
+          package_name: string | null
           qty: number
           qty_adults: number
           qty_children: number
           quote_id: string
+          tour_date: string | null
           tour_id: string | null
           unit_price_child_mxn: number
           unit_price_mxn: number
@@ -699,10 +701,12 @@ export type Database = {
           created_at?: string
           id?: string
           nationality?: string
+          package_name?: string | null
           qty?: number
           qty_adults?: number
           qty_children?: number
           quote_id: string
+          tour_date?: string | null
           tour_id?: string | null
           unit_price_child_mxn?: number
           unit_price_mxn?: number
@@ -712,10 +716,12 @@ export type Database = {
           created_at?: string
           id?: string
           nationality?: string
+          package_name?: string | null
           qty?: number
           qty_adults?: number
           qty_children?: number
           quote_id?: string
+          tour_date?: string | null
           tour_id?: string | null
           unit_price_child_mxn?: number
           unit_price_mxn?: number

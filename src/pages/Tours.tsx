@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, Filter, MapPin, Clock, Plus, Pencil, Upload, DollarSign } from "lucide-react";
 import PackageEditor, { PackageForm, emptyPackage } from "@/components/tours/PackageEditor";
@@ -178,7 +178,7 @@ function TourImageCarousel({ images, title }: { images?: string[] | null; title:
 function TourShowroom({ tour, onClose, onCreateReservation, onCreateQuote }: { tour: TourRow; onClose: () => void; onCreateReservation: (tourId: string) => void; onCreateQuote: (tourId: string) => void }) {
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90dvh] overflow-y-auto w-full">
         <DialogHeader>
           <DialogTitle className="text-lg">{tour.title}</DialogTitle>
           <div className="flex items-center gap-2 mt-1">
@@ -194,35 +194,6 @@ function TourShowroom({ tour, onClose, onCreateReservation, onCreateQuote }: { t
 
         <TourImageCarousel images={tour.image_urls} title={tour.title} />
 
-        {/* USD Pricing info */}
-        {(tour.price_adult_usd > 0 || tour.public_price_adult_usd > 0 || tour.mandatory_fees_usd > 0) && (
-          <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-1">
-            <p className="text-sm font-medium flex items-center gap-1.5"><DollarSign className="h-3.5 w-3.5" /> Precios (USD)</p>
-            <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
-              {tour.public_price_adult_usd > 0 && <span>Precio Público Adulto: ${tour.public_price_adult_usd} USD</span>}
-              {tour.public_price_child_usd > 0 && <span>Precio Público Niño: ${tour.public_price_child_usd} USD</span>}
-              <span>Costo Neto Adulto: ${tour.price_adult_usd} USD</span>
-              <span>Costo Neto Niño: ${tour.price_child_usd} USD</span>
-              {tour.tax_adult_usd > 0 && <span>Impuesto Adulto: ${tour.tax_adult_usd} USD</span>}
-              {tour.tax_child_usd > 0 && <span>Impuesto Niño: ${tour.tax_child_usd} USD</span>}
-              <span>Fees (muelle/parques): ${tour.mandatory_fees_usd} USD</span>
-              <span>Rango menores: {tour.child_age_min}–{tour.child_age_max} años</span>
-            </div>
-            {tour.calculation_mode === "commission" && tour.commission_percentage > 0 && (
-              <p className="text-sm">Modo: Comisión <span className="font-semibold">{tour.commission_percentage}%</span></p>
-            )}
-            {tour.calculation_mode === "net_cost" && tour.public_price_adult_usd > 0 && tour.price_adult_usd > 0 && (
-              <p className="text-sm">Utilidad: <span className="font-semibold">{(((tour.public_price_adult_usd - tour.price_adult_usd) / tour.public_price_adult_usd) * 100).toFixed(1)}%</span></p>
-            )}
-            <p className="text-sm">Precio Adulto MXN: <span className="font-semibold text-primary">{formatPrice(tour.price_mxn)}</span></p>
-            {tour.suggested_price_mxn > 0 && (
-              <p className="text-sm">Precio Menor MXN: <span className="font-semibold text-primary">{formatPrice(tour.suggested_price_mxn)}</span></p>
-            )}
-            {(tour as any).exchange_rate_tour > 0 && (
-              <p className="text-sm">T.C. del Tour: <span className="font-semibold">${(tour as any).exchange_rate_tour}</span></p>
-            )}
-          </div>
-        )}
 
         {tour.tags.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
@@ -248,11 +219,15 @@ function TourShowroom({ tour, onClose, onCreateReservation, onCreateQuote }: { t
         {tour.itinerary && (
           <div>
             <p className="text-sm font-medium mb-1">Itinerario</p>
-            <p className="text-sm text-muted-foreground">{tour.itinerary}</p>
+            <ul className="text-sm text-muted-foreground space-y-1">
+              {tour.itinerary.split("\n").filter(l => l.trim()).map((line, i) => (
+                <li key={i} className="flex gap-2"><span className="text-primary mt-0.5">•</span><span>{line.trim()}</span></li>
+              ))}
+            </ul>
           </div>
         )}
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <p className="text-sm font-medium mb-1 text-primary">✓ Incluye</p>
             <ul className="text-sm text-muted-foreground space-y-0.5">
@@ -870,7 +845,7 @@ export default function Tours() {
         </div>
         {isAdmin && (
           <Button onClick={openCreate}>
-            <Plus className="mr-2 h-4 w-4" /> Nuevo Tour
+            <Plus className="mr-2 h-4 w-4" /><span className="hidden sm:inline">Nuevo Tour</span><span className="sm:hidden">Nuevo</span>
           </Button>
         )}
       </div>
@@ -982,7 +957,7 @@ export default function Tours() {
 
       {/* Create / Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[90dvh] overflow-y-auto w-full">
           <DialogHeader>
             <DialogTitle>{editingId ? "Editar Tour" : "Nuevo Tour"}</DialogTitle>
             <DialogDescription>
@@ -998,7 +973,7 @@ export default function Tours() {
             </div>
 
             {/* Row 2 */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Operador</Label>
                 <Select value={form.operator_id} onValueChange={(v) => setForm({ ...form, operator_id: v })}>
@@ -1035,7 +1010,7 @@ export default function Tours() {
             </div>
 
             {/* Row 3 */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Tipo</Label>
                 <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v })}>
@@ -1066,7 +1041,7 @@ export default function Tours() {
               <Input type="number" value={form.exchange_rate_tour} onChange={(e) => setForm({ ...form, exchange_rate_tour: e.target.value })} placeholder={String(exchangeRateUsd)} />
               <p className="text-xs text-muted-foreground">Se usa el global ${exchangeRateUsd} si se deja vacío</p>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Precio Público Adulto (MXN)</Label>
                 <Input type="number" value={form.price_mxn} disabled className="bg-muted" />
@@ -1095,7 +1070,7 @@ export default function Tours() {
             {isCommissionMode ? (
               <>
                 {/* Commission Mode */}
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label>Precio Público Adulto USD</Label>
                     <Input type="number" value={form.public_price_adult_usd} onChange={(e) => setForm({ ...form, public_price_adult_usd: e.target.value })} placeholder="0" />
@@ -1105,7 +1080,7 @@ export default function Tours() {
                     <Input type="number" value={form.commission_percentage} onChange={(e) => setForm({ ...form, commission_percentage: e.target.value })} placeholder="0" />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label>Costo Neto Adulto USD</Label>
                     <Input type="number" value={form.price_adult_usd} disabled className="bg-muted" placeholder="Auto" />
@@ -1116,7 +1091,7 @@ export default function Tours() {
                     <Input type="number" value={form.public_price_child_usd} onChange={(e) => setForm({ ...form, public_price_child_usd: e.target.value })} placeholder="0" />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label>Costo Neto Niño USD</Label>
                     <Input type="number" value={form.price_child_usd} disabled className="bg-muted" placeholder="Auto" />
@@ -1127,7 +1102,7 @@ export default function Tours() {
             ) : (
               <>
                 {/* Net Cost Mode */}
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label>Costo Neto Adulto USD</Label>
                     <Input type="number" value={form.price_adult_usd} onChange={(e) => setForm({ ...form, price_adult_usd: e.target.value })} placeholder="0" />
@@ -1140,7 +1115,7 @@ export default function Tours() {
                 {utilityPct !== null && (
                   <p className="text-sm text-muted-foreground">% Utilidad: <span className="font-semibold text-primary">{utilityPct}%</span></p>
                 )}
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label>Costo Neto Niño USD</Label>
                     <Input type="number" value={form.price_child_usd} onChange={(e) => setForm({ ...form, price_child_usd: e.target.value })} placeholder="0" />
@@ -1154,7 +1129,7 @@ export default function Tours() {
             )}
 
             {/* Tax fields (both modes) */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Impuesto al Abordar — Adulto USD</Label>
                 <Input type="number" value={form.tax_adult_usd} onChange={(e) => setForm({ ...form, tax_adult_usd: e.target.value })} placeholder="0" />
@@ -1181,7 +1156,7 @@ export default function Tours() {
             </div>
 
             {/* Edad menor */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Edad mín. menor</Label>
                 <Input type="number" value={form.child_age_min} onChange={(e) => setForm({ ...form, child_age_min: e.target.value })} />
@@ -1242,7 +1217,7 @@ export default function Tours() {
             </div>
 
             {/* Comma-separated fields */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Incluye (separado por coma)</Label>
                 <Input value={form.includes} onChange={(e) => setForm({ ...form, includes: e.target.value })} />
@@ -1258,7 +1233,7 @@ export default function Tours() {
               <Input value={form.meeting_point} onChange={(e) => setForm({ ...form, meeting_point: e.target.value })} />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Qué llevar (separado por coma)</Label>
                 <Input value={form.what_to_bring} onChange={(e) => setForm({ ...form, what_to_bring: e.target.value })} />
@@ -1277,7 +1252,7 @@ export default function Tours() {
             {/* Image upload - up to 4 photos */}
             <div className="space-y-1.5">
               <Label>Imágenes (hasta 4)</Label>
-              <div className="grid grid-cols-4 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {imagePreviews.map((preview, idx) => (
                   <div key={idx} className="relative aspect-video rounded border overflow-hidden bg-muted">
                     <img src={preview} alt={`Foto ${idx + 1}`} className="h-full w-full object-cover" />

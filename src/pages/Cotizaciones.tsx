@@ -1,6 +1,9 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Plus, Search, FileText, Send, Pencil, Trash2, CheckCircle, ExternalLink } from "lucide-react";
+import { Plus, Search, FileText, Send, Pencil, Trash2, CheckCircle, ExternalLink, MoreVertical } from "lucide-react";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import SendQuoteDialog from "@/components/cotizaciones/SendQuoteDialog";
 import AcceptQuoteDialog from "@/components/cotizaciones/AcceptQuoteDialog";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -39,21 +42,22 @@ const NATIONALITIES = ["Nacional", "Extranjero"];
 
 interface QuoteItem {
   tour_id: string;
+  tour_date: string;
   qty_adults: number;
   qty_children: number;
   unit_price_mxn: number;
   unit_price_child_mxn: number;
   zone: string;
   nationality: string;
+  package_name: string;
 }
 
-const emptyForm = { client_id: "", client_name: "", notes: "", status: "draft", quote_date: "" };
+const emptyForm = { client_id: "", client_name: "", notes: "", status: "draft" };
 
 export default function Cotizaciones() {
-  const { user, role } = useAuth();
+  const { user } = useAuth();
   const qc = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
-  const isAdmin = role === "admin";
 
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -105,17 +109,33 @@ export default function Cotizaciones() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("tour_price_variants")
-        .select("tour_id, zone, nationality, pax_type, sale_price")
+        .select("tour_id, zone, nationality, pax_type, sale_price, package_name")
         .eq("active", true);
       if (error) throw error;
       return data;
     },
   });
 
-  // Auto-fill prices when tour+zone+nationality change — with fallback to tour base price
-  const lookupPrice = (tourId: string, zone: string, nationality: string, paxType: string): number => {
+  // Get unique package names for a tour+zone+nationality combo
+  const getPackages = (tourId: string, zone: string, nationality: string): string[] => {
+    const pkgs = allVariants
+      .filter((v: any) => v.tour_id === tourId && v.zone === zone && v.nationality === nationality && v.package_name)
+      .map((v: any) => v.package_name as string);
+    return [...new Set(pkgs)];
+  };
+
+  // Auto-fill prices when tour+zone+nationality+package change — with fallback to tour base price
+  const lookupPrice = (tourId: string, zone: string, nationality: string, paxType: string, packageName?: string): number => {
+    // Try exact package match first
+    if (packageName) {
+      const v = allVariants.find(
+        (v: any) => v.tour_id === tourId && v.zone === zone && v.nationality === nationality && v.pax_type === paxType && v.package_name === packageName
+      );
+      if (v?.sale_price) return v.sale_price;
+    }
+    // Try general (no package) variant
     const v = allVariants.find(
-      (v: any) => v.tour_id === tourId && v.zone === zone && v.nationality === nationality && v.pax_type === paxType
+      (v: any) => v.tour_id === tourId && v.zone === zone && v.nationality === nationality && v.pax_type === paxType && !v.package_name
     );
     if (v?.sale_price) return v.sale_price;
     // Fallback to tour base prices
@@ -145,6 +165,7 @@ export default function Cotizaciones() {
             items.map(i => ({
               quote_id: editingId,
               tour_id: i.tour_id || null,
+              tour_date: i.tour_date || null,
               qty: i.qty_adults + i.qty_children,
               qty_adults: i.qty_adults,
               qty_children: i.qty_children,
@@ -152,6 +173,7 @@ export default function Cotizaciones() {
               unit_price_child_mxn: i.unit_price_child_mxn,
               zone: i.zone,
               nationality: i.nationality,
+              package_name: i.package_name || null,
             }))
           );
           if (ie) throw ie;
@@ -171,6 +193,7 @@ export default function Cotizaciones() {
             items.map(i => ({
               quote_id: data.id,
               tour_id: i.tour_id || null,
+              tour_date: i.tour_date || null,
               qty: i.qty_adults + i.qty_children,
               qty_adults: i.qty_adults,
               qty_children: i.qty_children,
@@ -178,6 +201,7 @@ export default function Cotizaciones() {
               unit_price_child_mxn: i.unit_price_child_mxn,
               zone: i.zone,
               nationality: i.nationality,
+              package_name: i.package_name || null,
             }))
           );
           if (ie) throw ie;
@@ -223,12 +247,14 @@ export default function Cotizaciones() {
         setForm({ ...emptyForm });
         setItems([{
           tour_id: tourId,
+          tour_date: "",
           qty_adults: 1,
           qty_children: 0,
           unit_price_mxn: (tour as any).price_mxn ?? 0,
           unit_price_child_mxn: (tour as any).suggested_price_mxn ?? 0,
           zone: "",
           nationality: "",
+          package_name: "",
         }]);
         setEditingId(null);
         setDialogOpen(true);
@@ -238,22 +264,24 @@ export default function Cotizaciones() {
   }, [searchParams, tours]);
 
   const openEdit = async (q: any) => {
-    setForm({ client_id: q.client_id ?? "", client_name: q.client_name, notes: q.notes ?? "", status: q.status, quote_date: "" });
+    setForm({ client_id: q.client_id ?? "", client_name: q.client_name, notes: q.notes ?? "", status: q.status });
     setEditingId(q.id);
-    const { data } = await supabase.from("quote_items").select("tour_id, qty_adults, qty_children, unit_price_mxn, unit_price_child_mxn, zone, nationality").eq("quote_id", q.id);
+    const { data } = await supabase.from("quote_items").select("tour_id, tour_date, qty_adults, qty_children, unit_price_mxn, unit_price_child_mxn, zone, nationality, package_name").eq("quote_id", q.id);
     setItems((data ?? []).map((i: any) => ({
       tour_id: i.tour_id ?? "",
+      tour_date: i.tour_date ?? "",
       qty_adults: i.qty_adults ?? 1,
       qty_children: i.qty_children ?? 0,
       unit_price_mxn: i.unit_price_mxn ?? 0,
       unit_price_child_mxn: i.unit_price_child_mxn ?? 0,
       zone: i.zone ?? "",
       nationality: i.nationality ?? "",
+      package_name: i.package_name ?? "",
     })));
     setDialogOpen(true);
   };
 
-  const addItem = () => setItems(p => [...p, { tour_id: "", qty_adults: 1, qty_children: 0, unit_price_mxn: 0, unit_price_child_mxn: 0, zone: "", nationality: "" }]);
+  const addItem = () => setItems(p => [...p, { tour_id: "", tour_date: "", qty_adults: 1, qty_children: 0, unit_price_mxn: 0, unit_price_child_mxn: 0, zone: "", nationality: "", package_name: "" }]);
   const removeItem = (idx: number) => setItems(p => p.filter((_, i) => i !== idx));
 
   const updateItem = (idx: number, field: string, value: any) => {
@@ -261,14 +289,18 @@ export default function Cotizaciones() {
       if (i !== idx) return item;
       const updated = { ...item, [field]: value };
 
-      // Auto-fill prices when tour+zone+nationality are set
+      // Auto-fill prices when tour+zone+nationality+package change
       const tourId = field === "tour_id" ? value : updated.tour_id;
       const zone = field === "zone" ? value : updated.zone;
       const nat = field === "nationality" ? value : updated.nationality;
+      const pkg = field === "package_name" ? value : updated.package_name;
 
-      if (tourId && zone && nat && (field === "tour_id" || field === "zone" || field === "nationality")) {
-        updated.unit_price_mxn = lookupPrice(tourId, zone, nat, "Adulto");
-        updated.unit_price_child_mxn = lookupPrice(tourId, zone, nat, "Niño");
+      // Reset package when tour changes
+      if (field === "tour_id") updated.package_name = "";
+
+      if (tourId && zone && nat && (field === "tour_id" || field === "zone" || field === "nationality" || field === "package_name")) {
+        updated.unit_price_mxn = lookupPrice(tourId, zone, nat, "Adulto", pkg);
+        updated.unit_price_child_mxn = lookupPrice(tourId, zone, nat, "Niño", pkg);
       }
 
       return updated;
@@ -291,7 +323,7 @@ export default function Cotizaciones() {
           <h1 className="text-2xl font-bold font-display">Cotizaciones</h1>
           <p className="text-sm text-muted-foreground">Propuestas y presupuestos para clientes</p>
         </div>
-        <Button onClick={openCreate}><Plus className="mr-2 h-4 w-4" /> Nueva Cotización</Button>
+        <Button onClick={openCreate}><Plus className="mr-2 h-4 w-4" /><span className="hidden sm:inline">Nueva Cotización</span><span className="sm:hidden">Nueva</span></Button>
       </div>
 
       <Card>
@@ -325,20 +357,36 @@ export default function Cotizaciones() {
                       <Badge className={`${statusStyles[q.status] ?? ""} border-0 text-xs`}>{statusLabels[q.status] ?? q.status}</Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
+                      {/* Desktop */}
+                      <div className="hidden sm:flex justify-end gap-1">
                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(q)}><Pencil className="h-3.5 w-3.5" /></Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7" title="Ver PDF" onClick={() => window.open(`/cotizaciones/${q.id}/pdf`, '_blank')}><FileText className="h-3.5 w-3.5" /></Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7" title="Enviar" onClick={() => setSendQuote(q)}><Send className="h-3.5 w-3.5" /></Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => window.open(`/cotizaciones/${q.id}/pdf`, '_blank')}><FileText className="h-3.5 w-3.5" /></Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setSendQuote(q)}><Send className="h-3.5 w-3.5" /></Button>
                         {(q.status === "draft" || q.status === "sent") && (
-                          <Button variant="ghost" size="icon" className="h-7 w-7 text-green-600" title="Aceptar y crear reserva" onClick={() => setAcceptQuote(q)}>
-                            <CheckCircle className="h-3.5 w-3.5" />
-                          </Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-green-600" onClick={() => setAcceptQuote(q)}><CheckCircle className="h-3.5 w-3.5" /></Button>
                         )}
                         {(q as any).reservation_id && (
-                          <Button variant="ghost" size="icon" className="h-7 w-7" title="Ver reserva" onClick={() => window.location.href = `/reservas?highlight=${(q as any).reservation_id}`}>
-                            <ExternalLink className="h-3.5 w-3.5" />
-                          </Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => window.location.href = `/reservas?highlight=${(q as any).reservation_id}`}><ExternalLink className="h-3.5 w-3.5" /></Button>
                         )}
+                      </div>
+                      {/* Mobile */}
+                      <div className="sm:hidden">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => openEdit(q)}><Pencil className="mr-2 h-4 w-4" />Editar</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => window.open(`/cotizaciones/${q.id}/pdf`, '_blank')}><FileText className="mr-2 h-4 w-4" />Ver PDF</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setSendQuote(q)}><Send className="mr-2 h-4 w-4" />Enviar</DropdownMenuItem>
+                            {(q.status === "draft" || q.status === "sent") && (
+                              <DropdownMenuItem onClick={() => setAcceptQuote(q)}><CheckCircle className="mr-2 h-4 w-4" />Aceptar</DropdownMenuItem>
+                            )}
+                            {(q as any).reservation_id && (
+                              <DropdownMenuItem onClick={() => window.location.href = `/reservas?highlight=${(q as any).reservation_id}`}><ExternalLink className="mr-2 h-4 w-4" />Ver Reserva</DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -351,7 +399,7 @@ export default function Cotizaciones() {
 
       {/* Dialog crear/editar cotización */}
       <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) closeDialog(); }}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[90dvh] overflow-y-auto w-full">
           <DialogHeader>
             <DialogTitle>{editingId ? "Editar Cotización" : "Nueva Cotización"}</DialogTitle>
             <DialogDescription>{editingId ? "Modifica la cotización." : "El folio se genera automáticamente."}</DialogDescription>
@@ -371,29 +419,27 @@ export default function Cotizaciones() {
               </div>
             </div>
 
-            {/* Fecha */}
-            <div className="space-y-1.5">
-              <Label>Fecha de viaje</Label>
-              <Input type="date" value={form.quote_date} onChange={(e) => setForm(p => ({ ...p, quote_date: e.target.value }))} />
-            </div>
-
             {/* Items */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <Label>Líneas de cotización</Label>
+                <Label>Cotización tour</Label>
                 <Button type="button" size="sm" variant="outline" onClick={addItem}><Plus className="mr-1 h-3 w-3" /> Agregar</Button>
               </div>
               {items.map((item, idx) => (
                 <div key={idx} className="border rounded-lg p-3 space-y-2 bg-muted/30">
-                  {/* Row 1: Tour + delete */}
-                  <div className="flex gap-2 items-center">
-                    <div className="flex-1">
+                  {/* Row 1: Tour + Fecha + delete */}
+                  <div className="flex flex-wrap gap-2 items-end">
+                    <div className="flex-1 min-w-0">
                       <Select value={item.tour_id} onValueChange={(v) => updateItem(idx, "tour_id", v)}>
                         <SelectTrigger><SelectValue placeholder="Seleccionar tour" /></SelectTrigger>
                         <SelectContent>
                           {tours.map((t: any) => <SelectItem key={t.id} value={t.id}>{t.title}</SelectItem>)}
                         </SelectContent>
                       </Select>
+                    </div>
+                    <div className="space-y-0.5">
+                      <Label className="text-xs text-muted-foreground">Fecha</Label>
+                      <Input type="date" value={item.tour_date} onChange={(e) => updateItem(idx, "tour_date", e.target.value)} className="h-9 w-36" />
                     </div>
                     <Button type="button" size="icon" variant="ghost" className="text-destructive h-8 w-8" onClick={() => removeItem(idx)}>
                       <Trash2 className="h-3.5 w-3.5" />
@@ -416,8 +462,22 @@ export default function Cotizaciones() {
                     </Select>
                   </div>
 
+                  {/* Row 2b: Paquete (solo si el tour tiene paquetes para esa zona/nacionalidad) */}
+                  {(() => {
+                    const pkgs = getPackages(item.tour_id, item.zone, item.nationality);
+                    if (!pkgs.length) return null;
+                    return (
+                      <Select value={item.package_name} onValueChange={(v) => updateItem(idx, "package_name", v)}>
+                        <SelectTrigger><SelectValue placeholder="Seleccionar paquete" /></SelectTrigger>
+                        <SelectContent>
+                          {pkgs.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    );
+                  })()}
+
                   {/* Row 3: Adultos + Precio adulto | Niños + Precio niño */}
-                  <div className="grid grid-cols-4 gap-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                     <div className="space-y-1">
                       <Label className="text-xs text-muted-foreground">Adultos</Label>
                       <Input type="number" min={0} value={item.qty_adults} onChange={(e) => updateItem(idx, "qty_adults", parseInt(e.target.value) || 0)} />

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -29,6 +29,13 @@ export default function AcceptQuoteDialog({ open, onOpenChange, quote }: Props) 
     },
     enabled: !!quote?.id && open,
   });
+
+  // Pre-rellenar fecha con la del primer tour si existe
+  useEffect(() => {
+    if (items.length > 0 && (items[0] as any).tour_date) {
+      setReservationDate((items[0] as any).tour_date);
+    }
+  }, [items]);
 
   const acceptMutation = useMutation({
     mutationFn: async () => {
@@ -106,7 +113,7 @@ export default function AcceptQuoteDialog({ open, onOpenChange, quote }: Props) 
               <div className="mt-2 space-y-0.5">
                 {items.map((it: any, idx: number) => (
                   <p key={idx} className="text-xs text-muted-foreground">
-                    • {it.tours?.title ?? "Tour"} — {it.qty_adults} ad.{it.qty_children > 0 ? `, ${it.qty_children} niños` : ""}
+                    • {it.tours?.title ?? "Tour"} — {it.qty_adults} ad.{it.qty_children > 0 ? `, ${it.qty_children} niños` : ""}{it.tour_date ? ` — ${it.tour_date}` : ""}
                   </p>
                 ))}
               </div>

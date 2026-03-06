@@ -1,6 +1,9 @@
 import { useState, useRef, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Plus, Search, FileText, Printer, Send, Pencil, DollarSign, CheckCircle } from "lucide-react";
+import { Plus, Search, FileText, Printer, Send, Pencil, DollarSign, CheckCircle, MoreVertical } from "lucide-react";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { computeTourPrice, computeTotal } from "@/lib/tour-pricing";
@@ -280,12 +283,18 @@ export default function Reservas() {
     return !payable || payable.status === "pending";
   };
 
+  const enrichWithPrices = (r: any) => {
+    if (!r.tour_id) return r;
+    const prices = computeTourPrice(r.tour_id, r.zone, r.nationality, allVariants as any, tours as any);
+    return { ...r, unit_price_mxn: prices.adultPrice, unit_price_child_mxn: prices.childPrice };
+  };
+
   const handleVoucherWithCheck = (r: any) => {
     if (isPrepagoBlocked(r)) {
       toast.warning("Proveedor PREPAGO pendiente — debes pagarlo antes del tour para emitir voucher.");
       return;
     }
-    setVoucherReservation(r);
+    setVoucherReservation(enrichWithPrices(r));
   };
 
   const handlePrint = (r: any) => {
@@ -293,7 +302,7 @@ export default function Reservas() {
       toast.warning("Proveedor PREPAGO pendiente — debes pagarlo antes del tour.");
       return;
     }
-    setVoucherReservation(r);
+    setVoucherReservation(enrichWithPrices(r));
     setTimeout(() => {
       const content = document.getElementById("voucher-content");
       if (!content) return;
@@ -340,7 +349,7 @@ export default function Reservas() {
           <h1 className="text-2xl font-bold font-display">Reservas</h1>
           <p className="text-sm text-muted-foreground">Gestión de reservas, cobro y vouchers</p>
         </div>
-        <Button onClick={openCreate}><Plus className="mr-2 h-4 w-4" /> Nueva Reserva</Button>
+        <Button onClick={openCreate}><Plus className="mr-2 h-4 w-4" /><span className="hidden sm:inline">Nueva Reserva</span><span className="sm:hidden">Nueva</span></Button>
       </div>
 
       {/* table card */}
@@ -400,44 +409,46 @@ export default function Reservas() {
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right">
-                          <div className="flex justify-end gap-1">
-                            {/* Confirm & Charge button */}
+                          {/* Desktop: botones individuales */}
+                          <div className="hidden sm:flex justify-end gap-1">
                             {cStatus === "scheduled" && pStatus !== "paid" && (
-                              <Button
-                                variant="default"
-                                size="sm"
-                                className="h-7 text-xs"
-                                onClick={() => setCheckoutReservation(r)}
-                              >
-                                <DollarSign className="mr-1 h-3 w-3" />
-                                Cobrar
+                              <Button variant="default" size="sm" className="h-7 text-xs" onClick={() => setCheckoutReservation(r)}>
+                                <DollarSign className="mr-1 h-3 w-3" />Cobrar
                               </Button>
                             )}
                             {cStatus === "confirmed" && pStatus === "paid" && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-7 text-xs"
-                                onClick={() => handleVoucherWithCheck(r)}
-                              >
-                                <CheckCircle className="mr-1 h-3 w-3" />
-                                Ticket
+                              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => handleVoucherWithCheck(r)}>
+                                <CheckCircle className="mr-1 h-3 w-3" />Ticket
                               </Button>
                             )}
                             {isAdmin && (
-                              <Button variant="ghost" size="icon" className="h-7 w-7" title="Editar" onClick={() => openEdit(r)}>
-                                <Pencil className="h-3.5 w-3.5" />
+                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(r)}><Pencil className="h-3.5 w-3.5" /></Button>
+                            )}
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleVoucherWithCheck(r)}><FileText className="h-3.5 w-3.5" /></Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handlePrint(r)}><Printer className="h-3.5 w-3.5" /></Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleWhatsApp(r)}><Send className="h-3.5 w-3.5" /></Button>
+                          </div>
+                          {/* Mobile: menú desplegable */}
+                          <div className="sm:hidden flex justify-end gap-1">
+                            {cStatus === "scheduled" && pStatus !== "paid" && (
+                              <Button variant="default" size="sm" className="h-8 text-xs px-2" onClick={() => setCheckoutReservation(r)}>
+                                <DollarSign className="h-3.5 w-3.5" />
                               </Button>
                             )}
-                            <Button variant="ghost" size="icon" className="h-7 w-7" title="Voucher PDF" onClick={() => handleVoucherWithCheck(r)}>
-                              <FileText className="h-3.5 w-3.5" />
-                            </Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7" title="Imprimir" onClick={() => handlePrint(r)}>
-                              <Printer className="h-3.5 w-3.5" />
-                            </Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7" title="Enviar WhatsApp" onClick={() => handleWhatsApp(r)}>
-                              <Send className="h-3.5 w-3.5" />
-                            </Button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                {isAdmin && <DropdownMenuItem onClick={() => openEdit(r)}><Pencil className="mr-2 h-4 w-4" />Editar</DropdownMenuItem>}
+                                <DropdownMenuItem onClick={() => handleVoucherWithCheck(r)}><FileText className="mr-2 h-4 w-4" />Ver Voucher</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handlePrint(r)}><Printer className="mr-2 h-4 w-4" />Imprimir</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleWhatsApp(r)}><Send className="mr-2 h-4 w-4" />WhatsApp</DropdownMenuItem>
+                                {cStatus === "confirmed" && pStatus === "paid" && (
+                                  <DropdownMenuItem onClick={() => handleVoucherWithCheck(r)}><CheckCircle className="mr-2 h-4 w-4" />Ticket</DropdownMenuItem>
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -462,7 +473,7 @@ export default function Reservas() {
 
       {/* ── Dialog Crear / Editar Reserva ── */}
       <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) closeDialog(); }}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-lg max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingId ? "Editar Reserva" : "Nueva Reserva"}</DialogTitle>
             <DialogDescription>
@@ -503,7 +514,7 @@ export default function Reservas() {
             </div>
 
             {/* Zona + Nacionalidad */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Zona de pickup</Label>
                 <Select value={form.zone} onValueChange={(v) => setForm((p) => ({ ...p, zone: v }))}>
@@ -537,7 +548,7 @@ export default function Reservas() {
             </div>
 
             {/* Fecha + Hora */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Fecha *</Label>
                 <Input type="date" value={form.reservation_date} onChange={(e) => setForm((p) => ({ ...p, reservation_date: e.target.value }))} />
@@ -549,7 +560,7 @@ export default function Reservas() {
             </div>
 
             {/* Adultos + Niños + Total */}
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-3 gap-3 sm:grid-cols-3">
               <div className="space-y-1.5">
                 <Label>Adultos</Label>
                 <Input type="number" min={0} value={form.pax_adults} onChange={(e) => setForm((p) => ({ ...p, pax_adults: parseInt(e.target.value) || 0 }))} />

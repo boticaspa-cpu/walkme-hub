@@ -122,7 +122,7 @@ export default function Leads() {
           <h1 className="text-2xl font-bold font-display">Leads</h1>
           <p className="text-sm text-muted-foreground">Gestión de prospectos y seguimiento</p>
         </div>
-        <Button onClick={openCreate}><Plus className="mr-2 h-4 w-4" /> Nuevo Lead</Button>
+        <Button onClick={openCreate}><Plus className="mr-2 h-4 w-4" /><span className="hidden sm:inline">Nuevo Lead</span><span className="sm:hidden">Nuevo</span></Button>
       </div>
 
       <Card>
@@ -187,26 +187,26 @@ export default function Leads() {
       </Card>
 
       <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) closeDialog(); }}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-lg max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingId ? "Editar Lead" : "Nuevo Lead"}</DialogTitle>
             <DialogDescription>{editingId ? "Modifica los datos del lead." : "Completa los datos del nuevo lead."}</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-2">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5"><Label>Nombre *</Label><Input value={form.name} onChange={(e) => setForm(p => ({ ...p, name: e.target.value }))} /></div>
               <div className="space-y-1.5"><Label>Teléfono</Label><Input value={form.phone} onChange={(e) => setForm(p => ({ ...p, phone: e.target.value }))} /></div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5"><Label>Origen</Label><Input value={form.origin} onChange={(e) => setForm(p => ({ ...p, origin: e.target.value }))} placeholder="Instagram, Web, Walk-in…" /></div>
               <div className="space-y-1.5"><Label>Destino</Label><Input value={form.destination} onChange={(e) => setForm(p => ({ ...p, destination: e.target.value }))} /></div>
             </div>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               <div className="space-y-1.5"><Label>Fecha viaje</Label><Input type="date" value={form.travel_date} onChange={(e) => setForm(p => ({ ...p, travel_date: e.target.value }))} /></div>
               <div className="space-y-1.5"><Label>Pax</Label><Input type="number" min={1} value={form.pax} onChange={(e) => setForm(p => ({ ...p, pax: parseInt(e.target.value) || 1 }))} /></div>
-              <div className="space-y-1.5"><Label>Presupuesto</Label><Input value={form.budget} onChange={(e) => setForm(p => ({ ...p, budget: e.target.value }))} placeholder="$5,000 MXN" /></div>
+              <div className="space-y-1.5 col-span-2 sm:col-span-1"><Label>Presupuesto</Label><Input value={form.budget} onChange={(e) => setForm(p => ({ ...p, budget: e.target.value }))} placeholder="$5,000 MXN" /></div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Estado</Label>
                 <Select value={form.status} onValueChange={(v) => setForm(p => ({ ...p, status: v }))}>

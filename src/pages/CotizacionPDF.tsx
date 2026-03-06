@@ -95,6 +95,7 @@ export default function CotizacionPDF() {
           <thead>
             <tr className="text-white text-xs" style={{ backgroundColor: "#2d5a27" }}>
               <th className="py-2 px-3 text-left">Tour</th>
+              <th className="py-2 px-3 text-center">Fecha</th>
               <th className="py-2 px-3 text-center">Zona</th>
               <th className="py-2 px-3 text-center">Nac.</th>
               <th className="py-2 px-3 text-center">Adultos</th>
@@ -110,6 +111,7 @@ export default function CotizacionPDF() {
               return (
                 <tr key={idx} className="border-t border-gray-200">
                   <td className="py-2 px-3 font-medium">{item.tours?.title ?? "—"}</td>
+                  <td className="py-2 px-3 text-center text-xs">{item.tour_date ? new Date(item.tour_date + "T12:00:00").toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" }) : "—"}</td>
                   <td className="py-2 px-3 text-center text-xs">{item.zone || "—"}</td>
                   <td className="py-2 px-3 text-center text-xs">{item.nationality || "—"}</td>
                   <td className="py-2 px-3 text-center">{item.qty_adults}</td>

@@ -87,7 +87,7 @@ export default function Clientes() {
           <h1 className="text-2xl font-bold font-display">Clientes</h1>
           <p className="text-sm text-muted-foreground">Directorio y historial de clientes</p>
         </div>
-        <Button onClick={openCreate}><Plus className="mr-2 h-4 w-4" /> Nuevo Cliente</Button>
+        <Button onClick={openCreate}><Plus className="mr-2 h-4 w-4" /><span className="hidden sm:inline">Nuevo Cliente</span><span className="sm:hidden">Nuevo</span></Button>
       </div>
 
       <Card>

@@ -124,7 +124,7 @@ export default function Destinos() {
         </div>
         {isAdmin && (
           <Button onClick={openCreate}>
-            <Plus className="mr-2 h-4 w-4" /> Nuevo Destino
+            <Plus className="mr-2 h-4 w-4" /><span className="hidden sm:inline">Nuevo Destino</span><span className="sm:hidden">Nuevo</span>
           </Button>
         )}
       </div>

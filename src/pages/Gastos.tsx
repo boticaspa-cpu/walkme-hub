@@ -435,9 +435,9 @@ function MesTab({ qc, userId }: { qc: ReturnType<typeof useQueryClient>; userId?
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <Select value={month} onValueChange={setMonth}>
-          <SelectTrigger className="w-52"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="w-full sm:w-52"><SelectValue /></SelectTrigger>
           <SelectContent>{months.map((m) => <SelectItem key={m} value={m}>{monthLabel(m)}</SelectItem>)}</SelectContent>
         </Select>
         <div className="flex gap-4 text-sm">
@@ -454,11 +454,11 @@ function MesTab({ qc, userId }: { qc: ReturnType<typeof useQueryClient>; userId?
             <TableHeader>
               <TableRow>
                 <TableHead>Concepto</TableHead>
-                <TableHead>Categoría</TableHead>
-                <TableHead>Tipo</TableHead>
-                <TableHead>Vence</TableHead>
+                <TableHead className="hidden sm:table-cell">Categoría</TableHead>
+                <TableHead className="hidden md:table-cell">Tipo</TableHead>
+                <TableHead className="hidden sm:table-cell">Vence</TableHead>
                 <TableHead className="text-right">Estimado</TableHead>
-                <TableHead className="text-right">Pagado</TableHead>
+                <TableHead className="hidden md:table-cell text-right">Pagado</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
@@ -470,12 +470,15 @@ function MesTab({ qc, userId }: { qc: ReturnType<typeof useQueryClient>; userId?
                 const concept = item.expense_concepts;
                 return (
                   <TableRow key={item.id}>
-                    <TableCell className="font-medium text-sm">{concept?.name ?? "—"}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground">{concept?.category ?? "—"}</TableCell>
-                    <TableCell><Badge variant="outline" className="text-[10px]">{concept?.expense_type === "fixed" ? "Fijo" : "Var"}</Badge></TableCell>
-                    <TableCell className="text-xs">{item.due_date}</TableCell>
+                    <TableCell className="font-medium text-sm">
+                      {concept?.name ?? "—"}
+                      <p className="sm:hidden text-xs text-muted-foreground">{item.due_date}</p>
+                    </TableCell>
+                    <TableCell className="hidden sm:table-cell text-xs text-muted-foreground">{concept?.category ?? "—"}</TableCell>
+                    <TableCell className="hidden md:table-cell"><Badge variant="outline" className="text-[10px]">{concept?.expense_type === "fixed" ? "Fijo" : "Var"}</Badge></TableCell>
+                    <TableCell className="hidden sm:table-cell text-xs">{item.due_date}</TableCell>
                     <TableCell className="text-right text-sm">{fmtMXN(item.estimated_amount_mxn)}</TableCell>
-                    <TableCell className="text-right text-sm">{item.status === "paid" ? fmtMXN(item.paid_amount_mxn) : "—"}</TableCell>
+                    <TableCell className="hidden md:table-cell text-right text-sm">{item.status === "paid" ? fmtMXN(item.paid_amount_mxn) : "—"}</TableCell>
                     <TableCell>
                       <Badge variant={item.status === "paid" ? "default" : "secondary"} className="text-xs">
                         {item.status === "paid" ? "Pagado" : "Pendiente"}
@@ -485,7 +488,7 @@ function MesTab({ qc, userId }: { qc: ReturnType<typeof useQueryClient>; userId?
                       {item.status === "planned" && (
                         <>
                           <Button variant="ghost" size="sm" onClick={() => openEditEst(item)}><Pencil className="h-3.5 w-3.5" /></Button>
-                          <Button variant="default" size="sm" onClick={() => openPay(item)}><CheckCircle className="h-3.5 w-3.5 mr-1" />Pagar</Button>
+                          <Button variant="default" size="sm" onClick={() => openPay(item)}><CheckCircle className="h-3.5 w-3.5 mr-1" /><span className="hidden sm:inline">Pagar</span></Button>
                         </>
                       )}
                       {item.status === "paid" && item.proof_image_url && (

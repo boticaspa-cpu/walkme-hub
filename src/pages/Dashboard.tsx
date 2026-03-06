@@ -91,7 +91,7 @@ export default function Dashboard() {
         <KpiCard title="Ventas Hoy" value={salesToday.length} subtitle="transacciones" icon={TrendingUp} />
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Link to="/pos"><Card className="cursor-pointer border-dashed hover:border-primary hover:bg-primary/5 transition-colors"><CardContent className="flex items-center gap-3 p-4"><ShoppingCart className="h-5 w-5 text-primary" /><span className="font-medium text-sm">Nueva Venta</span></CardContent></Card></Link>
         <Link to="/reservas"><Card className="cursor-pointer border-dashed hover:border-primary hover:bg-primary/5 transition-colors"><CardContent className="flex items-center gap-3 p-4"><CalendarCheck className="h-5 w-5 text-primary" /><span className="font-medium text-sm">Nueva Reserva</span></CardContent></Card></Link>
         <Link to="/tours"><Card className="cursor-pointer border-dashed hover:border-primary hover:bg-primary/5 transition-colors"><CardContent className="flex items-center gap-3 p-4"><Map className="h-5 w-5 text-primary" /><span className="font-medium text-sm">Ver Catálogo</span></CardContent></Card></Link>
