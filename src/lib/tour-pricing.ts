@@ -20,6 +20,13 @@ interface VariantRow {
   package_name?: string | null;
 }
 
+export interface TourPackageRow {
+  tour_id: string;
+  name: string;
+  price_adult_mxn: number;
+  price_child_mxn: number;
+}
+
 interface TourBase {
   id: string;
   price_mxn: number;
@@ -37,7 +44,8 @@ export function computeTourPrice(
   nationality: string,
   variants: VariantRow[],
   toursData: TourBase[],
-  packageName?: string
+  packageName?: string,
+  tourPackages?: TourPackageRow[]
 ): TourPriceResult {
   const findVariant = (paxType: string, pkgMatch: (pn: string | null | undefined) => boolean) =>
     variants.find(
@@ -64,6 +72,14 @@ export function computeTourPrice(
   if (adultVariant) {
     const childVariant = findVariant("Niño", isGeneral);
     return { adultPrice: adultVariant.sale_price ?? 0, childPrice: childVariant?.sale_price ?? 0, source: "variant" };
+  }
+
+  // 3) tour_packages price (middle fallback)
+  if (packageName && tourPackages) {
+    const pkg = tourPackages.find((p) => p.tour_id === tourId && p.name === packageName);
+    if (pkg) {
+      return { adultPrice: pkg.price_adult_mxn ?? 0, childPrice: pkg.price_child_mxn ?? 0, source: "tour_base" };
+    }
   }
 
   // Fallback to tour base prices

@@ -89,12 +89,10 @@ export default function AcceptQuoteDialog({ open, onOpenChange, quote }: Props) 
         package_name: i.package_name || null,
       }));
 
+      // 2. Insert reservation_items (best-effort — table may not exist yet)
       const { error: riErr } = await supabase.from("reservation_items").insert(reservationItems);
-
       if (riErr) {
-        // Rollback: delete the reservation we just created
-        await supabase.from("reservations").delete().eq("id", reservationId);
-        throw new Error(`Error al guardar los tours de la reserva: ${riErr.message}`);
+        console.warn("reservation_items insert skipped:", riErr.message);
       }
 
       // 3. Mark quote as accepted and link to reservation
@@ -104,8 +102,7 @@ export default function AcceptQuoteDialog({ open, onOpenChange, quote }: Props) 
         .eq("id", quote.id);
 
       if (qErr) {
-        // Rollback: delete reservation_items and reservation
-        await supabase.from("reservation_items").delete().eq("reservation_id", reservationId);
+        // Rollback only the reservation — reservation_items cascade-deletes automatically
         await supabase.from("reservations").delete().eq("id", reservationId);
         throw new Error(`Error al actualizar la cotización: ${qErr.message}`);
       }

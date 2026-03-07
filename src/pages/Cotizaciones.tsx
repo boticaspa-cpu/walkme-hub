@@ -34,7 +34,7 @@ const statusStyles: Record<string, string> = {
   expired: "bg-warning/10 text-warning",
 };
 const statusLabels: Record<string, string> = {
-  draft: "Borrador", sent: "Enviada", accepted: "Aceptada", rejected: "Rechazada", expired: "Expirada",
+  draft: "Borrador", sent: "Enviada", accepted: "Aceptada", rejected: "Cancelada", expired: "Expirada",
 };
 
 const ZONES = ["Cancún", "Playa del Carmen", "Riviera Maya", "Tulum"];
@@ -55,7 +55,7 @@ interface QuoteItem {
 const emptyForm = { client_id: "", client_name: "", notes: "", status: "draft" };
 
 export default function Cotizaciones() {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
   const qc = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -74,15 +74,15 @@ export default function Cotizaciones() {
   const [clientForm, setClientForm] = useState({ name: "", phone: "", email: "" });
 
   const { data: quotes = [], isLoading } = useQuery({
-    queryKey: ["quotes"],
+    queryKey: ["quotes", role, user?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("quotes")
-        .select("*, clients(name)")
-        .order("created_at", { ascending: false });
+      let q = supabase.from("quotes").select("*, clients(name)").order("created_at", { ascending: false });
+      if (role === "seller") q = q.eq("created_by", user!.id);
+      const { data, error } = await q;
       if (error) throw error;
       return data;
     },
+    enabled: !!user,
   });
 
   const { data: clients = [] } = useQuery({
@@ -116,29 +116,46 @@ export default function Cotizaciones() {
     },
   });
 
-  // Get unique package names for a tour+zone+nationality combo
-  const getPackages = (tourId: string, zone: string, nationality: string): string[] => {
-    const pkgs = allVariants
-      .filter((v: any) => v.tour_id === tourId && v.zone === zone && v.nationality === nationality && v.package_name)
-      .map((v: any) => v.package_name as string);
-    return [...new Set(pkgs)];
-  };
+  // Load tour_packages for package dropdown (keyed by tour_id)
+  const { data: allTourPackages = [] } = useQuery({
+    queryKey: ["tour-packages-all"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("tour_packages")
+        .select("tour_id, name, price_adult_mxn, price_child_mxn")
+        .eq("active", true)
+        .order("sort_order");
+      if (error) throw error;
+      return data;
+    },
+  });
 
-  // Auto-fill prices when tour+zone+nationality+package change — with fallback to tour base price
+  // Packages for a tour (from tour_packages, independent of zone/nationality)
+  const getPackages = (tourId: string) =>
+    allTourPackages.filter((p: any) => p.tour_id === tourId);
+
+  // Price lookup: variant matrix → tour_packages → tour base
   const lookupPrice = (tourId: string, zone: string, nationality: string, paxType: string, packageName?: string): number => {
-    // Try exact package match first
-    if (packageName) {
+    // 1. Exact variant match (needs zone + nationality)
+    if (packageName && zone && nationality) {
       const v = allVariants.find(
         (v: any) => v.tour_id === tourId && v.zone === zone && v.nationality === nationality && v.pax_type === paxType && v.package_name === packageName
       );
       if (v?.sale_price) return v.sale_price;
     }
-    // Try general (no package) variant
-    const v = allVariants.find(
-      (v: any) => v.tour_id === tourId && v.zone === zone && v.nationality === nationality && v.pax_type === paxType && !v.package_name
-    );
-    if (v?.sale_price) return v.sale_price;
-    // Fallback to tour base prices
+    // 2. General variant (no package, needs zone + nationality)
+    if (zone && nationality) {
+      const v = allVariants.find(
+        (v: any) => v.tour_id === tourId && v.zone === zone && v.nationality === nationality && v.pax_type === paxType && !v.package_name
+      );
+      if (v?.sale_price) return v.sale_price;
+    }
+    // 3. tour_packages price (available as soon as package is selected)
+    if (packageName) {
+      const pkg = allTourPackages.find((p: any) => p.tour_id === tourId && p.name === packageName);
+      if (pkg) return paxType === "Niño" ? (pkg as any).price_child_mxn ?? 0 : (pkg as any).price_adult_mxn ?? 0;
+    }
+    // 4. Tour base price
     const tour = tours.find((t: any) => t.id === tourId);
     if (!tour) return 0;
     return paxType === "Niño" ? (tour as any).suggested_price_mxn ?? 0 : (tour as any).price_mxn ?? 0;
@@ -298,9 +315,11 @@ export default function Cotizaciones() {
       // Reset package when tour changes
       if (field === "tour_id") updated.package_name = "";
 
-      if (tourId && zone && nat && (field === "tour_id" || field === "zone" || field === "nationality" || field === "package_name")) {
-        updated.unit_price_mxn = lookupPrice(tourId, zone, nat, "Adulto", pkg);
-        updated.unit_price_child_mxn = lookupPrice(tourId, zone, nat, "Niño", pkg);
+      const priceFields = ["tour_id", "zone", "nationality", "package_name"];
+      if (tourId && priceFields.includes(field)) {
+        // lookupPrice handles all fallbacks: variant → package → tour base
+        updated.unit_price_mxn = lookupPrice(tourId, zone, nat, "Adulto", pkg || undefined);
+        updated.unit_price_child_mxn = lookupPrice(tourId, zone, nat, "Niño", pkg || undefined);
       }
 
       return updated;
@@ -446,7 +465,21 @@ export default function Cotizaciones() {
                     </Button>
                   </div>
 
-                  {/* Row 2: Zona + Nacionalidad */}
+                  {/* Row 2: Paquete (aparece en cuanto hay tour, independiente de zona/nat) */}
+                  {(() => {
+                    const pkgs = getPackages(item.tour_id);
+                    if (!pkgs.length) return null;
+                    return (
+                      <Select value={item.package_name} onValueChange={(v) => updateItem(idx, "package_name", v)}>
+                        <SelectTrigger><SelectValue placeholder="Seleccionar paquete" /></SelectTrigger>
+                        <SelectContent>
+                          {pkgs.map((p: any) => <SelectItem key={p.name} value={p.name}>{p.name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    );
+                  })()}
+
+                  {/* Row 3: Zona + Nacionalidad */}
                   <div className="grid grid-cols-2 gap-2">
                     <Select value={item.zone} onValueChange={(v) => updateItem(idx, "zone", v)}>
                       <SelectTrigger><SelectValue placeholder="Zona pickup" /></SelectTrigger>
@@ -461,20 +494,6 @@ export default function Cotizaciones() {
                       </SelectContent>
                     </Select>
                   </div>
-
-                  {/* Row 2b: Paquete (solo si el tour tiene paquetes para esa zona/nacionalidad) */}
-                  {(() => {
-                    const pkgs = getPackages(item.tour_id, item.zone, item.nationality);
-                    if (!pkgs.length) return null;
-                    return (
-                      <Select value={item.package_name} onValueChange={(v) => updateItem(idx, "package_name", v)}>
-                        <SelectTrigger><SelectValue placeholder="Seleccionar paquete" /></SelectTrigger>
-                        <SelectContent>
-                          {pkgs.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    );
-                  })()}
 
                   {/* Row 3: Adultos + Precio adulto | Niños + Precio niño */}
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -511,10 +530,23 @@ export default function Cotizaciones() {
             {editingId && (
               <div className="space-y-1.5">
                 <Label>Estado</Label>
-                <Select value={form.status} onValueChange={(v) => setForm(p => ({ ...p, status: v }))}>
+                <Select
+                  value={form.status}
+                  onValueChange={(v) => {
+                    if (v === "accepted") {
+                      const q = quotes.find((q: any) => q.id === editingId);
+                      if (q) { closeDialog(); setAcceptQuote(q); }
+                      return;
+                    }
+                    setForm(p => ({ ...p, status: v }));
+                  }}
+                >
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {Object.entries(statusLabels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+                    {Object.entries(statusLabels)
+                      .filter(([k]) => k !== "accepted")
+                      .map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+                    <SelectItem value="accepted">Pasar a Reserva</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

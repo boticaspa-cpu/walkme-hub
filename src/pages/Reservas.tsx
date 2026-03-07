@@ -6,7 +6,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { computeTourPrice, computeTotal } from "@/lib/tour-pricing";
+import { computeTourPrice, computeTotal, TourPackageRow } from "@/lib/tour-pricing";
 import VoucherPrintView from "@/components/reservations/VoucherPrintView";
 import ReservationCheckout from "@/components/reservations/ReservationCheckout";
 import { buildWhatsAppMessage, openWhatsApp } from "@/components/reservations/whatsapp-message";
@@ -86,6 +86,8 @@ interface ResItem {
   pax_adults: number;
   pax_children: number;
   total_mxn: number;
+  modality: string;
+  package_name: string;
 }
 
 const emptyResItem = (): ResItem => ({
@@ -96,11 +98,12 @@ const emptyResItem = (): ResItem => ({
   pax_adults: 1,
   pax_children: 0,
   total_mxn: 0,
+  modality: "shared",
+  package_name: "",
 });
 
 const emptyShared = {
   client_id: "",
-  modality: "shared",
   zone: "",
   nationality: "",
   notes: "",
@@ -191,6 +194,19 @@ export default function Reservas() {
     },
   });
 
+  const { data: allTourPackages = [] } = useQuery<TourPackageRow[]>({
+    queryKey: ["tour-packages-all"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("tour_packages")
+        .select("tour_id, name, price_adult_mxn, price_child_mxn")
+        .eq("active", true)
+        .order("sort_order");
+      if (error) throw error;
+      return data as TourPackageRow[];
+    },
+  });
+
   const { data: clients = [] } = useQuery({
     queryKey: ["clients-list"],
     queryFn: async () => {
@@ -263,7 +279,7 @@ export default function Reservas() {
         const inserts = items.map((item) => ({
           tour_id: item.tour_id || null,
           client_id: shared.client_id || null,
-          modality: shared.modality,
+          modality: item.modality,
           reservation_date: item.reservation_date,
           reservation_time: item.reservation_time,
           pax: item.pax_adults + item.pax_children,
@@ -333,8 +349,14 @@ export default function Reservas() {
       prev.map((item) => {
         if (item.id !== id) return item;
         const updated = { ...item, [field]: value };
-        if (["tour_id", "pax_adults", "pax_children"].includes(field as string) && updated.tour_id && shared.zone && shared.nationality) {
-          const result = computeTourPrice(updated.tour_id, shared.zone, shared.nationality, allVariants as any, tours as any);
+        if (field === "tour_id") updated.package_name = "";
+        const recalcFields = ["tour_id", "pax_adults", "pax_children", "package_name"];
+        if (recalcFields.includes(field as string) && updated.tour_id) {
+          const result = computeTourPrice(
+            updated.tour_id, shared.zone, shared.nationality,
+            allVariants as any, tours as any,
+            updated.package_name || undefined, allTourPackages
+          );
           updated.total_mxn = computeTotal(result.adultPrice, result.childPrice, updated.pax_adults, updated.pax_children);
         }
         return updated;
@@ -350,8 +372,12 @@ export default function Reservas() {
         const newNat = field === "nationality" ? value : prev.nationality;
         setItems((prevItems) =>
           prevItems.map((item) => {
-            if (!item.tour_id || !newZone || !newNat) return item;
-            const result = computeTourPrice(item.tour_id, newZone, newNat, allVariants as any, tours as any);
+            if (!item.tour_id) return item;
+            const result = computeTourPrice(
+              item.tour_id, newZone, newNat,
+              allVariants as any, tours as any,
+              item.package_name || undefined, allTourPackages
+            );
             return { ...item, total_mxn: computeTotal(result.adultPrice, result.childPrice, item.pax_adults, item.pax_children) };
           })
         );
@@ -704,7 +730,7 @@ export default function Reservas() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label>Zona de pickup</Label>
                     <Select value={shared.zone} onValueChange={(v) => updateShared("zone", v)}>
@@ -717,16 +743,6 @@ export default function Reservas() {
                     <Select value={shared.nationality} onValueChange={(v) => updateShared("nationality", v)}>
                       <SelectTrigger><SelectValue placeholder="Nacionalidad" /></SelectTrigger>
                       <SelectContent>{NATIONALITIES.map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}</SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>Modalidad</Label>
-                    <Select value={shared.modality} onValueChange={(v) => setShared((p) => ({ ...p, modality: v }))}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="shared">Compartido</SelectItem>
-                        <SelectItem value="private">Privado</SelectItem>
-                      </SelectContent>
                     </Select>
                   </div>
                 </div>
@@ -766,6 +782,32 @@ export default function Reservas() {
                         {tours.map((t) => <SelectItem key={t.id} value={t.id}>{t.title}</SelectItem>)}
                       </SelectContent>
                     </Select>
+
+                    {/* Paquete (si el tour tiene paquetes) */}
+                    {(() => {
+                      const pkgs = allTourPackages.filter((p) => p.tour_id === item.tour_id);
+                      if (!pkgs.length) return null;
+                      return (
+                        <Select value={item.package_name} onValueChange={(v) => updateItem(item.id, "package_name", v)}>
+                          <SelectTrigger><SelectValue placeholder="Seleccionar paquete" /></SelectTrigger>
+                          <SelectContent>
+                            {pkgs.map((p) => <SelectItem key={p.name} value={p.name}>{p.name}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      );
+                    })()}
+
+                    {/* Modalidad */}
+                    <div className="space-y-1">
+                      <Label className="text-xs">Modalidad</Label>
+                      <Select value={item.modality} onValueChange={(v) => updateItem(item.id, "modality", v)}>
+                        <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="shared">Compartido</SelectItem>
+                          <SelectItem value="private">Privado</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
 
                     {/* Fecha + Hora */}
                     <div className="grid grid-cols-2 gap-2">
