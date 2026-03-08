@@ -126,7 +126,17 @@ export default function CotizacionPDF() {
         </table>
 
         {/* Total */}
-        <div className="flex justify-end mb-6">
+        <div className="flex flex-col items-end mb-6 space-y-1">
+          {(quote as any).discount_mxn > 0 && (
+            <>
+              <div className="text-sm text-gray-500">
+                Subtotal: {fmt(items.reduce((s: number, i: any) => s + i.qty_adults * i.unit_price_mxn + i.qty_children * i.unit_price_child_mxn, 0))}
+              </div>
+              <div className="text-sm text-green-700">
+                Descuento: -{fmt((quote as any).discount_mxn)}
+              </div>
+            </>
+          )}
           <div className="border-t-2 border-b-2 py-2 px-6 inline-flex items-center gap-4" style={{ borderColor: "#2d5a27" }}>
             <span className="text-sm font-bold">TOTAL</span>
             <span className="text-xl font-bold" style={{ color: "#2d5a27" }}>

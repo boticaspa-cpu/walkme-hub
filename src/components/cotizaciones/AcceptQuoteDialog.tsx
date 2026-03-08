@@ -42,10 +42,12 @@ export default function AcceptQuoteDialog({ open, onOpenChange, quote }: Props) 
       if (!reservationDate) throw new Error("Selecciona una fecha de viaje");
       if (!items.length) throw new Error("La cotización no tiene items");
 
-      const total = items.reduce(
+      const subtotal = items.reduce(
         (s: number, i: any) => s + i.qty_adults * i.unit_price_mxn + i.qty_children * i.unit_price_child_mxn,
         0
       );
+      const discount = (quote as any).discount_mxn ?? 0;
+      const total = Math.max(0, subtotal - discount);
       const totalPax = items.reduce((s: number, i: any) => s + i.qty_adults + i.qty_children, 0);
       const firstItem = items[0] as any;
 
@@ -62,11 +64,12 @@ export default function AcceptQuoteDialog({ open, onOpenChange, quote }: Props) 
           zone: firstItem.zone || "",
           nationality: firstItem.nationality || "",
           total_mxn: total,
+          discount_mxn: discount,
           status: "confirmed",
           payment_status: "unpaid",
           notes: quote.notes || null,
           created_by: user?.id,
-        })
+        } as any)
         .select("id")
         .single();
 

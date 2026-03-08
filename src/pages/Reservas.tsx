@@ -857,10 +857,18 @@ export default function Reservas() {
                   </div>
                 ))}
 
-                {/* Total general si hay más de 1 tour */}
-                {items.length > 1 && (
-                  <div className="flex justify-end text-sm font-semibold text-primary pt-1">
-                    Total: {fmt(items.reduce((a, i) => a + i.total_mxn, 0))}
+                {/* Total general */}
+                {items.length > 0 && (
+                  <div className="space-y-1 pt-1 text-right">
+                    {shared.discount_mxn > 0 && (
+                      <p className="text-xs text-muted-foreground">Subtotal: {fmt(items.reduce((a, i) => a + i.total_mxn, 0))}</p>
+                    )}
+                    {shared.discount_mxn > 0 && (
+                      <p className="text-xs text-muted-foreground">Descuento: -{fmt(shared.discount_mxn)}</p>
+                    )}
+                    <p className="text-sm font-semibold text-primary">
+                      Total: {fmt(Math.max(0, items.reduce((a, i) => a + i.total_mxn, 0) - (shared.discount_mxn || 0)))}
+                    </p>
                   </div>
                 )}
               </div>
