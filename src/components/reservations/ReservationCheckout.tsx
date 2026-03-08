@@ -254,7 +254,7 @@ export default function ReservationCheckout({ reservation, open, onOpenChange, o
             totalNetCost = (adultCost * (reservation.pax_adults || 1)) + (childCost * (reservation.pax_children || 0));
             totalTaxFee = (adultTax * (reservation.pax_adults || 1)) + (childTax * (reservation.pax_children || 0));
           }
-          const profit = Math.max(0, baseTotalMxn - totalNetCost - totalTaxFee);
+          const profit = Math.max(0, baseTotalMxn - totalNetCost - totalTaxFee - cardFeeAmount);
           const commissionAmount = profit * rate;
           if (commissionAmount > 0) {
             await (supabase as any).from("commissions").insert({
