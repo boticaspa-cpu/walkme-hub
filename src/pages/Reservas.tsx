@@ -623,6 +623,9 @@ export default function Reservas() {
                             {isAdmin && (
                               <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(r)}><Pencil className="h-3.5 w-3.5" /></Button>
                             )}
+                            {isAdmin && (
+                              <Button variant="ghost" size="icon" className="h-7 w-7" title="Folio operador" onClick={() => { setFolioDialogRes(r); setFolioInput((r as any).operator_folio ?? ""); setCancFolioInput((r as any).cancellation_folio ?? ""); }}><Tag className="h-3.5 w-3.5" /></Button>
+                            )}
                             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleVoucherWithCheck(r)}><FileText className="h-3.5 w-3.5" /></Button>
                             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handlePrint(r)}><Printer className="h-3.5 w-3.5" /></Button>
                             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleSendConfirmation(r)}><Send className="h-3.5 w-3.5" /></Button>
