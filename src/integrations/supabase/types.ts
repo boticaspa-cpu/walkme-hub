@@ -882,6 +882,7 @@ export type Database = {
       }
       reservations: {
         Row: {
+          cancellation_folio: string | null
           client_id: string | null
           confirmation_status: string
           confirmed_at: string | null
@@ -893,6 +894,7 @@ export type Database = {
           modality: string
           nationality: string
           notes: string | null
+          operator_folio: string | null
           pax: number
           pax_adults: number
           pax_children: number
@@ -907,6 +909,7 @@ export type Database = {
           zone: string
         }
         Insert: {
+          cancellation_folio?: string | null
           client_id?: string | null
           confirmation_status?: string
           confirmed_at?: string | null
@@ -918,6 +921,7 @@ export type Database = {
           modality?: string
           nationality?: string
           notes?: string | null
+          operator_folio?: string | null
           pax?: number
           pax_adults?: number
           pax_children?: number
@@ -932,6 +936,7 @@ export type Database = {
           zone?: string
         }
         Update: {
+          cancellation_folio?: string | null
           client_id?: string | null
           confirmation_status?: string
           confirmed_at?: string | null
@@ -943,6 +948,7 @@ export type Database = {
           modality?: string
           nationality?: string
           notes?: string | null
+          operator_folio?: string | null
           pax?: number
           pax_adults?: number
           pax_children?: number

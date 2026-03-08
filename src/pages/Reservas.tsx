@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Plus, Search, FileText, Printer, Send, Pencil, DollarSign, CheckCircle, MoreVertical, Trash2 } from "lucide-react";
+import { Plus, Search, FileText, Printer, Send, Pencil, DollarSign, CheckCircle, MoreVertical, Trash2, Tag } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -133,6 +133,10 @@ export default function Reservas() {
   const [highlightId, setHighlightId] = useState<string | null>(null);
   const [taxIncluded, setTaxIncluded] = useState(true);
   const [sendConfirmReservation, setSendConfirmReservation] = useState<any>(null);
+  // operator folio mini-dialog
+  const [folioDialogRes, setFolioDialogRes] = useState<any>(null);
+  const [folioInput, setFolioInput] = useState("");
+  const [cancFolioInput, setCancFolioInput] = useState("");
 
   // mini-dialog nuevo cliente
   const [clientDialogOpen, setClientDialogOpen] = useState(false);
@@ -339,6 +343,34 @@ export default function Reservas() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const saveFolioMutation = useMutation({
+    mutationFn: async () => {
+      if (!folioDialogRes) return;
+      const update: any = {};
+      if (folioInput.trim()) {
+        update.operator_folio = folioInput.trim();
+        update.confirmation_status = "confirmed";
+        update.confirmed_at = new Date().toISOString();
+      }
+      if (cancFolioInput.trim()) {
+        update.cancellation_folio = cancFolioInput.trim();
+        update.status = "cancelled";
+        update.confirmation_status = "cancelled";
+      }
+      if (Object.keys(update).length === 0) return;
+      const { error } = await supabase.from("reservations").update(update).eq("id", folioDialogRes.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["reservations"] });
+      toast.success("Folio guardado");
+      setFolioDialogRes(null);
+      setFolioInput("");
+      setCancFolioInput("");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   /* ── helpers ── */
   const closeDialog = () => {
     setDialogOpen(false);
@@ -538,6 +570,7 @@ export default function Reservas() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Folio</TableHead>
+                  <TableHead className="hidden lg:table-cell">Folio Op.</TableHead>
                   <TableHead>Tour</TableHead>
                   <TableHead className="hidden sm:table-cell">Cliente</TableHead>
                   <TableHead className="hidden md:table-cell">Fecha</TableHead>
@@ -549,7 +582,7 @@ export default function Reservas() {
               <TableBody>
                 {filtered.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                       No se encontraron reservas
                     </TableCell>
                   </TableRow>
@@ -560,6 +593,7 @@ export default function Reservas() {
                     return (
                       <TableRow key={r.id} id={`res-row-${r.id}`} className={highlightId === r.id ? "bg-green-50 transition-colors" : ""}>
                         <TableCell className="font-mono text-xs font-bold">{r.folio ?? "—"}</TableCell>
+                        <TableCell className="hidden lg:table-cell text-xs font-mono text-muted-foreground">{(r as any).operator_folio ?? "—"}</TableCell>
                         <TableCell className="text-sm font-medium">{r.tours?.title ?? "—"}</TableCell>
                         <TableCell className="hidden sm:table-cell text-sm">{r.clients?.name ?? "—"}</TableCell>
                         <TableCell className="hidden md:table-cell text-sm">{r.reservation_date} {r.reservation_time}</TableCell>
@@ -589,6 +623,9 @@ export default function Reservas() {
                             {isAdmin && (
                               <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(r)}><Pencil className="h-3.5 w-3.5" /></Button>
                             )}
+                            {isAdmin && (
+                              <Button variant="ghost" size="icon" className="h-7 w-7" title="Folio operador" onClick={() => { setFolioDialogRes(r); setFolioInput((r as any).operator_folio ?? ""); setCancFolioInput((r as any).cancellation_folio ?? ""); }}><Tag className="h-3.5 w-3.5" /></Button>
+                            )}
                             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleVoucherWithCheck(r)}><FileText className="h-3.5 w-3.5" /></Button>
                             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handlePrint(r)}><Printer className="h-3.5 w-3.5" /></Button>
                             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleSendConfirmation(r)}><Send className="h-3.5 w-3.5" /></Button>
@@ -606,6 +643,7 @@ export default function Reservas() {
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
                                 {isAdmin && <DropdownMenuItem onClick={() => openEdit(r)}><Pencil className="mr-2 h-4 w-4" />Editar</DropdownMenuItem>}
+                                {isAdmin && <DropdownMenuItem onClick={() => { setFolioDialogRes(r); setFolioInput((r as any).operator_folio ?? ""); setCancFolioInput((r as any).cancellation_folio ?? ""); }}><Tag className="mr-2 h-4 w-4" />Folio Op.</DropdownMenuItem>}
                                 <DropdownMenuItem onClick={() => handleVoucherWithCheck(r)}><FileText className="mr-2 h-4 w-4" />Ver Voucher</DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => handlePrint(r)}><Printer className="mr-2 h-4 w-4" />Imprimir</DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => handleSendConfirmation(r)}><Send className="mr-2 h-4 w-4" />Enviar</DropdownMenuItem>
@@ -1022,6 +1060,47 @@ export default function Reservas() {
           </div>
         </div>
       )}
+
+      {/* ── Mini-dialog Folio Operador ── */}
+      <Dialog open={!!folioDialogRes} onOpenChange={(open) => { if (!open) { setFolioDialogRes(null); setFolioInput(""); setCancFolioInput(""); } }}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Folio del Operador</DialogTitle>
+            <DialogDescription>
+              Captura el folio que te dio el operador para confirmar la reserva {folioDialogRes?.folio ?? ""}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3 py-2">
+            <div className="space-y-1.5">
+              <Label>Folio del operador</Label>
+              <Input placeholder="Ej: XC-78432" value={folioInput} onChange={(e) => setFolioInput(e.target.value)} />
+              <p className="text-xs text-muted-foreground">Al guardar, la reserva se marcará como confirmada.</p>
+            </div>
+            {(folioDialogRes?.status === "cancelled" || cancFolioInput) && (
+              <div className="space-y-1.5">
+                <Label>Folio de cancelación</Label>
+                <Input placeholder="Ej: XC-CANC-123" value={cancFolioInput} onChange={(e) => setCancFolioInput(e.target.value)} />
+                <p className="text-xs text-muted-foreground">Al guardar, la reserva se marcará como cancelada.</p>
+              </div>
+            )}
+            {folioDialogRes?.status !== "cancelled" && !cancFolioInput && (
+              <button
+                type="button"
+                className="text-xs text-destructive hover:underline text-left"
+                onClick={() => setCancFolioInput("")}
+              >
+                + Agregar folio de cancelación
+              </button>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setFolioDialogRes(null); setFolioInput(""); setCancFolioInput(""); }}>Cancelar</Button>
+            <Button onClick={() => saveFolioMutation.mutate()} disabled={saveFolioMutation.isPending || (!folioInput.trim() && !cancFolioInput.trim())}>
+              {saveFolioMutation.isPending ? "Guardando…" : "Guardar Folio"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
