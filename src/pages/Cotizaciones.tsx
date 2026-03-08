@@ -154,12 +154,12 @@ export default function Cotizaciones() {
     // 3. tour_packages price (available as soon as package is selected)
     if (packageName) {
       const pkg = allTourPackages.find((p: any) => p.tour_id === tourId && p.name === packageName);
-      if (pkg) return paxType === "Niño" ? (pkg as any).price_child_mxn ?? 0 : (pkg as any).price_adult_mxn ?? 0;
+      if (pkg) return paxType === "Menor" ? (pkg as any).price_child_mxn ?? 0 : (pkg as any).price_adult_mxn ?? 0;
     }
     // 4. Tour base price
     const tour = tours.find((t: any) => t.id === tourId);
     if (!tour) return 0;
-    return paxType === "Niño" ? (tour as any).suggested_price_mxn ?? 0 : (tour as any).price_mxn ?? 0;
+    return paxType === "Menor" ? (tour as any).suggested_price_mxn ?? 0 : (tour as any).price_mxn ?? 0;
   };
 
   const saveMutation = useMutation({
@@ -323,7 +323,7 @@ export default function Cotizaciones() {
       if (tourId && priceFields.includes(field)) {
         // lookupPrice handles all fallbacks: variant → package → tour base
         updated.unit_price_mxn = lookupPrice(tourId, zone, nat, "Adulto", pkg || undefined);
-        updated.unit_price_child_mxn = lookupPrice(tourId, zone, nat, "Niño", pkg || undefined);
+        updated.unit_price_child_mxn = lookupPrice(tourId, zone, nat, "Menor", pkg || undefined);
       }
 
       return updated;
@@ -511,11 +511,11 @@ export default function Cotizaciones() {
                       <Input type="number" min={0} step="0.01" value={item.unit_price_mxn} onChange={(e) => updateItem(idx, "unit_price_mxn", parseFloat(e.target.value) || 0)} />
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">Niños</Label>
+                      <Label className="text-xs text-muted-foreground">Menores</Label>
                       <Input type="number" min={0} value={item.qty_children} onChange={(e) => updateItem(idx, "qty_children", parseInt(e.target.value) || 0)} />
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">Precio niño</Label>
+                      <Label className="text-xs text-muted-foreground">Precio menor</Label>
                       <Input type="number" min={0} step="0.01" value={item.unit_price_child_mxn} onChange={(e) => updateItem(idx, "unit_price_child_mxn", parseFloat(e.target.value) || 0)} />
                     </div>
                   </div>

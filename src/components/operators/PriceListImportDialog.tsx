@@ -160,7 +160,7 @@ export default function PriceListImportDialog({ open, onOpenChange, operator }: 
 
         // Derive net cost from first adult variant if available
         const firstAdultVariant = processedVariants.find(v => v.pax_type === "Adulto");
-        const firstChildVariant = processedVariants.find(v => v.pax_type === "Niño");
+        const firstChildVariant = processedVariants.find(v => v.pax_type === "Menor");
 
         // Fallback: derive general fields from variants if AI didn't extract them at tour level
         const rawPubAdult = tour.public_price_adult_usd ?? 0;
@@ -377,7 +377,7 @@ export default function PriceListImportDialog({ open, onOpenChange, operator }: 
                     <TableHead className="w-10" />
                     <TableHead>Tour</TableHead>
                     <TableHead className="text-right">Pub. Adulto</TableHead>
-                    <TableHead className="text-right">Pub. Niño</TableHead>
+                    <TableHead className="text-right">Pub. Menor</TableHead>
                     <TableHead className="text-right">Tax Ad.</TableHead>
                     <TableHead className="text-right">Variantes</TableHead>
                   </TableRow>

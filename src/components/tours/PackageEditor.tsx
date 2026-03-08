@@ -160,7 +160,7 @@ export default function PackageEditor({ packages, onChange, tourExchangeRate, to
         <div className="flex items-center gap-2 text-[11px] text-muted-foreground bg-muted/50 rounded-md px-3 py-2">
           <Info className="h-3.5 w-3.5 shrink-0" />
           <span>
-            Valores heredados del tour: T.C. <strong>${tourExchangeRate}</strong> · Tax Adulto <strong>${tourTaxAdultUsd} USD</strong> · Tax Niño <strong>${tourTaxChildUsd} USD</strong>
+            Valores heredados del tour: T.C. <strong>${tourExchangeRate}</strong> · Tax Adulto <strong>${tourTaxAdultUsd} USD</strong> · Tax Menor <strong>${tourTaxChildUsd} USD</strong>
           </span>
         </div>
       )}
@@ -229,7 +229,7 @@ export default function PackageEditor({ packages, onChange, tourExchangeRate, to
                       <Input type="number" value={pkg.public_price_adult_usd} onChange={(e) => update(i, "public_price_adult_usd", e.target.value)} placeholder="0" />
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-xs">Precio Púb. Niño USD</Label>
+                      <Label className="text-xs">Precio Púb. Menor USD</Label>
                       <Input type="number" value={pkg.public_price_child_usd} onChange={(e) => update(i, "public_price_child_usd", e.target.value)} placeholder="0" />
                     </div>
                   </div>
@@ -240,7 +240,7 @@ export default function PackageEditor({ packages, onChange, tourExchangeRate, to
                       <Input type="number" value={pkg.cost_adult_usd} onChange={(e) => update(i, "cost_adult_usd", e.target.value)} placeholder="0" />
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-xs">Costo Neto Niño USD</Label>
+                      <Label className="text-xs">Costo Neto Menor USD</Label>
                       <Input type="number" value={pkg.cost_child_usd} onChange={(e) => update(i, "cost_child_usd", e.target.value)} placeholder="0" />
                     </div>
                   </div>
@@ -262,7 +262,7 @@ export default function PackageEditor({ packages, onChange, tourExchangeRate, to
                       <p className="text-[10px] text-muted-foreground">= (Púb {parseFloat(pkg.public_price_adult_usd) || 0} + Tax {tourTaxAdultUsd}) × {tourExchangeRate}</p>
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-xs">Precio Niño MXN</Label>
+                      <Label className="text-xs">Precio Menor MXN</Label>
                       <Input type="number" value={pkg.price_child_mxn} disabled className="bg-muted" />
                       <p className="text-[10px] text-muted-foreground">= (Púb {parseFloat(pkg.public_price_child_usd) || 0} + Tax {tourTaxChildUsd}) × {tourExchangeRate}</p>
                     </div>

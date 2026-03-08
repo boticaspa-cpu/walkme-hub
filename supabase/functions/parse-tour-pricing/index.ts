@@ -63,8 +63,8 @@ Extract ALL price rows for different combinations of zone, pax type, and nationa
 
 Key rules:
 - Zones are typically: Cancun, Playa, Tulum, Riviera Maya
-- Pax types: Adulto, Niño
-- Nationalities: Mexicano, Extranjero
+- Pax types: Adulto, Menor
+- Nationalities: Nacional, Extranjero
 - sale_price = the retail/public price shown
 - net_cost = the operator's net cost if shown (0 if not available)
 - tax_fee = any taxes or fees shown separately (0 if not available)
@@ -119,8 +119,8 @@ Key rules:
                     type: "object",
                     properties: {
                       zone: { type: "string", enum: ["Cancun", "Playa", "Tulum", "Riviera Maya"] },
-                      pax_type: { type: "string", enum: ["Adulto", "Niño"] },
-                      nationality: { type: "string", enum: ["Mexicano", "Extranjero"] },
+                      pax_type: { type: "string", enum: ["Adulto", "Menor"] },
+                      nationality: { type: "string", enum: ["Nacional", "Extranjero"] },
                       sale_price: { type: "number", description: "Retail/sale price" },
                       net_cost: { type: "number", description: "Net cost to operator" },
                       tax_fee: { type: "number", description: "Tax or fee amount" },

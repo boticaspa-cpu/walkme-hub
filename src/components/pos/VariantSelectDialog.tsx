@@ -21,8 +21,8 @@ export interface PriceVariant {
   tour_id: string;
   operator_id: string;
   zone: string;
-  pax_type: string; // "Adulto" | "Niño"
-  nationality: string; // "Mexicano" | "Extranjero"
+  pax_type: string; // "Adulto" | "Menor"
+  nationality: string; // "Nacional" | "Extranjero"
   sale_price: number;
   tax_fee: number;
   net_cost?: number; // only for admins
@@ -85,7 +85,7 @@ export default function VariantSelectDialog({
 
   const childVariant = useMemo(() => {
     if (!zone || !nationality) return null;
-    return variants.find(v => v.zone === zone && v.nationality === nationality && v.pax_type === "Niño") || null;
+    return variants.find(v => v.zone === zone && v.nationality === nationality && v.pax_type === "Menor") || null;
   }, [variants, zone, nationality]);
 
   const fmt = (n: number) => n.toLocaleString("es-MX", { style: "currency", currency: "MXN" });
@@ -169,7 +169,7 @@ export default function VariantSelectDialog({
                 </div>
                 {childVariant && (
                   <div className="flex justify-between text-sm">
-                    <span>Precio Niño ({childAgeMin}–{childAgeMax} años)</span>
+                    <span>Precio Menor ({childAgeMin}–{childAgeMax} años)</span>
                     <span className="font-bold text-primary">{fmt(childPrice)}</span>
                   </div>
                 )}
@@ -186,7 +186,7 @@ export default function VariantSelectDialog({
                 </div>
                 {childVariant && (
                   <div className="space-y-1">
-                    <Label className="text-xs">Niños</Label>
+                    <Label className="text-xs">Menores</Label>
                     <div className="flex items-center gap-1">
                       <Button type="button" variant="outline" size="icon" className="h-8 w-8" onClick={() => setQtyChildren(Math.max(0, qtyChildren - 1))}><Minus className="h-3 w-3" /></Button>
                       <Input className="h-8 text-center w-14" value={qtyChildren} readOnly />

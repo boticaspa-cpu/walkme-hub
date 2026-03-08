@@ -1,42 +1,40 @@
 
 
-# Plan: Renombrar "Niño" → "Menor" y "Mexicano" → "Nacional"
+# Plan: Fix missing trigger + create Marina Mena's profile
 
-## Contexto
-La base de datos tiene registros con `pax_type = "Niño"` y `nationality = "Extranjero"` (no hay "Mexicano" aún). Necesitamos cambiar la terminología en toda la app y migrar datos existentes.
+## Root Cause
+The `handle_new_user()` function exists but there is **no trigger** on `auth.users` that calls it. New signups never get a profile or role created.
 
-## Cambios
+## Changes
 
-### 1. Migración de base de datos
-Actualizar valores existentes en `tour_price_variants`:
+### 1. DB Migration — Create the trigger + backfill Marina Mena
+
 ```sql
-UPDATE tour_price_variants SET pax_type = 'Menor' WHERE pax_type = 'Niño';
-UPDATE tour_price_variants SET nationality = 'Nacional' WHERE nationality = 'Mexicano';
+-- Create the trigger on auth.users
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW
+  EXECUTE FUNCTION public.handle_new_user();
+
+-- Backfill the existing user who was missed
+INSERT INTO public.profiles (id, full_name, approval_status)
+VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'Marina Mena', 'pending')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO public.user_roles (user_id, role)
+VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'seller')
+ON CONFLICT (user_id, role) DO NOTHING;
 ```
 
-### 2. Archivos a modificar (reemplazo "Niño" → "Menor", "Mexicano" → "Nacional")
+### 2. No code changes needed
+The `AuthContext` and `Configuracion` page already handle the approval flow. Once Marina's profile exists with `pending` status, she'll appear in the user list on Configuracion and you can approve her from there.
 
-| Archivo | Cambios |
+## Result
+- Marina Mena will appear in Configuracion with status "Pendiente"
+- You approve her and she can log in
+- Future signups will automatically get profile + seller role via the trigger
+
+| File | Change |
 |---|---|
-| `src/components/tours/PriceVariantEditor.tsx` | Constantes `PAX_TYPES`, `NATIONALITIES`, comentarios |
-| `src/lib/tour-pricing.ts` | Lookups `"Niño"` → `"Menor"` |
-| `src/lib/sheet-import.ts` | Alias para menor/nacional en mapeo de columnas |
-| `src/pages/Cotizaciones.tsx` | `lookupPrice(..., "Niño")` → `"Menor"`, labels UI |
-| `src/pages/CotizacionPDF.tsx` | Headers "Niños" → "Menores", "P/U Niño" → "P/U Menor" |
-| `src/pages/Reservas.tsx` | Labels de formulario "Niños" → "Menores" |
-| `src/components/pos/VariantSelectDialog.tsx` | Búsqueda de variante child `"Niño"` → `"Menor"`, labels |
-| `src/components/cotizaciones/AcceptQuoteDialog.tsx` | Label "niños" → "menores" |
-| `src/components/cotizaciones/SendQuoteDialog.tsx` | Texto WhatsApp "niño" → "menor" |
-| `src/components/reservations/ReservationCheckout.tsx` | Label "niños" → "menores" |
-| `src/components/reservations/whatsapp-message.ts` | "Children" / "Niños" → "Menores" |
-| `src/components/tours/PackageEditor.tsx` | Labels "Niño" → "Menor" |
-| `src/components/operators/PriceListImportDialog.tsx` | Búsqueda `"Niño"` → `"Menor"` |
-| `supabase/functions/parse-tour-document/index.ts` | Enum `"Niño"` → `"Menor"`, `"Mexicano"` → `"Nacional"` |
-| `supabase/functions/parse-tour-pricing/index.ts` | Enum `"Niño"` → `"Menor"`, `"Mexicano"` → `"Nacional"` |
-
-### 3. Resumen
-- **"Niño"** → **"Menor"** en toda la app (UI, lógica, edge functions, DB)
-- **"Mexicano"** → **"Nacional"** en toda la app
-- Labels de UI: "Niños" → "Menores", "P/U Niño" → "P/U Menor"
-- WhatsApp messages actualizados en ambos idiomas
+| SQL Migration | Attach trigger to auth.users + backfill Marina Mena |
 

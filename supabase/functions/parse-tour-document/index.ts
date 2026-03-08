@@ -44,8 +44,8 @@ Extract all relevant data and return it as structured JSON using the provided to
 Key extraction rules:
 - Prices should be in MXN unless explicitly stated otherwise
 - Zones are typically: Cancun, Playa, Tulum, Riviera Maya
-- Nationalities: Mexicano, Extranjero
-- Pax types: Adulto, Niño
+- Nationalities: Nacional, Extranjero
+- Pax types: Adulto, Menor
 - Look for price matrices/tables showing different prices by zone and nationality
 - Extract tour description, itinerary, includes/excludes lists
 - If prices are in USD, note that in the response`;
@@ -109,8 +109,8 @@ Key extraction rules:
                       type: "object",
                       properties: {
                         zone: { type: "string", enum: ["Cancun", "Playa", "Tulum", "Riviera Maya"] },
-                        pax_type: { type: "string", enum: ["Adulto", "Niño"] },
-                        nationality: { type: "string", enum: ["Mexicano", "Extranjero"] },
+                        pax_type: { type: "string", enum: ["Adulto", "Menor"] },
+                        nationality: { type: "string", enum: ["Nacional", "Extranjero"] },
                         sale_price: { type: "number", description: "Sale price in MXN" },
                         net_cost: { type: "number", description: "Net cost if available" },
                         tax_fee: { type: "number", description: "Tax or fees if available" },

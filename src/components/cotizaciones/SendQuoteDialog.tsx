@@ -93,7 +93,7 @@ export default function SendQuoteDialog({ open, onOpenChange, quote }: Props) {
     items.forEach((it: any) => {
       const sub = it.qty_adults * it.unit_price_mxn + it.qty_children * it.unit_price_child_mxn;
       const fecha = fmtDate(it.tour_date);
-      const pax = `${it.qty_adults} adulto${it.qty_adults !== 1 ? "s" : ""}${it.qty_children ? `, ${it.qty_children} niño${it.qty_children !== 1 ? "s" : ""}` : ""}`;
+      const pax = `${it.qty_adults} adulto${it.qty_adults !== 1 ? "s" : ""}${it.qty_children ? `, ${it.qty_children} menor${it.qty_children !== 1 ? "es" : ""}` : ""}`;
       lines.push(`🏝️ *${it.tours?.title ?? "Tour"}*${fecha ? ` — ${fecha}` : ""}`);
       lines.push(`   ${pax} — ${fmt(sub)} MXN`);
     });

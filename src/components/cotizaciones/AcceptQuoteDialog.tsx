@@ -144,7 +144,7 @@ export default function AcceptQuoteDialog({ open, onOpenChange, quote }: Props) 
                 {items.map((it: any, idx: number) => (
                   <p key={idx} className="text-xs text-muted-foreground">
                     • {it.tours?.title ?? "Tour"} — {it.qty_adults} ad.
-                    {it.qty_children > 0 ? `, ${it.qty_children} niños` : ""}
+                    {it.qty_children > 0 ? `, ${it.qty_children} menores` : ""}
                     {it.tour_date ? ` — ${it.tour_date}` : ""}
                   </p>
                 ))}

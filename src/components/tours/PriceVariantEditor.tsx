@@ -9,8 +9,8 @@ export interface VariantForm {
   id?: string;
   package_name: string;
   zone: string;
-  pax_type: string; // "Adulto" | "Niño"
-  nationality: string; // "Mexicano" | "Extranjero"
+  pax_type: string; // "Adulto" | "Menor"
+  nationality: string; // "Nacional" | "Extranjero"
   sale_price: string;
   net_cost: string;
   tax_fee: string;
@@ -29,8 +29,8 @@ export const emptyVariant: VariantForm = {
 };
 
 const ZONES = ["Cancun", "Playa", "Tulum", "Riviera Maya"];
-const PAX_TYPES = ["Adulto", "Niño"];
-const NATIONALITIES = ["Mexicano", "Extranjero"];
+const PAX_TYPES = ["Adulto", "Menor"];
+const NATIONALITIES = ["Nacional", "Extranjero"];
 
 interface PackageOption {
   id?: string;

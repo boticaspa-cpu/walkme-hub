@@ -183,8 +183,8 @@ export const VARIANT_ALIASES = {
   ],
   package: ["paquete", "package_name", "nombre paquete", "package"],
   zone: ["zona", "zone"],
-  pax_type: ["tipo pax", "tipo_pax", "pax_type", "tipo pasajero", "tipo de pasajero", "adulto nino"],
-  nationality: ["nacionalidad", "nationality", "origen"],
+  pax_type: ["tipo pax", "tipo_pax", "pax_type", "tipo pasajero", "tipo de pasajero", "adulto nino", "adulto menor"],
+  nationality: ["nacionalidad", "nationality", "origen", "nacional extranjero"],
   net_cost: ["costo neto", "costo_neto", "net_cost", "costo", "neto"],
   tax_fee: ["tax", "fee", "tax_fee", "tax/fee", "impuesto", "impuesto fee"],
 };
