@@ -19,7 +19,7 @@ export interface VariantForm {
 export const GENERAL_PACKAGE = "__GENERAL__";
 
 export const emptyVariant: VariantForm = {
-  package_name: GENERAL_PACKAGE,
+  package_name: "",
   zone: "Cancun",
   pax_type: "Adulto",
   nationality: "Extranjero",
@@ -159,17 +159,18 @@ export default function PriceVariantEditor({ variants, onChange, packages, isAdm
               {variants.map((v, i) => (
                 <TableRow key={i}>
                   <TableCell className="py-1.5">
-                    <Select value={v.package_name} onValueChange={(val) => update(i, "package_name", val)}>
-                      <SelectTrigger className="h-8 text-xs w-32">
-                        <SelectValue placeholder="Paquete" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value={GENERAL_PACKAGE}>Sin paquete (General)</SelectItem>
-                        {packages.filter((pkg) => pkg.name && pkg.name !== "").map((pkg) => (
-                          <SelectItem key={pkg.name} value={pkg.name}>{pkg.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Input
+                      list={`pkg-list-${i}`}
+                      className="h-8 text-xs w-36"
+                      value={v.package_name}
+                      onChange={(e) => update(i, "package_name", e.target.value)}
+                      placeholder="Paquete (opcional)"
+                    />
+                    <datalist id={`pkg-list-${i}`}>
+                      {packages.filter((pkg) => pkg.name && pkg.name !== "").map((pkg) => (
+                        <option key={pkg.name} value={pkg.name} />
+                      ))}
+                    </datalist>
                   </TableCell>
                   <TableCell className="py-1.5">
                     <Select value={v.zone} onValueChange={(val) => update(i, "zone", val)}>

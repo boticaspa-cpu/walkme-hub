@@ -1,27 +1,40 @@
 
 
-# Plan: Corregir mapeo de paquetes en Matriz de Precios
+# Plan: Fix missing trigger + create Marina Mena's profile
 
-## Problema
-1. El Sheet tiene "Xplor Día - Con transporte" en la columna Paquete
-2. El importador lo lee correctamente, pero el **Select del editor** solo muestra paquetes del `PackageEditor` — si el nombre importado no coincide exactamente, aparece vacío
-3. "Sin paquete (General)" no debería existir como opción
+## Root Cause
+The `handle_new_user()` function exists but there is **no trigger** on `auth.users` that calls it. New signups never get a profile or role created.
 
-## Solución
+## Changes
 
-### 1. `PriceVariantEditor.tsx` — Cambiar Select de paquete a Input con datalist
-- Reemplazar el `<Select>` de paquete por un `<Input>` que permita texto libre
-- Agregar un datalist con los paquetes existentes como sugerencias (autocompletado)
-- Eliminar la opción "Sin paquete (General)"
-- Así, los nombres importados del Sheet se preservan tal cual
+### 1. DB Migration — Create the trigger + backfill Marina Mena
 
-### 2. `Tours.tsx` — Mejorar mapeo de matriz
-- Cuando se importa la matriz y el paquete viene del Sheet, usarlo directamente como string sin forzar `GENERAL_PACKAGE`
-- Si el paquete importado no existe en la lista de paquetes del tour, auto-crearlo en el `PackageEditor` para mantener consistencia
+```sql
+-- Create the trigger on auth.users
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW
+  EXECUTE FUNCTION public.handle_new_user();
 
-### Archivos a modificar
-| Archivo | Cambio |
+-- Backfill the existing user who was missed
+INSERT INTO public.profiles (id, full_name, approval_status)
+VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'Marina Mena', 'pending')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO public.user_roles (user_id, role)
+VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'seller')
+ON CONFLICT (user_id, role) DO NOTHING;
+```
+
+### 2. No code changes needed
+The `AuthContext` and `Configuracion` page already handle the approval flow. Once Marina's profile exists with `pending` status, she'll appear in the user list on Configuracion and you can approve her from there.
+
+## Result
+- Marina Mena will appear in Configuracion with status "Pendiente"
+- You approve her and she can log in
+- Future signups will automatically get profile + seller role via the trigger
+
+| File | Change |
 |---|---|
-| `src/components/tours/PriceVariantEditor.tsx` | Cambiar Select de paquete a Input con datalist, eliminar GENERAL_PACKAGE |
-| `src/pages/Tours.tsx` | Auto-crear paquetes faltantes al importar matriz |
+| SQL Migration | Attach trigger to auth.users + backfill Marina Mena |
 

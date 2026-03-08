@@ -523,10 +523,10 @@ export default function Tours() {
         .eq("tour_id", tour.id)
         .eq("active", true);
       if (data && data.length > 0) {
-        const GENERAL = "__GENERAL__";
+        
         setVariants(data.map((v: any) => ({
           id: v.id,
-          package_name: (!v.package_name || v.package_name === "") ? GENERAL : v.package_name,
+          package_name: v.package_name || "",
           zone: v.zone,
           pax_type: v.pax_type || "Adulto",
           nationality: v.nationality || "Extranjero",
@@ -682,7 +682,7 @@ export default function Tours() {
       if (data.variants?.length) {
         const mapped: VariantForm[] = data.variants.map((v: any) => ({
           ...emptyVariant,
-          package_name: v.package_name && v.package_name !== "" ? v.package_name : GENERAL_PACKAGE,
+          package_name: v.package_name || "",
           zone: v.zone || "Cancun",
           pax_type: v.pax_type || "Adulto",
           nationality: v.nationality || "Extranjero",
@@ -798,7 +798,7 @@ export default function Tours() {
             const pkgRaw = getCol(row, ...VARIANT_ALIASES.package);
             return {
               ...emptyVariant,
-              package_name: pkgRaw && pkgRaw !== "" ? pkgRaw : GENERAL_PACKAGE,
+              package_name: pkgRaw || "",
               zone: getCol(row, ...VARIANT_ALIASES.zone) || "Cancun",
               pax_type: getCol(row, ...VARIANT_ALIASES.pax_type) || "Adulto",
               nationality: getCol(row, ...VARIANT_ALIASES.nationality) || "Extranjero",
@@ -847,7 +847,7 @@ export default function Tours() {
     const rows = variants.map(v => ({
       tour_id: tourId,
       operator_id: form.operator_id || "",
-      package_name: v.package_name === "__GENERAL__" ? "" : (v.package_name || ""),
+      package_name: v.package_name || "",
       zone: v.zone,
       pax_type: v.pax_type,
       nationality: v.nationality,
