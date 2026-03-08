@@ -220,7 +220,7 @@ export default function SendQuoteDialog({ open, onOpenChange, quote }: Props) {
                 </div>
 
                 <p className="text-xs text-muted-foreground">
-                  💡 Se abrirá WhatsApp Web con este mensaje listo para enviar.
+                  💡 {lang === "en" ? "WhatsApp Web will open with this message ready to send." : "Se abrirá WhatsApp Web con este mensaje listo para enviar."}
                 </p>
 
                 <div className="grid grid-cols-3 gap-3">
