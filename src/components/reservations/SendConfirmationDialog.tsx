@@ -28,7 +28,7 @@ export default function SendConfirmationDialog({ open, onOpenChange, reservation
 
   const fmt = (n: number) => `$${n.toLocaleString("es-MX", { minimumFractionDigits: 2 })}`;
   const message = buildWhatsAppMessage(r, lang, onSiteFees ?? undefined);
-  const voucherUrl = `${window.location.origin}/cotizaciones/${r.id}/pdf`;
+  const voucherUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-voucher-pdf?id=${r.id}&lang=${lang}`;
 
   const handleWhatsApp = () => {
     openWhatsApp(r.clients?.phone, message);
