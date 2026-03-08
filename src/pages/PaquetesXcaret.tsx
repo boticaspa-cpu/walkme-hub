@@ -39,12 +39,26 @@ interface Tour {
   id: string;
   title: string;
   public_price_adult_usd: number;
+  public_price_child_usd: number;
+  tax_adult_usd: number;
+  tax_child_usd: number;
+  exchange_rate_tour: number;
   active: boolean;
 }
 
-/* ── Xcaret pricing formulas ── */
-function calcXcaretPrices(sumPublicAdultUsd: number) {
-  const publicAdult = sumPublicAdultUsd * 0.80;
+/* ── Xcaret pricing formulas (MXN) ── */
+function tourToMxnAdult(t: Tour) {
+  const tc = t.exchange_rate_tour > 0 ? t.exchange_rate_tour : 1;
+  return (t.public_price_adult_usd + (t.tax_adult_usd ?? 0)) * tc;
+}
+
+function tourToMxnChild(t: Tour) {
+  const tc = t.exchange_rate_tour > 0 ? t.exchange_rate_tour : 1;
+  return (t.public_price_child_usd + (t.tax_child_usd ?? 0)) * tc;
+}
+
+function calcXcaretPrices(sumAdultMxn: number) {
+  const publicAdult = sumAdultMxn * 0.80;
   const publicChild = publicAdult * 0.75;
   const prefAdult = publicAdult * 0.70;
   const prefChild = prefAdult * 0.75;
@@ -52,7 +66,7 @@ function calcXcaretPrices(sumPublicAdultUsd: number) {
 }
 
 function fmt(n: number) {
-  return n.toLocaleString("en-US", { style: "currency", currency: "USD" });
+  return n.toLocaleString("es-MX", { style: "currency", currency: "MXN" });
 }
 
 /* ── component ── */
@@ -88,7 +102,7 @@ export default function PaquetesXcaret() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("tours")
-        .select("id, title, public_price_adult_usd, active")
+        .select("id, title, public_price_adult_usd, public_price_child_usd, tax_adult_usd, tax_child_usd, exchange_rate_tour, active")
         .eq("active", true)
         .in("category_id", xcaretCatIds)
         .order("title");
@@ -125,11 +139,11 @@ export default function PaquetesXcaret() {
   /* ── mutations ── */
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const sumPublic = selectedTourIds.reduce((acc, tid) => {
+      const sumAdultMxn = selectedTourIds.reduce((acc, tid) => {
         const t = tours.find((x) => x.id === tid);
-        return acc + (t?.public_price_adult_usd ?? 0);
+        return acc + (t ? tourToMxnAdult(t) : 0);
       }, 0);
-      const prices = calcXcaretPrices(sumPublic);
+      const prices = calcXcaretPrices(sumAdultMxn);
 
       if (editingId) {
         // update
@@ -237,11 +251,11 @@ export default function PaquetesXcaret() {
 
   /* ── live calculator ── */
   const liveCalc = useMemo(() => {
-    const sumPublic = selectedTourIds.reduce((acc, tid) => {
+    const sumMxn = selectedTourIds.reduce((acc, tid) => {
       const t = tours.find((x) => x.id === tid);
-      return acc + (t?.public_price_adult_usd ?? 0);
+      return acc + (t ? tourToMxnAdult(t) : 0);
     }, 0);
-    return { sumPublic, ...calcXcaretPrices(sumPublic) };
+    return { sumMxn, ...calcXcaretPrices(sumMxn) };
   }, [selectedTourIds, tours]);
 
   const tourNameMap = useMemo(() => {
@@ -392,7 +406,7 @@ export default function PaquetesXcaret() {
                       onCheckedChange={() => toggleTour(t.id)}
                     />
                     <span className="flex-1">{t.title}</span>
-                    <span className="text-muted-foreground">{fmt(t.public_price_adult_usd)}</span>
+                    <span className="text-muted-foreground">{fmt(tourToMxnAdult(t))}</span>
                   </label>
                 ))}
               </div>
@@ -406,7 +420,7 @@ export default function PaquetesXcaret() {
                 </CardHeader>
                 <CardContent className="text-sm space-y-1">
                   <p>
-                    Suma precios públicos adulto: <strong>{fmt(liveCalc.sumPublic)}</strong>
+                    Suma precios públicos adulto (MXN): <strong>{fmt(liveCalc.sumMxn)}</strong>
                   </p>
                   <div className="grid grid-cols-2 gap-x-4 gap-y-1 pt-1">
                     <span className="text-muted-foreground">Público Adulto (×0.80):</span>
