@@ -10,6 +10,7 @@ import { computeTourPrice, computeTotal, TourPackageRow } from "@/lib/tour-prici
 import VoucherPrintView from "@/components/reservations/VoucherPrintView";
 import ReservationCheckout from "@/components/reservations/ReservationCheckout";
 import { buildWhatsAppMessage, openWhatsApp } from "@/components/reservations/whatsapp-message";
+import SendConfirmationDialog from "@/components/reservations/SendConfirmationDialog";
 import DiscountInput from "@/components/shared/DiscountInput";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -131,6 +132,7 @@ export default function Reservas() {
   const [checkoutReservation, setCheckoutReservation] = useState<any>(null);
   const [highlightId, setHighlightId] = useState<string | null>(null);
   const [taxIncluded, setTaxIncluded] = useState(true);
+  const [sendConfirmReservation, setSendConfirmReservation] = useState<any>(null);
 
   // mini-dialog nuevo cliente
   const [clientDialogOpen, setClientDialogOpen] = useState(false);
@@ -487,15 +489,12 @@ export default function Reservas() {
     }, 100);
   };
 
-  const handleWhatsApp = (r: any) => {
+  const handleSendConfirmation = (r: any) => {
     if (isPrepagoBlocked(r)) {
       toast.warning("Proveedor PREPAGO pendiente — debes pagarlo antes del tour para enviar confirmación.");
       return;
     }
-    const enriched = enrichWithPrices(r);
-    const onSiteFees = !taxIncluded ? computeOnSiteFees(enriched) : null;
-    const msg = buildWhatsAppMessage(enriched, "es", onSiteFees ?? undefined);
-    openWhatsApp(r.clients?.phone, msg);
+    setSendConfirmReservation(enrichWithPrices(r));
   };
 
   /* ── filter ── */
@@ -595,7 +594,7 @@ export default function Reservas() {
                             )}
                             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleVoucherWithCheck(r)}><FileText className="h-3.5 w-3.5" /></Button>
                             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handlePrint(r)}><Printer className="h-3.5 w-3.5" /></Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleWhatsApp(r)}><Send className="h-3.5 w-3.5" /></Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleSendConfirmation(r)}><Send className="h-3.5 w-3.5" /></Button>
                           </div>
                           {/* Mobile: menú desplegable */}
                           <div className="sm:hidden flex justify-end gap-1">
@@ -612,7 +611,7 @@ export default function Reservas() {
                                 {isAdmin && <DropdownMenuItem onClick={() => openEdit(r)}><Pencil className="mr-2 h-4 w-4" />Editar</DropdownMenuItem>}
                                 <DropdownMenuItem onClick={() => handleVoucherWithCheck(r)}><FileText className="mr-2 h-4 w-4" />Ver Voucher</DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => handlePrint(r)}><Printer className="mr-2 h-4 w-4" />Imprimir</DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleWhatsApp(r)}><Send className="mr-2 h-4 w-4" />WhatsApp</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleSendConfirmation(r)}><Send className="mr-2 h-4 w-4" />Enviar</DropdownMenuItem>
                                 {cStatus === "confirmed" && pStatus === "paid" && (
                                   <DropdownMenuItem onClick={() => handleVoucherWithCheck(r)}><CheckCircle className="mr-2 h-4 w-4" />Ticket</DropdownMenuItem>
                                 )}
@@ -639,6 +638,14 @@ export default function Reservas() {
           onSuccess={() => setCheckoutReservation(null)}
         />
       )}
+
+      {/* ── Send Confirmation Dialog ── */}
+      <SendConfirmationDialog
+        open={!!sendConfirmReservation}
+        onOpenChange={(open) => { if (!open) setSendConfirmReservation(null); }}
+        reservation={sendConfirmReservation}
+        onSiteFees={sendConfirmReservation ? computeOnSiteFees(sendConfirmReservation) : null}
+      />
 
       {/* ── Dialog Crear / Editar Reserva ── */}
       <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) closeDialog(); }}>
