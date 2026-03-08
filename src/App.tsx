@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { AdminRoute } from "@/components/layout/AdminRoute";
 import Login from "./pages/Login";
 import CotizacionPDF from "./pages/CotizacionPDF";
 import Dashboard from "./pages/Dashboard";
