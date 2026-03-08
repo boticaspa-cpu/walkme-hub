@@ -1,35 +1,40 @@
 
 
-# Plan: Reemplazar aviso amarillo con Switch en formulario de Tour
+# Plan: Fix missing trigger + create Marina Mena's profile
 
-## Problema
-El formulario de tours muestra campos de impuestos con un aviso amarillo pasivo. El usuario quiere un **Switch interactivo** que muestre claramente si los impuestos se cobran en la agencia o al abordar.
+## Root Cause
+The `handle_new_user()` function exists but there is **no trigger** on `auth.users` that calls it. New signups never get a profile or role created.
 
-## Cambios
+## Changes
 
-### `src/pages/Tours.tsx`
-- Reemplazar el bloque amarillo de aviso por un **Switch** con label "¿Impuestos se pagan al abordar?"
-- Cuando el switch está **OFF** (agencia cobra): los campos de tax_adult_usd y tax_child_usd se ocultan (no aplican, se cobran como parte del precio)
-- Cuando el switch está **ON** (pago al abordar): se muestran los campos de tax_adult_usd y tax_child_usd para capturar los montos
-- Al abrir el diálogo de edición, pre-seleccionar el switch basado en si el tour ya tiene taxes > 0
-- Texto descriptivo debajo del switch: "Activado = el cliente paga impuestos en efectivo al abordar"
+### 1. DB Migration — Create the trigger + backfill Marina Mena
 
-### UI resultante
-```text
-┌──────────────────────────────────────────┐
-│  ¿Impuestos al abordar?         [OFF]   │
-│  El cliente paga impuestos en            │
-│  efectivo al abordar                     │
-│                                          │
-│  (si ON, aparecen:)                      │
-│  Impuesto Adulto USD  [___]              │
-│  Impuesto Niño USD    [___]              │
-└──────────────────────────────────────────┘
+```sql
+-- Create the trigger on auth.users
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW
+  EXECUTE FUNCTION public.handle_new_user();
+
+-- Backfill the existing user who was missed
+INSERT INTO public.profiles (id, full_name, approval_status)
+VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'Marina Mena', 'pending')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO public.user_roles (user_id, role)
+VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'seller')
+ON CONFLICT (user_id, role) DO NOTHING;
 ```
 
-No requiere migración DB. Solo cambio de UI en Tours.tsx.
+### 2. No code changes needed
+The `AuthContext` and `Configuracion` page already handle the approval flow. Once Marina's profile exists with `pending` status, she'll appear in the user list on Configuracion and you can approve her from there.
 
-| Archivo | Cambio |
+## Result
+- Marina Mena will appear in Configuracion with status "Pendiente"
+- You approve her and she can log in
+- Future signups will automatically get profile + seller role via the trigger
+
+| File | Change |
 |---|---|
-| `src/pages/Tours.tsx` | Switch + mostrar/ocultar campos de impuestos |
+| SQL Migration | Attach trigger to auth.users + backfill Marina Mena |
 
