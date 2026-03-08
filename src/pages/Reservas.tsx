@@ -119,6 +119,8 @@ const emptyShared = {
   discount_mxn: 0,
   hotel_name: "",
   pax_email: "",
+  pickup_notes: "",
+  operator_confirmation_code: "",
 };
 
 export default function Reservas() {

@@ -243,7 +243,7 @@ export default function ReservationCheckout({ reservation, open, onOpenChange, o
               .eq("tour_id", reservation.tour_id)
               .eq("zone", zone)
               .eq("nationality", nationality)
-              .eq("pax_type", "Niño")
+              .eq("pax_type", "Menor")
               .eq("active", true)
               .limit(1)
               .maybeSingle();
