@@ -682,7 +682,7 @@ export default function Tours() {
       if (data.variants?.length) {
         const mapped: VariantForm[] = data.variants.map((v: any) => ({
           ...emptyVariant,
-          package_name: v.package_name && v.package_name !== "" ? v.package_name : GENERAL_PACKAGE,
+          package_name: v.package_name || "",
           zone: v.zone || "Cancun",
           pax_type: v.pax_type || "Adulto",
           nationality: v.nationality || "Extranjero",
