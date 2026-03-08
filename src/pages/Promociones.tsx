@@ -261,9 +261,9 @@ export default function Promociones() {
                 <TableRow>
                   <TableHead>Nombre</TableHead>
                   <TableHead className="hidden sm:table-cell">Tours</TableHead>
-                  <TableHead className="text-right">Subtotal</TableHead>
-                  <TableHead className="text-right">Descuento</TableHead>
-                  <TableHead className="text-right">Total</TableHead>
+                  <TableHead className="text-right hidden sm:table-cell">Subtotal</TableHead>
+                  <TableHead className="text-right hidden sm:table-cell">Descuento</TableHead>
+                  <TableHead className="text-right hidden sm:table-cell">Total</TableHead>
                   <TableHead className="hidden sm:table-cell">Activo</TableHead>
                   <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
