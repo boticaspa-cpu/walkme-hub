@@ -691,8 +691,8 @@ export default function Reservas() {
                   <Input type="number" min={0} value={form.pax_adults} onChange={(e) => setForm((p) => ({ ...p, pax_adults: parseInt(e.target.value) || 0 }))} />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Niños</Label>
-                  <Input type="number" min={0} value={form.pax_children} onChange={(e) => setForm((p) => ({ ...p, pax_children: parseInt(e.target.value) || 0 }))} />
+                   <Label>Menores</Label>
+                   <Input type="number" min={0} value={form.pax_children} onChange={(e) => setForm((p) => ({ ...p, pax_children: parseInt(e.target.value) || 0 }))} />
                 </div>
                 <div className="space-y-1.5">
                   <Label>Subtotal MXN</Label>
