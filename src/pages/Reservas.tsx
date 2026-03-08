@@ -73,6 +73,7 @@ const emptyForm = {
   zone: "",
   nationality: "",
   total_mxn: 0,
+  discount_mxn: 0,
   notes: "",
   status: "scheduled",
 };
