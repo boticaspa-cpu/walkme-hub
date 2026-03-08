@@ -67,18 +67,35 @@ export default function PaquetesXcaret() {
   const [description, setDescription] = useState("");
   const [selectedTourIds, setSelectedTourIds] = useState<string[]>([]);
 
-  // Fetch all tours (for the selector — we filter Xcaret-related by tags/category later, but for now show all active)
+  // Fetch Xcaret category IDs
+  const { data: xcaretCategories = [] } = useQuery({
+    queryKey: ["xcaret-categories"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("categories")
+        .select("id")
+        .ilike("name", "%xcaret%");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const xcaretCatIds = xcaretCategories.map((c) => c.id);
+
+  // Fetch only tours belonging to Xcaret categories
   const { data: tours = [] } = useQuery<Tour[]>({
-    queryKey: ["tours-for-promos"],
+    queryKey: ["tours-for-promos", xcaretCatIds],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("tours")
         .select("id, title, public_price_adult_usd, active")
         .eq("active", true)
+        .in("category_id", xcaretCatIds)
         .order("title");
       if (error) throw error;
       return data ?? [];
     },
+    enabled: xcaretCatIds.length > 0,
   });
 
   // Fetch promo packages + their tour ids
