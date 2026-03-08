@@ -16,6 +16,7 @@ interface VoucherProps {
     folio: string | null;
     operator_folio?: string | null;
     cancellation_folio?: string | null;
+    operator_confirmation_code?: string;
     reservation_date: string;
     reservation_time: string;
     pax_adults: number;
@@ -29,6 +30,9 @@ interface VoucherProps {
     notes: string | null;
     created_at: string;
     status?: string;
+    hotel_name?: string;
+    pickup_notes?: string;
+    pax_email?: string;
     tours?: { title: string; includes: string[]; meeting_point: string; short_description: string } | null;
     clients?: { name: string; phone: string; email: string | null } | null;
   };
