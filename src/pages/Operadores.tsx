@@ -104,6 +104,7 @@ export default function Operadores() {
       exchange_rate: String(op.exchange_rate ?? 1),
       base_currency: op.base_currency ?? "USD",
       payment_rules: op.payment_rules ?? "prepago",
+      fee_collection_mode: (op as any).fee_collection_mode ?? "agency",
     });
     setLogoPreview(op.logo_url);
     setLogoFile(null);
