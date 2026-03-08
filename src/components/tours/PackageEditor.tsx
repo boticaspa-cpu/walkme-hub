@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { Plus, Trash2, ChevronDown, ChevronRight, Package, Info, FileText, Loader2 } from "lucide-react";
+import { Plus, Trash2, ChevronDown, ChevronRight, Package, Info, FileText, Loader2, Table2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -53,6 +53,7 @@ interface Props {
   tourTaxChildUsd: number;
   onDocUpload?: (file: File) => Promise<void>;
   isMapping?: boolean;
+  onSheetImport?: () => void;
 }
 
 function calcMxn(pubUsd: string, taxUsd: number, tc: number): string {
@@ -61,7 +62,7 @@ function calcMxn(pubUsd: string, taxUsd: number, tc: number): string {
   return result > 0 ? result.toFixed(2) : "0";
 }
 
-export default function PackageEditor({ packages, onChange, tourExchangeRate, tourTaxAdultUsd, tourTaxChildUsd, onDocUpload, isMapping }: Props) {
+export default function PackageEditor({ packages, onChange, tourExchangeRate, tourTaxAdultUsd, tourTaxChildUsd, onDocUpload, isMapping, onSheetImport }: Props) {
   const [openIndexes, setOpenIndexes] = useState<Set<number>>(new Set());
   const docInputRef = useRef<HTMLInputElement>(null);
 
@@ -134,9 +135,14 @@ export default function PackageEditor({ packages, onChange, tourExchangeRate, to
                 disabled={isMapping}
               >
                 {isMapping ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <FileText className="mr-1 h-3 w-3" />}
-                Mapear Documento
+                Mapear PDF
               </Button>
             </>
+          )}
+          {onSheetImport && (
+            <Button type="button" variant="outline" size="sm" onClick={onSheetImport} disabled={isMapping}>
+              <Table2 className="mr-1 h-3 w-3" /> Importar Sheet
+            </Button>
           )}
           <Button type="button" variant="outline" size="sm" onClick={add} disabled={packages.length >= 6}>
             <Plus className="mr-1 h-3 w-3" /> Agregar Paquete

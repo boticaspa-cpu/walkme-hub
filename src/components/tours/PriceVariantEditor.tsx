@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { Plus, Trash2, Grid3X3, Wand2, FileText, Loader2 } from "lucide-react";
+import { Plus, Trash2, Grid3X3, Wand2, FileText, Loader2, Table2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -44,9 +44,10 @@ interface Props {
   isAdmin: boolean;
   onDocUpload?: (file: File) => Promise<void>;
   isMapping?: boolean;
+  onSheetImport?: () => void;
 }
 
-export default function PriceVariantEditor({ variants, onChange, packages, isAdmin, onDocUpload, isMapping }: Props) {
+export default function PriceVariantEditor({ variants, onChange, packages, isAdmin, onDocUpload, isMapping, onSheetImport }: Props) {
   const docInputRef = useRef<HTMLInputElement>(null);
   const add = () => {
     onChange([...variants, { ...emptyVariant }]);
@@ -113,9 +114,14 @@ export default function PriceVariantEditor({ variants, onChange, packages, isAdm
                 disabled={isMapping}
               >
                 {isMapping ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <FileText className="mr-1 h-3 w-3" />}
-                Mapear
+                Mapear PDF
               </Button>
             </>
+          )}
+          {onSheetImport && (
+            <Button type="button" variant="outline" size="sm" onClick={onSheetImport} disabled={isMapping}>
+              <Table2 className="mr-1 h-3 w-3" /> Importar Sheet
+            </Button>
           )}
           <Button type="button" variant="outline" size="sm" onClick={generateAll}>
             <Wand2 className="mr-1 h-3 w-3" /> Generar Combinaciones

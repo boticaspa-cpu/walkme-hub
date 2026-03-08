@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Filter, MapPin, Clock, Plus, Pencil, Upload, DollarSign } from "lucide-react";
+import { Search, Filter, MapPin, Clock, Plus, Pencil, Upload, DollarSign, Table2 } from "lucide-react";
+import SheetImportDialog from "@/components/tours/SheetImportDialog";
 import PackageEditor, { PackageForm, emptyPackage } from "@/components/tours/PackageEditor";
-import PriceVariantEditor, { VariantForm, emptyVariant } from "@/components/tours/PriceVariantEditor";
+import PriceVariantEditor, { VariantForm, emptyVariant, GENERAL_PACKAGE } from "@/components/tours/PriceVariantEditor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -27,6 +28,62 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 const PLACEHOLDER_IMG = "/placeholder.svg";
 const ALL_DAYS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+
+// ── CSV parsing utilities ──
+function parseCSV(text: string): Record<string, string>[] {
+  const lines = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
+  const nonEmpty = lines.filter((l) => l.trim() !== "");
+  if (nonEmpty.length < 2) return [];
+
+  const parseRow = (line: string): string[] => {
+    const fields: string[] = [];
+    let cur = "";
+    let inQ = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') {
+        if (inQ && line[i + 1] === '"') { cur += '"'; i++; }
+        else inQ = !inQ;
+      } else if (ch === "," && !inQ) {
+        fields.push(cur.trim());
+        cur = "";
+      } else {
+        cur += ch;
+      }
+    }
+    fields.push(cur.trim());
+    return fields;
+  };
+
+  const headers = parseRow(nonEmpty[0]);
+  const rows: Record<string, string>[] = [];
+  for (let i = 1; i < nonEmpty.length; i++) {
+    const vals = parseRow(nonEmpty[i]);
+    const row: Record<string, string> = {};
+    headers.forEach((h, j) => { row[h] = vals[j] ?? ""; });
+    if (Object.values(row).some((v) => v !== "")) rows.push(row);
+  }
+  return rows;
+}
+
+function normKey(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_|_$/g, "");
+}
+
+function getCol(row: Record<string, string>, ...keys: string[]): string {
+  const normalized: Record<string, string> = {};
+  for (const [k, v] of Object.entries(row)) normalized[normKey(k)] = v;
+  for (const key of keys) {
+    const v = normalized[normKey(key)];
+    if (v !== undefined && v !== "") return v;
+  }
+  return "";
+}
 
 interface TourRow {
   id: string;
@@ -298,6 +355,8 @@ export default function Tours() {
   const [parsingDoc, setParsingDoc] = useState(false);
   const [mappingPackages, setMappingPackages] = useState(false);
   const [mappingVariants, setMappingVariants] = useState(false);
+  const [sheetImportMode, setSheetImportMode] = useState<"generales" | "paquetes" | "matriz" | null>(null);
+  const [sheetImporting, setSheetImporting] = useState(false);
   const docInputRef = useRef<HTMLInputElement>(null);
   const [saving, setSaving] = useState(false);
   const [packages, setPackages] = useState<PackageForm[]>([]);
@@ -618,18 +677,27 @@ export default function Tours() {
       }
       const data = await res.json();
       if (data.packages?.length) {
-        const mapped: PackageForm[] = data.packages.map((p: any) => ({
-          ...emptyPackage,
-          name: p.name || "",
-          service_type: p.service_type || "with_transport",
-          public_price_adult_usd: String(p.public_price_adult_usd || ""),
-          public_price_child_usd: String(p.public_price_child_usd || ""),
-          cost_adult_usd: String(p.cost_adult_usd || ""),
-          cost_child_usd: String(p.cost_child_usd || ""),
-          mandatory_fees_usd: String(p.mandatory_fees_usd || ""),
-          includes: (p.includes || []).join(", "),
-          excludes: (p.excludes || []).join(", "),
-        }));
+        const tc = parseFloat(form.exchange_rate_tour) || exchangeRateUsd;
+        const taxAdult = parseFloat(form.tax_adult_usd) || 0;
+        const taxChild = parseFloat(form.tax_child_usd) || 0;
+        const mapped: PackageForm[] = data.packages.map((p: any) => {
+          const pubAdult = parseFloat(String(p.public_price_adult_usd)) || 0;
+          const pubChild = parseFloat(String(p.public_price_child_usd)) || 0;
+          return {
+            ...emptyPackage,
+            name: p.name || "",
+            service_type: p.service_type || "with_transport",
+            public_price_adult_usd: String(pubAdult || ""),
+            public_price_child_usd: String(pubChild || ""),
+            cost_adult_usd: String(p.cost_adult_usd || ""),
+            cost_child_usd: String(p.cost_child_usd || ""),
+            mandatory_fees_usd: String(p.mandatory_fees_usd || ""),
+            includes: (p.includes || []).join(", "),
+            excludes: (p.excludes || []).join(", "),
+            price_adult_mxn: ((pubAdult + taxAdult) * tc).toFixed(2),
+            price_child_mxn: ((pubChild + taxChild) * tc).toFixed(2),
+          };
+        });
         setPackages(prev => [...prev, ...mapped]);
         toast.success(`${mapped.length} paquete(s) extraído(s) del documento`);
       } else {
@@ -667,7 +735,7 @@ export default function Tours() {
       if (data.variants?.length) {
         const mapped: VariantForm[] = data.variants.map((v: any) => ({
           ...emptyVariant,
-          package_name: v.package_name || "",
+          package_name: v.package_name && v.package_name !== "" ? v.package_name : GENERAL_PACKAGE,
           zone: v.zone || "Cancun",
           pax_type: v.pax_type || "Adulto",
           nationality: v.nationality || "Extranjero",
@@ -684,6 +752,106 @@ export default function Tours() {
       toast.error(err.message || "Error al procesar documento");
     } finally {
       setMappingVariants(false);
+    }
+  };
+
+  // ── Google Sheet import ──
+  const defaultSheetTabs: Record<string, string> = {
+    generales: "Grales",
+    paquetes: "Paquetes",
+    matriz: "Matriz",
+  };
+
+  const handleSheetImport = async (sheetId: string, tabName: string) => {
+    if (!sheetImportMode) return;
+    const mode = sheetImportMode;
+    setSheetImporting(true);
+    try {
+      const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(tabName)}`;
+      const res = await fetch(csvUrl);
+      if (!res.ok) throw new Error(`No se pudo acceder al Sheet (${res.status}). Verifica que sea público.`);
+      const text = await res.text();
+      if (text.trim().startsWith("<!") || text.trim().startsWith("<html")) {
+        throw new Error("El Sheet no es público o la pestaña no existe. Verifica el nombre exacto.");
+      }
+      const rows = parseCSV(text);
+      if (rows.length === 0) throw new Error("La pestaña está vacía o no tiene el formato esperado.");
+
+      if (mode === "generales") {
+        const row = rows[0];
+        setForm((prev) => ({
+          ...prev,
+          title: getCol(row, "titulo", "tour_name", "nombre", "title") || prev.title,
+          short_description: getCol(row, "descripcion", "short_description", "descripcion_corta") || prev.short_description,
+          itinerary: getCol(row, "itinerario", "itinerary") || prev.itinerary,
+          includes: getCol(row, "incluye", "includes") || prev.includes,
+          excludes: getCol(row, "no_incluye", "excludes", "no incluye") || prev.excludes,
+          meeting_point: getCol(row, "punto_de_encuentro", "meeting_point", "punto encuentro") || prev.meeting_point,
+          what_to_bring: getCol(row, "que_llevar", "what_to_bring", "que llevar") || prev.what_to_bring,
+          recommendations: getCol(row, "recomendaciones", "recommendations") || prev.recommendations,
+        }));
+        toast.success("Campos generales importados del Sheet");
+
+      } else if (mode === "paquetes") {
+        const tc = parseFloat(form.exchange_rate_tour) || exchangeRateUsd;
+        const taxAdult = parseFloat(form.tax_adult_usd) || 0;
+        const taxChild = parseFloat(form.tax_child_usd) || 0;
+        const mapped: PackageForm[] = rows
+          .map((row) => {
+            const name = getCol(row, "nombre", "name");
+            if (!name) return null;
+            const pubAdult = parseFloat(getCol(row, "precio_adulto_usd", "public_price_adult_usd", "precio adulto usd", "precio_pub_adulto_usd")) || 0;
+            const pubChild = parseFloat(getCol(row, "precio_nino_usd", "precio_nino", "public_price_child_usd", "precio nino usd", "precio_pub_nino_usd")) || 0;
+            const svcRaw = getCol(row, "tipo", "service_type", "tipo_servicio");
+            const svcType = svcRaw.toLowerCase().includes("entrada") ? "entry_only" : "with_transport";
+            return {
+              ...emptyPackage,
+              name,
+              service_type: svcType,
+              public_price_adult_usd: String(pubAdult),
+              public_price_child_usd: String(pubChild),
+              cost_adult_usd: getCol(row, "costo_adulto", "cost_adult_usd", "costo adulto"),
+              cost_child_usd: getCol(row, "costo_nino", "cost_child_usd", "costo nino"),
+              mandatory_fees_usd: getCol(row, "fees", "mandatory_fees_usd", "fees_usd"),
+              includes: getCol(row, "incluye", "includes"),
+              excludes: getCol(row, "no_incluye", "excludes"),
+              price_adult_mxn: ((pubAdult + taxAdult) * tc).toFixed(2),
+              price_child_mxn: ((pubChild + taxChild) * tc).toFixed(2),
+            } as PackageForm;
+          })
+          .filter(Boolean) as PackageForm[];
+        if (!mapped.length) throw new Error("No se encontraron paquetes. Verifica que haya una columna 'nombre'.");
+        setPackages((prev) => [...prev, ...mapped]);
+        toast.success(`${mapped.length} paquete(s) importado(s) del Sheet`);
+
+      } else if (mode === "matriz") {
+        const mapped: VariantForm[] = rows
+          .map((row) => {
+            const salePrice = getCol(row, "precio_venta", "sale_price", "precio venta");
+            if (!salePrice) return null;
+            const pkgRaw = getCol(row, "paquete", "package_name");
+            return {
+              ...emptyVariant,
+              package_name: pkgRaw && pkgRaw !== "" ? pkgRaw : GENERAL_PACKAGE,
+              zone: getCol(row, "zona", "zone") || "Cancun",
+              pax_type: getCol(row, "tipo_pax", "pax_type", "tipo pax") || "Adulto",
+              nationality: getCol(row, "nacionalidad", "nationality") || "Extranjero",
+              sale_price: salePrice,
+              net_cost: getCol(row, "costo_neto", "net_cost", "costo neto"),
+              tax_fee: getCol(row, "tax", "fee", "tax_fee", "tax/fee"),
+            } as VariantForm;
+          })
+          .filter(Boolean) as VariantForm[];
+        if (!mapped.length) throw new Error("No se encontraron variantes. Verifica que haya una columna 'precio_venta'.");
+        setVariants((prev) => [...prev, ...mapped]);
+        toast.success(`${mapped.length} variante(s) importada(s) del Sheet`);
+      }
+
+      setSheetImportMode(null);
+    } catch (err: any) {
+      toast.error(err.message || "Error al importar Sheet");
+    } finally {
+      setSheetImporting(false);
     }
   };
 
@@ -1177,6 +1345,7 @@ export default function Tours() {
               tourTaxChildUsd={parseFloat(form.tax_child_usd) || 0}
               onDocUpload={isAdmin ? handlePackageDocUpload : undefined}
               isMapping={mappingPackages}
+              onSheetImport={isAdmin ? () => setSheetImportMode("paquetes") : undefined}
             />
 
             <Separator />
@@ -1188,6 +1357,7 @@ export default function Tours() {
               isAdmin={isAdmin}
               onDocUpload={isAdmin ? handleVariantDocUpload : undefined}
               isMapping={mappingVariants}
+              onSheetImport={isAdmin ? () => setSheetImportMode("matriz") : undefined}
             />
 
             <Separator />
@@ -1279,12 +1449,15 @@ export default function Tours() {
             {/* AI Document Mapping (admin only) */}
             {isAdmin && (
               <div className="space-y-1.5">
-                <Label>Mapeo Inteligente de Documento</Label>
-                <div className="flex items-center gap-3">
+                <Label>Mapeo Inteligente — Generales</Label>
+                <div className="flex flex-wrap items-center gap-2">
                   <Button type="button" variant="outline" size="sm" onClick={() => docInputRef.current?.click()} disabled={parsingDoc}>
-                    {parsingDoc ? "Analizando…" : "📄 Mapear Documento"}
+                    {parsingDoc ? "Analizando…" : "📄 Mapear PDF"}
                   </Button>
-                  <p className="text-[11px] text-muted-foreground">Sube un PDF o imagen con la ficha del operador para pre-llenar automáticamente.</p>
+                  <Button type="button" variant="outline" size="sm" onClick={() => setSheetImportMode("generales")} disabled={parsingDoc}>
+                    <Table2 className="mr-1 h-3 w-3" /> Importar Sheet
+                  </Button>
+                  <p className="text-[11px] text-muted-foreground">Pre-llena los campos descriptivos del tour.</p>
                 </div>
                 <input ref={docInputRef} type="file" accept="image/*,.pdf" className="hidden" onChange={handleDocUpload} />
               </div>
@@ -1299,6 +1472,15 @@ export default function Tours() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Google Sheet import dialog (shared across all 3 modes) */}
+      <SheetImportDialog
+        open={sheetImportMode !== null}
+        onOpenChange={(v) => { if (!v) setSheetImportMode(null); }}
+        defaultTab={sheetImportMode ? defaultSheetTabs[sheetImportMode] : ""}
+        loading={sheetImporting}
+        onImport={handleSheetImport}
+      />
     </div>
   );
 }
