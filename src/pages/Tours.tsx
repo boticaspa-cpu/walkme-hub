@@ -1504,6 +1504,15 @@ export default function Tours() {
         loading={sheetImporting}
         onImport={handleSheetImport}
       />
+
+      {/* Column mapping dialog */}
+      <ColumnMappingDialog
+        open={mappingDialogOpen}
+        onOpenChange={setMappingDialogOpen}
+        mappings={pendingMappings}
+        aliasMap={pendingAliasMap}
+        onConfirm={handleMappingConfirm}
+      />
     </div>
   );
 }
