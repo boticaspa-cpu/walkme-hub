@@ -212,6 +212,23 @@ Deno.serve(async (req) => {
     addRow(labels.phone, client?.phone ?? "—", 80);
     y += 10;
 
+    // Email
+    const email = r.pax_email || client?.email;
+    if (email) {
+      addRow(labels.email, email);
+      y += 10;
+    }
+
+    // Hotel & pickup notes
+    if (r.hotel_name) {
+      addRow(labels.hotel, r.hotel_name);
+      y += 10;
+    }
+    if (r.pickup_notes) {
+      addRow(labels.pickupNotes, r.pickup_notes);
+      y += 10;
+    }
+
     // ── TOUR INFO ──
     drawLine(y);
     y += 5;
