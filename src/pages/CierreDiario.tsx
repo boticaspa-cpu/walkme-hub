@@ -351,7 +351,7 @@ export default function CierreDiario() {
 
       {/* === CLOSE WIZARD === */}
       <Dialog open={closeDlg} onOpenChange={setCloseDlg}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Cerrar Caja — Paso {closeStep}/2</DialogTitle>
             <DialogDescription>

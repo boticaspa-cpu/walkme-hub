@@ -1125,7 +1125,7 @@ export default function Tours() {
 
       {/* Create / Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90dvh] overflow-y-auto w-full">
+        <DialogContent className="sm:max-w-2xl max-h-[90dvh] overflow-y-auto w-full">
           <DialogHeader>
             <DialogTitle>{editingId ? "Editar Tour" : "Nuevo Tour"}</DialogTitle>
             <DialogDescription>

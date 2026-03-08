@@ -361,7 +361,7 @@ export default function Configuracion() {
 
       {/* Invite Seller Dialog */}
       <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Invitar Vendedor</DialogTitle>
             <DialogDescription>

@@ -134,7 +134,7 @@ export default function Clientes() {
       </Card>
 
       <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) closeDialog(); }}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>{editingId ? "Editar Cliente" : "Nuevo Cliente"}</DialogTitle>
             <DialogDescription>{editingId ? "Modifica los datos del cliente." : "Completa los datos del nuevo cliente."}</DialogDescription>
