@@ -456,6 +456,7 @@ export default function Reservas() {
       toast.warning("Proveedor PREPAGO pendiente — debes pagarlo antes del tour para emitir voucher.");
       return;
     }
+    setTaxIncluded(true);
     setVoucherReservation(enrichWithPrices(r));
   };
 
