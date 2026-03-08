@@ -19,6 +19,8 @@ export default function POS() {
   const { activeSession, isSessionOpen, isLoadingSession } = useCashSession();
 
   const [search, setSearch] = useState("");
+  const [dateFrom, setDateFrom] = useState<Date | undefined>();
+  const [dateTo, setDateTo] = useState<Date | undefined>();
   const [checkoutReservation, setCheckoutReservation] = useState<any>(null);
 
   // Fetch pending reservations (scheduled/unpaid)
