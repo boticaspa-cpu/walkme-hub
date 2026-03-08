@@ -147,6 +147,7 @@ export default function Operadores() {
         exchange_rate: Number(form.exchange_rate) || 1,
         base_currency: form.base_currency,
         payment_rules: form.payment_rules,
+        fee_collection_mode: form.fee_collection_mode,
         ...(logo_url ? { logo_url } : {}),
       };
 
