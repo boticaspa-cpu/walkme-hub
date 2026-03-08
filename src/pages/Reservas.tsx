@@ -117,6 +117,8 @@ const emptyShared = {
   nationality: "",
   notes: "",
   discount_mxn: 0,
+  hotel_name: "",
+  pax_email: "",
 };
 
 export default function Reservas() {
