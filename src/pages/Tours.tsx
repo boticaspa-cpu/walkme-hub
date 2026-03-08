@@ -798,7 +798,7 @@ export default function Tours() {
             const pkgRaw = getCol(row, ...VARIANT_ALIASES.package);
             return {
               ...emptyVariant,
-              package_name: pkgRaw && pkgRaw !== "" ? pkgRaw : GENERAL_PACKAGE,
+              package_name: pkgRaw || "",
               zone: getCol(row, ...VARIANT_ALIASES.zone) || "Cancun",
               pax_type: getCol(row, ...VARIANT_ALIASES.pax_type) || "Adulto",
               nationality: getCol(row, ...VARIANT_ALIASES.nationality) || "Extranjero",
