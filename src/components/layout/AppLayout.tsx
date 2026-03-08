@@ -32,6 +32,7 @@ export function AppLayout() {
           </main>
         </div>
       </div>
+      <FloatingChatWidget />
     </SidebarProvider>
   );
 }
