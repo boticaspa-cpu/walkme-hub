@@ -617,6 +617,7 @@ export type Database = {
           created_at: string
           email: string | null
           exchange_rate: number
+          fee_collection_mode: string
           id: string
           logo_url: string | null
           name: string
@@ -632,6 +633,7 @@ export type Database = {
           created_at?: string
           email?: string | null
           exchange_rate?: number
+          fee_collection_mode?: string
           id?: string
           logo_url?: string | null
           name: string
@@ -647,6 +649,7 @@ export type Database = {
           created_at?: string
           email?: string | null
           exchange_rate?: number
+          fee_collection_mode?: string
           id?: string
           logo_url?: string | null
           name?: string

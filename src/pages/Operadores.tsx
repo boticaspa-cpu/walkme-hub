@@ -33,11 +33,13 @@ interface OperatorForm {
   exchange_rate: string;
   base_currency: string;
   payment_rules: string;
+  fee_collection_mode: string;
 }
 
 const emptyForm: OperatorForm = {
   name: "", contact_name: "", phone: "", email: "", tags: "",
   exchange_rate: "1", base_currency: "USD", payment_rules: "prepago",
+  fee_collection_mode: "agency",
 };
 
 export default function Operadores() {
@@ -102,6 +104,7 @@ export default function Operadores() {
       exchange_rate: String(op.exchange_rate ?? 1),
       base_currency: op.base_currency ?? "USD",
       payment_rules: op.payment_rules ?? "prepago",
+      fee_collection_mode: (op as any).fee_collection_mode ?? "agency",
     });
     setLogoPreview(op.logo_url);
     setLogoFile(null);
@@ -144,6 +147,7 @@ export default function Operadores() {
         exchange_rate: Number(form.exchange_rate) || 1,
         base_currency: form.base_currency,
         payment_rules: form.payment_rules,
+        fee_collection_mode: form.fee_collection_mode,
         ...(logo_url ? { logo_url } : {}),
       };
 
@@ -325,6 +329,22 @@ export default function Operadores() {
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Cobro de Impuestos</Label>
+              <Select value={form.fee_collection_mode} onValueChange={(v) => setForm({ ...form, fee_collection_mode: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="agency">Los cobramos nosotros</SelectItem>
+                  <SelectItem value="on_site">Se pagan al abordar</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                {form.fee_collection_mode === "on_site"
+                  ? "El cliente paga impuestos en efectivo al abordar."
+                  : "Los impuestos se incluyen en el precio que cobramos."}
+              </p>
             </div>
 
             <div className="space-y-1.5">

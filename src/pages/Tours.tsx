@@ -1348,18 +1348,12 @@ export default function Tours() {
               </div>
             </div>
 
-            {/* Fees al abordar */}
-            <div className="space-y-1.5">
-              <Label>Fees al Abordar USD (muelle/parques)</Label>
-              <Input type="number" value={form.mandatory_fees_usd} onChange={(e) => setForm({ ...form, mandatory_fees_usd: e.target.value })} placeholder="0" />
-            </div>
-
             {/* Alerta OJO */}
             <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2">
               <span className="text-amber-600 text-lg leading-none">⚠️</span>
               <div>
-                <p className="text-sm font-semibold text-amber-800">¡OJO! Estos impuestos y fees se pagan AL ABORDAR, no a la agencia.</p>
-                <p className="text-xs text-amber-700">El cliente debe ser informado de este cobro adicional.</p>
+                <p className="text-sm font-semibold text-amber-800">Impuestos al abordar</p>
+                <p className="text-xs text-amber-700">Si el operador cobra impuestos al abordar, se configurará automáticamente desde la ficha del operador.</p>
               </div>
             </div>
 

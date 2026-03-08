@@ -167,7 +167,7 @@ export default function Reservas() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("operators")
-        .select("id, name, payment_rules");
+        .select("id, name, payment_rules, fee_collection_mode");
       if (error) throw error;
       return data;
     },
@@ -178,7 +178,7 @@ export default function Reservas() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("tours")
-        .select("id, title, price_mxn, suggested_price_mxn, public_price_adult_usd, public_price_child_usd, exchange_rate_tour, tax_adult_usd, tax_child_usd, mandatory_fees_usd")
+        .select("id, title, price_mxn, suggested_price_mxn, public_price_adult_usd, public_price_child_usd, exchange_rate_tour, tax_adult_usd, tax_child_usd, mandatory_fees_usd, operator_id")
         .eq("active", true)
         .order("title");
       if (error) throw error;
@@ -440,13 +440,13 @@ export default function Reservas() {
   };
 
   const hasTourFees = (r: any) => {
-    return (r._tax_adult_usd > 0 || r._tax_child_usd > 0 || r._mandatory_fees_usd > 0);
+    return (r._tax_adult_usd > 0 || r._tax_child_usd > 0);
   };
 
   const computeOnSiteFees = (r: any) => {
     if (!r) return null;
-    const feeAdult = (r._tax_adult_usd ?? 0) + (r._mandatory_fees_usd ?? 0);
-    const feeChild = (r._tax_child_usd ?? 0) + (r._mandatory_fees_usd ?? 0);
+    const feeAdult = r._tax_adult_usd ?? 0;
+    const feeChild = r._tax_child_usd ?? 0;
     if (feeAdult <= 0 && feeChild <= 0) return null;
     return { amountPerAdult: feeAdult, amountPerChild: feeChild, currency: "USD" };
   };
@@ -456,7 +456,11 @@ export default function Reservas() {
       toast.warning("Proveedor PREPAGO pendiente — debes pagarlo antes del tour para emitir voucher.");
       return;
     }
-    setTaxIncluded(true);
+    // Auto-select taxIncluded based on operator's fee_collection_mode
+    const tour = tours.find((t: any) => t.id === r.tour_id);
+    const op = operators.find((o: any) => o.id === tour?.operator_id);
+    const isOnSite = (op as any)?.fee_collection_mode === "on_site";
+    setTaxIncluded(!isOnSite);
     setVoucherReservation(enrichWithPrices(r));
   };
 
