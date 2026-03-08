@@ -420,7 +420,7 @@ export default function PaquetesXcaret() {
                 </CardHeader>
                 <CardContent className="text-sm space-y-1">
                   <p>
-                    Suma precios públicos adulto: <strong>{fmt(liveCalc.sumPublic)}</strong>
+                    Suma precios públicos adulto (MXN): <strong>{fmt(liveCalc.sumMxn)}</strong>
                   </p>
                   <div className="grid grid-cols-2 gap-x-4 gap-y-1 pt-1">
                     <span className="text-muted-foreground">Público Adulto (×0.80):</span>
