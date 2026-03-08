@@ -1,45 +1,40 @@
 
 
-# Prioridad 1 + 2: Comisiones filtradas + Campos nuevos en Voucher/WhatsApp/PDF
+# Plan: Fix missing trigger + create Marina Mena's profile
 
-## PRIORIDAD 1 — Comisiones por seller
+## Root Cause
+The `handle_new_user()` function exists but there is **no trigger** on `auth.users` that calls it. New signups never get a profile or role created.
 
-### Problema
-La query en `Comisiones.tsx` no filtra por `seller_id`. RLS ya lo maneja (policy `Auth users can read own commissions` filtra por `seller_id = auth.uid() OR admin`), pero la UI no diferencia admin vs seller en título ni muestra nombre del vendedor para admin.
+## Changes
 
-### Cambios en `src/pages/Comisiones.tsx`
-- Título dinámico: admin ve "Todas las Comisiones", seller ve "Mis Comisiones"
-- Admin: agregar columna "Vendedor" con join a profiles (`seller_id` → `profiles.full_name`)
-- Query: agregar join `profiles!seller_id(full_name)` para admin
-- RLS ya filtra correctamente en DB — no se necesita `.eq()` adicional
+### 1. DB Migration — Create the trigger + backfill Marina Mena
 
-## PRIORIDAD 2 — Campos nuevos en Voucher/WhatsApp/PDF
+```sql
+-- Create the trigger on auth.users
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW
+  EXECUTE FUNCTION public.handle_new_user();
 
-### Campos: `hotel_name`, `pickup_notes`, `pax_email`, `operator_confirmation_code`
+-- Backfill the existing user who was missed
+INSERT INTO public.profiles (id, full_name, approval_status)
+VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'Marina Mena', 'pending')
+ON CONFLICT (id) DO NOTHING;
 
-### A. `src/components/reservations/VoucherPrintView.tsx`
-- Agregar labels en `t.es` y `t.en`: hotel, pickupNotes, confirmationCode
-- En sección Client: mostrar `pax_email` si existe
-- En sección Tour Details: agregar hotel_name y pickup_notes bajo la grid existente
-- En sección Folios: mostrar `operator_confirmation_code` junto a operator_folio
-- Actualizar interface `VoucherProps` para incluir los 4 campos
+INSERT INTO public.user_roles (user_id, role)
+VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'seller')
+ON CONFLICT (user_id, role) DO NOTHING;
+```
 
-### B. `src/components/reservations/whatsapp-message.ts`
-- Agregar hotel_name, pickup_notes, operator_confirmation_code a `ReservationData` interface
-- En mensaje EN y ES: insertar líneas para hotel, pickup notes y código de confirmación (solo si tienen valor)
+### 2. No code changes needed
+The `AuthContext` and `Configuracion` page already handle the approval flow. Once Marina's profile exists with `pending` status, she'll appear in the user list on Configuracion and you can approve her from there.
 
-### C. `supabase/functions/generate-voucher-pdf/index.ts`
-- Los datos ya vienen del select `*` de reservations
-- Agregar renders de hotel_name, pickup_notes, pax_email, operator_confirmation_code en el PDF
-- Agregar labels correspondientes en ES/EN
+## Result
+- Marina Mena will appear in Configuracion with status "Pendiente"
+- You approve her and she can log in
+- Future signups will automatically get profile + seller role via the trigger
 
-## Archivos modificados
-| Archivo | Cambio |
+| File | Change |
 |---|---|
-| `src/pages/Comisiones.tsx` | Filtro visual admin/seller, columna vendedor |
-| `src/components/reservations/VoucherPrintView.tsx` | 4 campos nuevos en voucher HTML |
-| `src/components/reservations/whatsapp-message.ts` | 3 campos en mensaje WhatsApp |
-| `supabase/functions/generate-voucher-pdf/index.ts` | 4 campos en PDF |
-
-Zero SQL. Zero RLS changes (ya están correctas).
+| SQL Migration | Attach trigger to auth.users + backfill Marina Mena |
 

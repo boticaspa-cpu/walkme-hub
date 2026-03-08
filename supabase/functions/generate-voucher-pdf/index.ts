@@ -59,10 +59,12 @@ Deno.serve(async (req) => {
           title: "VOUCHER DE RESERVA",
           folio: "Folio",
           opFolio: "Folio Operador",
+          confirmCode: "Código Confirmación",
           date: "Fecha",
           time: "Hora",
           client: "Cliente",
           phone: "Teléfono",
+          email: "Email",
           tour: "Tour",
           meetingPoint: "Punto de encuentro",
           adults: "Adultos",
@@ -79,15 +81,19 @@ Deno.serve(async (req) => {
           priceAdult: "Precio adulto",
           priceChild: "Precio menor",
           subtotal: "Subtotal",
+          hotel: "Hotel",
+          pickupNotes: "Notas de pickup",
         }
       : {
           title: "RESERVATION VOUCHER",
           folio: "Folio",
           opFolio: "Operator Folio",
+          confirmCode: "Confirmation Code",
           date: "Date",
           time: "Time",
           client: "Client",
           phone: "Phone",
+          email: "Email",
           tour: "Tour",
           meetingPoint: "Meeting point",
           adults: "Adults",
@@ -104,6 +110,8 @@ Deno.serve(async (req) => {
           priceAdult: "Adult price",
           priceChild: "Minor price",
           subtotal: "Subtotal",
+          hotel: "Hotel",
+          pickupNotes: "Pickup notes",
         };
 
     const fmtMXN = (n: number) => `$${n.toLocaleString("en-US", { minimumFractionDigits: 2 })} MXN`;
@@ -174,6 +182,9 @@ Deno.serve(async (req) => {
     if (r.operator_folio) {
       doc.text(`${labels.opFolio}: ${r.operator_folio}`, margin + 60, y);
     }
+    if (r.operator_confirmation_code) {
+      doc.text(`${labels.confirmCode}: ${r.operator_confirmation_code}`, margin + 120, y);
+    }
     y += 6;
 
     // ── SEPARATOR ──
@@ -200,6 +211,23 @@ Deno.serve(async (req) => {
     addRow(labels.client, client?.name ?? "—");
     addRow(labels.phone, client?.phone ?? "—", 80);
     y += 10;
+
+    // Email
+    const email = r.pax_email || client?.email;
+    if (email) {
+      addRow(labels.email, email);
+      y += 10;
+    }
+
+    // Hotel & pickup notes
+    if (r.hotel_name) {
+      addRow(labels.hotel, r.hotel_name);
+      y += 10;
+    }
+    if (r.pickup_notes) {
+      addRow(labels.pickupNotes, r.pickup_notes);
+      y += 10;
+    }
 
     // ── TOUR INFO ──
     drawLine(y);

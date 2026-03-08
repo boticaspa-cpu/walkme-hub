@@ -16,6 +16,7 @@ interface VoucherProps {
     folio: string | null;
     operator_folio?: string | null;
     cancellation_folio?: string | null;
+    operator_confirmation_code?: string;
     reservation_date: string;
     reservation_time: string;
     pax_adults: number;
@@ -29,6 +30,9 @@ interface VoucherProps {
     notes: string | null;
     created_at: string;
     status?: string;
+    hotel_name?: string;
+    pickup_notes?: string;
+    pax_email?: string;
     tours?: { title: string; includes: string[]; meeting_point: string; short_description: string } | null;
     clients?: { name: string; phone: string; email: string | null } | null;
   };
@@ -45,6 +49,7 @@ const t = {
     folio: "Folio",
     operatorFolio: "Folio Operador",
     cancellationFolio: "Folio Cancelación",
+    confirmationCode: "Código Confirmación",
     purchaseDate: "Fecha de compra",
     client: "Cliente",
     phone: "Teléfono",
@@ -65,6 +70,8 @@ const t = {
     shared: "Compartido",
     private: "Privado",
     zone: "Zona",
+    hotel: "Hotel",
+    pickupNotes: "Notas de pickup",
     thanks: "¡Gracias por elegir WalkMe Tours!",
     passengers: "Pasajeros",
     tourDetails: "Detalles del Tour",
@@ -78,6 +85,7 @@ const t = {
     folio: "Folio",
     operatorFolio: "Operator Folio",
     cancellationFolio: "Cancellation Folio",
+    confirmationCode: "Confirmation Code",
     purchaseDate: "Purchase date",
     client: "Client",
     phone: "Phone",
@@ -98,6 +106,8 @@ const t = {
     shared: "Shared",
     private: "Private",
     zone: "Zone",
+    hotel: "Hotel",
+    pickupNotes: "Pickup notes",
     thanks: "Thank you for choosing WalkMe Tours!",
     passengers: "Passengers",
     tourDetails: "Tour Details",
@@ -193,6 +203,12 @@ export default function VoucherPrintView({ reservation, lang: initialLang = "es"
               <p className="text-sm font-bold font-mono" style={{ color: "#2d5a27" }}>{r.operator_folio}</p>
             </div>
           )}
+          {r.operator_confirmation_code && (
+            <div>
+              <span className="text-[10px] uppercase tracking-wider text-gray-400">{l.confirmationCode}</span>
+              <p className="text-sm font-bold font-mono" style={{ color: "#2d5a27" }}>{r.operator_confirmation_code}</p>
+            </div>
+          )}
           {r.cancellation_folio && (
             <div>
               <span className="text-[10px] uppercase tracking-wider text-gray-400">{l.cancellationFolio}</span>
@@ -226,6 +242,7 @@ export default function VoucherPrintView({ reservation, lang: initialLang = "es"
               <td className="py-2 px-4">
                 <p className="font-medium">{client?.name ?? "—"}</p>
                 {client?.phone && <p className="text-xs text-gray-400">{client.phone}</p>}
+                {(r.pax_email || client?.email) && <p className="text-xs text-gray-400">{r.pax_email || client?.email}</p>}
               </td>
               <td className="text-center py-2 px-4 font-bold" style={{ color: "#2d5a27" }}>{r.pax_adults}</td>
               <td className="text-center py-2 px-4 font-bold" style={{ color: "#2d5a27" }}>{r.pax_children}</td>
@@ -280,6 +297,29 @@ export default function VoucherPrintView({ reservation, lang: initialLang = "es"
               </div>
             </div>
           </div>
+          {/* Hotel & pickup notes */}
+          {(r.hotel_name || r.pickup_notes) && (
+            <div className="grid grid-cols-2 gap-3 pt-2" style={{ borderTop: "1px solid #f3f4f6" }}>
+              {r.hotel_name && (
+                <div className="flex items-start gap-1.5">
+                  <span className="mt-0.5 text-gray-400 shrink-0">🏨</span>
+                  <div>
+                    <p className="text-[10px] uppercase text-gray-400">{l.hotel}</p>
+                    <p className="text-sm font-medium">{r.hotel_name}</p>
+                  </div>
+                </div>
+              )}
+              {r.pickup_notes && (
+                <div className="flex items-start gap-1.5">
+                  <span className="mt-0.5 text-gray-400 shrink-0">🚏</span>
+                  <div>
+                    <p className="text-[10px] uppercase text-gray-400">{l.pickupNotes}</p>
+                    <p className="text-sm font-medium">{r.pickup_notes}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
