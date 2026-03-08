@@ -1,40 +1,28 @@
 
 
-# Plan: Fix missing trigger + create Marina Mena's profile
+# Plan: Importar fotos desde Google Sheets (URLs) y computadora
 
-## Root Cause
-The `handle_new_user()` function exists but there is **no trigger** on `auth.users` that calls it. New signups never get a profile or role created.
+## Contexto
+Actualmente solo se pueden subir imágenes desde la computadora (file input). El usuario quiere también poder pegar URLs de imágenes (ej. desde Google Sheets o directamente) para agregarlas al tour.
 
-## Changes
+## Cambios
 
-### 1. DB Migration — Create the trigger + backfill Marina Mena
+### `src/pages/Tours.tsx`
 
-```sql
--- Create the trigger on auth.users
-CREATE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW
-  EXECUTE FUNCTION public.handle_new_user();
+1. **Agregar botón "Agregar URL"** junto al botón de subir archivo en la sección de imágenes
+   - Al hacer clic, muestra un input de texto para pegar una URL de imagen
+   - Al confirmar, valida que sea una URL válida de imagen y la agrega a `imagePreviews` directamente (sin archivo local)
 
--- Backfill the existing user who was missed
-INSERT INTO public.profiles (id, full_name, approval_status)
-VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'Marina Mena', 'pending')
-ON CONFLICT (id) DO NOTHING;
+2. **Actualizar `handleFileChange`** para distinguir entre URLs externas (ya son `http`) y archivos locales (necesitan `imageFiles` para upload)
 
-INSERT INTO public.user_roles (user_id, role)
-VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'seller')
-ON CONFLICT (user_id, role) DO NOTHING;
-```
+3. **Actualizar lógica de guardado** — las URLs externas ya se preservan en `finalImageUrls` (línea 957 ya filtra `startsWith("http")`), así que solo hay que asegurar que no se pierdan
 
-### 2. No code changes needed
-The `AuthContext` and `Configuracion` page already handle the approval flow. Once Marina's profile exists with `pending` status, she'll appear in the user list on Configuracion and you can approve her from there.
+4. **Integrar con importación de Sheet** — agregar alias `image_url` / `imagen` / `foto` / `image` en `GENERAL_ALIASES` de `sheet-import.ts`, para que al importar generales del Sheet se auto-llenen las URLs de imagen
 
-## Result
-- Marina Mena will appear in Configuracion with status "Pendiente"
-- You approve her and she can log in
-- Future signups will automatically get profile + seller role via the trigger
+### `src/lib/sheet-import.ts`
+- Agregar alias de imagen en `GENERAL_ALIASES`: `image_url`, `imagen`, `foto`, `url imagen`, `image`
 
-| File | Change |
-|---|---|
-| SQL Migration | Attach trigger to auth.users + backfill Marina Mena |
+### UI del input de URL
+- Debajo de la cuadrícula de imágenes, agregar un mini-form inline: `[input URL] [+ Agregar]`
+- Validar que la URL empiece con `http` antes de agregar
 
