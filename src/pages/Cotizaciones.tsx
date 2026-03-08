@@ -338,6 +338,12 @@ export default function Cotizaciones() {
   const fmt = (n: number) => n.toLocaleString("es-MX", { style: "currency", currency: "MXN" });
 
   const filtered = quotes.filter((q: any) => {
+    if (dateFrom && new Date(q.created_at) < dateFrom) return false;
+    if (dateTo) {
+      const end = new Date(dateTo);
+      end.setHours(23, 59, 59, 999);
+      if (new Date(q.created_at) > end) return false;
+    }
     if (!search) return true;
     const s = search.toLowerCase();
     return (q.folio ?? "").toLowerCase().includes(s) || (q.clients?.name ?? q.client_name ?? "").toLowerCase().includes(s);
