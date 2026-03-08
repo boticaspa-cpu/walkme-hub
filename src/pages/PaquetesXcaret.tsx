@@ -66,7 +66,7 @@ function calcXcaretPrices(sumAdultMxn: number) {
 }
 
 function fmt(n: number) {
-  return n.toLocaleString("en-US", { style: "currency", currency: "USD" });
+  return n.toLocaleString("es-MX", { style: "currency", currency: "MXN" });
 }
 
 /* ── component ── */
