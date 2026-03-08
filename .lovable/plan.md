@@ -1,35 +1,40 @@
 
 
-# Plan: Corregir cálculo de comisión — excluir impuestos y considerar descuentos
+# Plan: Fix missing trigger + create Marina Mena's profile
 
-## Problema actual
-La fórmula actual es:
+## Root Cause
+The `handle_new_user()` function exists but there is **no trigger** on `auth.users` that calls it. New signups never get a profile or role created.
+
+## Changes
+
+### 1. DB Migration — Create the trigger + backfill Marina Mena
+
+```sql
+-- Create the trigger on auth.users
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW
+  EXECUTE FUNCTION public.handle_new_user();
+
+-- Backfill the existing user who was missed
+INSERT INTO public.profiles (id, full_name, approval_status)
+VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'Marina Mena', 'pending')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO public.user_roles (user_id, role)
+VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'seller')
+ON CONFLICT (user_id, role) DO NOTHING;
 ```
-ganancia = totalMxn - totalNetCost
-comisión = ganancia × rate
-```
-Esto tiene 2 errores:
-1. **No excluye impuestos (tax_fee)** — los impuestos no son ganancia, son pass-through.
-2. **No descuenta el discount_mxn** — si se aplica descuento, la ganancia real baja para ambos (agencia y comisionista).
 
-## Fórmula correcta
-```
-totalVenta = totalMxn (ya incluye descuento aplicado)
-totalCosto = (net_cost_adulto × pax_adults) + (net_cost_niño × pax_children)
-totalImpuestos = (tax_fee_adulto × pax_adults) + (tax_fee_niño × pax_children)
-ganancia = totalVenta - totalCosto - totalImpuestos
-comisión = ganancia × rate
-```
-El `totalMxn` ya refleja el descuento (subtotal - discount_mxn), así que la ganancia se reduce automáticamente cuando hay descuento.
+### 2. No code changes needed
+The `AuthContext` and `Configuracion` page already handle the approval flow. Once Marina's profile exists with `pending` status, she'll appear in the user list on Configuracion and you can approve her from there.
 
-## Cambio
+## Result
+- Marina Mena will appear in Configuracion with status "Pendiente"
+- You approve her and she can log in
+- Future signups will automatically get profile + seller role via the trigger
 
-**Archivo**: `src/components/reservations/ReservationCheckout.tsx`, sección de comisión (líneas ~196-236)
-
-1. Cambiar los queries de variantes para traer `net_cost, tax_fee` en vez de solo `net_cost`.
-2. Calcular `totalTaxFee = (tax_adult × pax_adults) + (tax_child × pax_children)`.
-3. Nueva fórmula: `profit = Math.max(0, totalMxn - totalNetCost - totalTaxFee)`.
-4. El resto queda igual (`commissionAmount = profit * rate`).
-
-Solo se modifica ~10 líneas en un archivo.
+| File | Change |
+|---|---|
+| SQL Migration | Attach trigger to auth.users + backfill Marina Mena |
 
