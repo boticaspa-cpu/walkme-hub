@@ -10,6 +10,7 @@ import { computeTourPrice, computeTotal, TourPackageRow } from "@/lib/tour-prici
 import VoucherPrintView from "@/components/reservations/VoucherPrintView";
 import ReservationCheckout from "@/components/reservations/ReservationCheckout";
 import { buildWhatsAppMessage, openWhatsApp } from "@/components/reservations/whatsapp-message";
+import DiscountInput from "@/components/shared/DiscountInput";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -698,8 +699,11 @@ export default function Reservas() {
                   <Input type="number" min={0} step="0.01" value={form.total_mxn} onChange={(e) => setForm((p) => ({ ...p, total_mxn: parseFloat(e.target.value) || 0 }))} />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Descuento</Label>
-                  <Input type="number" min={0} step="0.01" value={form.discount_mxn || ""} onChange={(e) => setForm((p) => ({ ...p, discount_mxn: parseFloat(e.target.value) || 0 }))} placeholder="0.00" />
+                  <DiscountInput
+                    subtotal={form.total_mxn}
+                    discountMxn={form.discount_mxn || 0}
+                    onChange={(v) => setForm((p) => ({ ...p, discount_mxn: v }))}
+                  />
                 </div>
               </div>
               {form.discount_mxn > 0 && (
@@ -766,8 +770,12 @@ export default function Reservas() {
                   <Textarea value={shared.notes} onChange={(e) => setShared((p) => ({ ...p, notes: e.target.value }))} placeholder="Notas opcionales…" rows={2} />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Descuento MXN (global)</Label>
-                  <Input type="number" min={0} step="0.01" value={shared.discount_mxn || ""} onChange={(e) => setShared((p) => ({ ...p, discount_mxn: parseFloat(e.target.value) || 0 }))} placeholder="0.00" />
+                  <DiscountInput
+                    subtotal={items.reduce((a, i) => a + i.total_mxn, 0)}
+                    discountMxn={shared.discount_mxn || 0}
+                    onChange={(v) => setShared((p) => ({ ...p, discount_mxn: v }))}
+                    label="Descuento (global)"
+                  />
                 </div>
               </div>
 
