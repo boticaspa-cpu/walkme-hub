@@ -46,7 +46,7 @@ export default function Configuracion() {
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
 
-  const inviteUrl = typeof window !== "undefined" ? `${window.location.origin}/login?tab=signup` : "";
+  const inviteUrl = "https://walkme-hub.lovable.app/login?tab=signup";
 
   // Exchange rates state
   const [rateUsd, setRateUsd] = useState("");
