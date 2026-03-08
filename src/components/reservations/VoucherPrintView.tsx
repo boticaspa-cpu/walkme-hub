@@ -242,6 +242,7 @@ export default function VoucherPrintView({ reservation, lang: initialLang = "es"
               <td className="py-2 px-4">
                 <p className="font-medium">{client?.name ?? "—"}</p>
                 {client?.phone && <p className="text-xs text-gray-400">{client.phone}</p>}
+                {(r.pax_email || client?.email) && <p className="text-xs text-gray-400">{r.pax_email || client?.email}</p>}
               </td>
               <td className="text-center py-2 px-4 font-bold" style={{ color: "#2d5a27" }}>{r.pax_adults}</td>
               <td className="text-center py-2 px-4 font-bold" style={{ color: "#2d5a27" }}>{r.pax_children}</td>
