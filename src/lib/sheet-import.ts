@@ -208,3 +208,126 @@ export function collectAliasKeys(aliasMap: Record<string, string[]>): string[] {
   }
   return keys;
 }
+
+// ── Fuzzy matching utilities ──
+
+/** Compute longest common substring length between two strings */
+function lcsLength(a: string, b: string): number {
+  let max = 0;
+  for (let i = 0; i < a.length; i++) {
+    for (let j = 0; j < b.length; j++) {
+      let k = 0;
+      while (i + k < a.length && j + k < b.length && a[i + k] === b[j + k]) k++;
+      if (k > max) max = k;
+    }
+  }
+  return max;
+}
+
+/** Score how well a header matches a field alias (0 = no match, higher = better) */
+function matchScore(headerNorm: string, aliasNorm: string): number {
+  if (headerNorm === aliasNorm) return 1000; // exact
+  if (headerNorm.includes(aliasNorm) || aliasNorm.includes(headerNorm)) {
+    return 500 + Math.min(headerNorm.length, aliasNorm.length);
+  }
+  const lcs = lcsLength(headerNorm, aliasNorm);
+  const minLen = Math.min(headerNorm.length, aliasNorm.length);
+  if (minLen > 3 && lcs / minLen >= 0.6) return lcs * 10;
+  return 0;
+}
+
+export interface ColumnMapping {
+  /** Original header from the sheet */
+  header: string;
+  /** Assigned system field key (e.g. "name", "pub_adult_usd") or null if ignored */
+  fieldKey: string | null;
+  /** Match status */
+  status: "auto" | "suggested" | "unmapped";
+  /** Best score (for sorting) */
+  score: number;
+}
+
+/**
+ * Auto-map CSV headers to system fields using alias matching + fuzzy fallback.
+ * Returns one ColumnMapping per header.
+ */
+export function autoMapColumns(
+  headers: string[],
+  aliasMap: Record<string, string[]>
+): ColumnMapping[] {
+  const result: ColumnMapping[] = [];
+  const usedFields = new Set<string>();
+
+  // Build flattened alias index: { normalizedAlias → fieldKey }
+  const aliasIndex: { norm: string; fieldKey: string }[] = [];
+  for (const [fieldKey, aliases] of Object.entries(aliasMap)) {
+    for (const a of aliases) {
+      aliasIndex.push({ norm: normKey(a), fieldKey });
+    }
+  }
+
+  for (const header of headers) {
+    const hn = normKey(header);
+    if (!hn) {
+      result.push({ header, fieldKey: null, status: "unmapped", score: 0 });
+      continue;
+    }
+
+    let bestField: string | null = null;
+    let bestScore = 0;
+    let isExact = false;
+
+    for (const { norm, fieldKey } of aliasIndex) {
+      if (usedFields.has(fieldKey)) continue;
+      const s = matchScore(hn, norm);
+      if (s > bestScore) {
+        bestScore = s;
+        bestField = fieldKey;
+        isExact = s >= 1000;
+      }
+    }
+
+    if (bestField && bestScore >= 500) {
+      usedFields.add(bestField);
+      result.push({ header, fieldKey: bestField, status: "auto", score: bestScore });
+    } else if (bestField && bestScore > 0) {
+      usedFields.add(bestField);
+      result.push({ header, fieldKey: bestField, status: "suggested", score: bestScore });
+    } else {
+      result.push({ header, fieldKey: null, status: "unmapped", score: 0 });
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Get top N field suggestions for a given header, sorted by score descending.
+ */
+export function suggestFields(
+  headerNorm: string,
+  aliasMap: Record<string, string[]>,
+  excludeFields?: Set<string>
+): { fieldKey: string; score: number; label: string }[] {
+  const suggestions: { fieldKey: string; score: number; label: string }[] = [];
+
+  for (const [fieldKey, aliases] of Object.entries(aliasMap)) {
+    if (excludeFields?.has(fieldKey)) continue;
+    let best = 0;
+    for (const a of aliases) {
+      const s = matchScore(headerNorm, normKey(a));
+      if (s > best) best = s;
+    }
+    if (best > 0) {
+      suggestions.push({ fieldKey, score: best, label: aliases[0] });
+    }
+  }
+
+  return suggestions.sort((a, b) => b.score - a.score);
+}
+
+/** Get human-readable label for a field key from alias map */
+export function fieldLabel(fieldKey: string, aliasMap: Record<string, string[]>): string {
+  const aliases = aliasMap[fieldKey];
+  return aliases?.[0] ?? fieldKey;
+}

@@ -1,53 +1,40 @@
 
 
-# Plan: Paso intermedio de mapeo de columnas con sugerencias
+# Plan: Fix missing trigger + create Marina Mena's profile
 
-## Problema
-Cuando el Sheet tiene encabezados que no coinciden con los alias conocidos, el importador simplemente los ignora. El usuario quiere que el sistema le muestre las columnas no reconocidas y le sugiera campos similares para confirmar manualmente.
+## Root Cause
+The `handle_new_user()` function exists but there is **no trigger** on `auth.users` that calls it. New signups never get a profile or role created.
 
-## Solución
+## Changes
 
-Agregar un paso intermedio entre la carga del CSV y el procesamiento de datos: un **diálogo de mapeo de columnas** donde el usuario puede revisar y corregir las asignaciones.
+### 1. DB Migration — Create the trigger + backfill Marina Mena
 
-### Flujo nuevo
-1. Usuario pega URL y pestaña → se descarga el CSV
-2. Se auto-mapean las columnas que coinciden con alias
-3. Las columnas **no mapeadas** se muestran con sugerencias de campos similares (fuzzy match por similitud de texto)
-4. El usuario confirma/ajusta el mapeo en un diálogo intermedio
-5. Se procesan los datos con el mapeo final
+```sql
+-- Create the trigger on auth.users
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW
+  EXECUTE FUNCTION public.handle_new_user();
 
-### Archivos a modificar/crear
+-- Backfill the existing user who was missed
+INSERT INTO public.profiles (id, full_name, approval_status)
+VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'Marina Mena', 'pending')
+ON CONFLICT (id) DO NOTHING;
 
-| Archivo | Cambio |
-|---|---|
-| `src/components/tours/ColumnMappingDialog.tsx` | **Nuevo** — Diálogo que muestra columnas del Sheet vs campos del sistema, con sugerencias fuzzy y selects para reasignar |
-| `src/lib/sheet-import.ts` | Agregar función `autoMapColumns` que retorna `{ mapped, unmapped }` y función `fuzzyMatch` para sugerir campos parecidos |
-| `src/pages/Tours.tsx` | Dividir `handleSheetImport` en 2 pasos: (1) cargar CSV + mostrar mapeo, (2) procesar con mapeo confirmado |
-
-### Detalle del `ColumnMappingDialog`
-- Tabla con 3 columnas: **Columna del Sheet** | **Campo asignado** (Select con opciones del sistema) | **Estado** (auto/manual/ignorar)
-- Las columnas auto-mapeadas aparecen con badge verde "Auto"
-- Las no mapeadas muestran un Select con la sugerencia más cercana pre-seleccionada
-- Botón "Importar con este mapeo" para confirmar
-
-### Detalle de `fuzzyMatch`
-- Comparar `normKey(header)` contra todos los alias normalizados
-- Usar distancia de subcadena: si el header contiene o es contenido por un alias, sugerirlo
-- Ordenar sugerencias por relevancia (coincidencia parcial más larga primero)
-
-### Ejemplo visual
-
-```text
-┌─────────────────────────────────────────────────┐
-│  Mapeo de Columnas                              │
-├───────────────────┬──────────────────┬──────────┤
-│ Columna Sheet     │ Campo asignado   │ Estado   │
-├───────────────────┼──────────────────┼──────────┤
-│ Nombre del tour   │ [Nombre      ▾]  │ ● Auto   │
-│ Precio Pub. Ad.   │ [Precio Ad.  ▾]  │ ● Auto   │
-│ Comision agencia  │ [— Ignorar — ▾]  │ ○ Manual │
-│ Costo NET adulto  │ [Costo Ad.?  ▾]  │ ◐ Suger. │
-└───────────────────┴──────────────────┴──────────┘
-         [Cancelar]              [Importar con este mapeo]
+INSERT INTO public.user_roles (user_id, role)
+VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'seller')
+ON CONFLICT (user_id, role) DO NOTHING;
 ```
+
+### 2. No code changes needed
+The `AuthContext` and `Configuracion` page already handle the approval flow. Once Marina's profile exists with `pending` status, she'll appear in the user list on Configuracion and you can approve her from there.
+
+## Result
+- Marina Mena will appear in Configuracion with status "Pendiente"
+- You approve her and she can log in
+- Future signups will automatically get profile + seller role via the trigger
+
+| File | Change |
+|---|---|
+| SQL Migration | Attach trigger to auth.users + backfill Marina Mena |
 
