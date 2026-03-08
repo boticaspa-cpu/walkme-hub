@@ -133,7 +133,7 @@ export default function ReservationCheckout({ reservation, open, onOpenChange, o
         exchange_rate: er,
         subtotal_mxn: baseTotalMxn,
         discount_mxn: 0,
-        total_mxn: totalMxn,
+        total_mxn: baseTotalMxn,
         sold_by: user?.id,
         cash_session_id: activeSession?.id || null,
       }).select("id").single();
