@@ -1017,6 +1017,17 @@ export default function Reservas() {
                   </div>
                 </div>
 
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label>Hotel</Label>
+                    <Input value={shared.hotel_name} onChange={(e) => setShared((p) => ({ ...p, hotel_name: e.target.value }))} placeholder="Nombre del hotel" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Email del pasajero</Label>
+                    <Input type="email" value={shared.pax_email} onChange={(e) => setShared((p) => ({ ...p, pax_email: e.target.value }))} placeholder="correo@ejemplo.com" />
+                  </div>
+                </div>
+
                 <div className="space-y-1.5">
                   <Label>Notas</Label>
                   <Textarea value={shared.notes} onChange={(e) => setShared((p) => ({ ...p, notes: e.target.value }))} placeholder="Notas opcionales…" rows={2} />
