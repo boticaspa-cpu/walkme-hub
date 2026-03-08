@@ -762,6 +762,81 @@ export type Database = {
         }
         Relationships: []
       }
+      promotion_tours: {
+        Row: {
+          id: string
+          promotion_id: string
+          tour_id: string
+        }
+        Insert: {
+          id?: string
+          promotion_id: string
+          tour_id: string
+        }
+        Update: {
+          id?: string
+          promotion_id?: string
+          tour_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "promotion_tours_promotion_id_fkey"
+            columns: ["promotion_id"]
+            isOneToOne: false
+            referencedRelation: "promotions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "promotion_tours_tour_id_fkey"
+            columns: ["tour_id"]
+            isOneToOne: false
+            referencedRelation: "tours"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      promotions: {
+        Row: {
+          active: boolean
+          created_at: string
+          created_by: string | null
+          description: string | null
+          discount_mode: string
+          discount_mxn: number
+          discount_value: number
+          id: string
+          name: string
+          subtotal_mxn: number
+          total_mxn: number
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          discount_mode?: string
+          discount_mxn?: number
+          discount_value?: number
+          id?: string
+          name: string
+          subtotal_mxn?: number
+          total_mxn?: number
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          discount_mode?: string
+          discount_mxn?: number
+          discount_value?: number
+          id?: string
+          name?: string
+          subtotal_mxn?: number
+          total_mxn?: number
+        }
+        Relationships: []
+      }
       quote_items: {
         Row: {
           created_at: string

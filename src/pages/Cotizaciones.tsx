@@ -347,6 +347,60 @@ export default function Cotizaciones() {
     })();
   }, [searchParams, tours]);
 
+  // ── Detect ?promotion_id= to pre-fill with custom promotion tours ──
+  useEffect(() => {
+    const promoId = searchParams.get("promotion_id");
+    if (!promoId || tours.length === 0) return;
+
+    (async () => {
+      try {
+        const { data: promo, error: e1 } = await supabase
+          .from("promotions")
+          .select("name, subtotal_mxn, discount_mxn, total_mxn")
+          .eq("id", promoId)
+          .single();
+        if (e1 || !promo) return;
+
+        const { data: links, error: e2 } = await supabase
+          .from("promotion_tours")
+          .select("tour_id")
+          .eq("promotion_id", promoId);
+        if (e2 || !links?.length) return;
+
+        const tourIds = links.map((l: any) => l.tour_id);
+        const toursInPromo = tourIds.map((tid: string) => tours.find((t: any) => t.id === tid)).filter(Boolean);
+        const sumBase = toursInPromo.reduce((acc: number, t: any) => acc + ((t as any).price_mxn || 0), 0);
+
+        const newItems: QuoteItem[] = tourIds.map((tid: string) => {
+          const t = tours.find((x: any) => x.id === tid);
+          const basePrice = (t as any)?.price_mxn ?? 0;
+          const ratio = sumBase > 0 ? basePrice / sumBase : 1 / tourIds.length;
+          const adultPrice = Math.round((promo as any).total_mxn * ratio * 100) / 100;
+
+          return {
+            tour_id: tid,
+            tour_date: "",
+            qty_adults: 1,
+            qty_children: 0,
+            unit_price_mxn: adultPrice,
+            unit_price_child_mxn: 0,
+            zone: "",
+            nationality: "",
+            package_name: "",
+          };
+        });
+
+        setForm({ ...emptyForm, notes: `Promoción: ${(promo as any).name}` });
+        setItems(newItems);
+        setEditingId(null);
+        setDialogOpen(true);
+      } catch {
+        // silently fail
+      }
+      setSearchParams({}, { replace: true });
+    })();
+  }, [searchParams, tours]);
+
   const openEdit = async (q: any) => {
     setForm({ client_id: q.client_id ?? "", client_name: q.client_name, notes: q.notes ?? "", status: q.status, discount_mxn: (q as any).discount_mxn ?? 0 });
     setEditingId(q.id);

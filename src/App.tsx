@@ -24,6 +24,7 @@ import Reportes from "./pages/Reportes";
 import Configuracion from "./pages/Configuracion";
 import Gastos from "./pages/Gastos";
 import PaquetesXcaret from "./pages/PaquetesXcaret";
+import Promociones from "./pages/Promociones";
 
 import NotFound from "./pages/NotFound";
 
@@ -49,6 +50,7 @@ const App = () => (
               <Route path="/categorias" element={<Categorias />} />
               <Route path="/destinos" element={<Destinos />} />
               <Route path="/paquetes-xcaret" element={<PaquetesXcaret />} />
+              <Route path="/promociones" element={<Promociones />} />
               <Route path="/cotizaciones" element={<Cotizaciones />} />
               <Route path="/reservas" element={<Reservas />} />
               <Route path="/calendario" element={<Calendario />} />
