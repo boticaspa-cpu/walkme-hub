@@ -21,6 +21,7 @@ export default function SendQuoteDialog({ open, onOpenChange, quote }: Props) {
   const qc = useQueryClient();
   const [contactForm, setContactForm] = useState({ name: "", phone: "", email: "" });
   const [needsContact, setNeedsContact] = useState(false);
+  const [showQR, setShowQR] = useState(false);
 
   // Fetch client if quote has client_id
   const { data: client } = useQuery({
