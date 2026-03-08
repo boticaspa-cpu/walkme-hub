@@ -56,10 +56,11 @@ async function fetchCatalogContext(): Promise<string> {
   const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const sb = createClient(supabaseUrl, supabaseKey);
 
-  const [toursRes, variantsRes, packagesRes] = await Promise.all([
-    sb.from("tours").select("id,title,price_mxn,suggested_price_mxn,public_price_adult_usd,public_price_child_usd,days,includes,excludes,short_description,service_type,child_age_min,child_age_max").eq("active", true),
+  const [toursRes, variantsRes, packagesRes, operatorsRes] = await Promise.all([
+    sb.from("tours").select("id,title,price_mxn,suggested_price_mxn,public_price_adult_usd,public_price_child_usd,days,includes,excludes,short_description,service_type,child_age_min,child_age_max,operator_id").eq("active", true),
     sb.from("tour_price_variants").select("tour_id,zone,nationality,pax_type,sale_price,package_name").eq("active", true),
     sb.from("tour_packages").select("tour_id,name,price_adult_mxn,price_child_mxn,includes,excludes").eq("active", true),
+    sb.from("operators").select("id,name,contact_name,phone,email,base_currency,payment_rules,fee_collection_mode,tags").eq("active", true),
   ]);
 
   const tours = toursRes.data ?? [];
