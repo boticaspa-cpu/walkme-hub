@@ -557,6 +557,10 @@ export default function Reservas() {
       discount_mxn: (r as any).discount_mxn ?? 0,
       notes: r.notes ?? "",
       status: r.status,
+      hotel_name: r.hotel_name ?? "",
+      pickup_notes: r.pickup_notes ?? "",
+      pax_email: r.pax_email ?? "",
+      operator_confirmation_code: r.operator_confirmation_code ?? "",
     });
     setEditingId(r.id);
     setDialogOpen(true);
