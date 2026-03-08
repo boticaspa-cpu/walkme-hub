@@ -687,6 +687,81 @@ export type Database = {
         }
         Relationships: []
       }
+      promo_package_tours: {
+        Row: {
+          id: string
+          promo_package_id: string
+          tour_id: string
+        }
+        Insert: {
+          id?: string
+          promo_package_id: string
+          tour_id: string
+        }
+        Update: {
+          id?: string
+          promo_package_id?: string
+          tour_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "promo_package_tours_promo_package_id_fkey"
+            columns: ["promo_package_id"]
+            isOneToOne: false
+            referencedRelation: "promo_packages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "promo_package_tours_tour_id_fkey"
+            columns: ["tour_id"]
+            isOneToOne: false
+            referencedRelation: "tours"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      promo_packages: {
+        Row: {
+          active: boolean
+          commission_rate: number
+          created_at: string
+          description: string | null
+          discount_rule: string
+          id: string
+          name: string
+          preferential_adult_usd: number
+          preferential_child_usd: number
+          public_price_adult_usd: number
+          public_price_child_usd: number
+        }
+        Insert: {
+          active?: boolean
+          commission_rate?: number
+          created_at?: string
+          description?: string | null
+          discount_rule?: string
+          id?: string
+          name: string
+          preferential_adult_usd?: number
+          preferential_child_usd?: number
+          public_price_adult_usd?: number
+          public_price_child_usd?: number
+        }
+        Update: {
+          active?: boolean
+          commission_rate?: number
+          created_at?: string
+          description?: string | null
+          discount_rule?: string
+          id?: string
+          name?: string
+          preferential_adult_usd?: number
+          preferential_child_usd?: number
+          public_price_adult_usd?: number
+          public_price_child_usd?: number
+        }
+        Relationships: []
+      }
       quote_items: {
         Row: {
           created_at: string

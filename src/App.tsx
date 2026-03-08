@@ -23,6 +23,7 @@ import Comisiones from "./pages/Comisiones";
 import Reportes from "./pages/Reportes";
 import Configuracion from "./pages/Configuracion";
 import Gastos from "./pages/Gastos";
+import PaquetesXcaret from "./pages/PaquetesXcaret";
 
 import NotFound from "./pages/NotFound";
 
@@ -47,6 +48,7 @@ const App = () => (
               <Route path="/operadores" element={<Operadores />} />
               <Route path="/categorias" element={<Categorias />} />
               <Route path="/destinos" element={<Destinos />} />
+              <Route path="/paquetes-xcaret" element={<PaquetesXcaret />} />
               <Route path="/cotizaciones" element={<Cotizaciones />} />
               <Route path="/reservas" element={<Reservas />} />
               <Route path="/calendario" element={<Calendario />} />
