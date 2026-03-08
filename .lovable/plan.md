@@ -1,51 +1,40 @@
 
-Objetivo: que el Asesor IA responda claro, corto y fácil de leer (sin “párrafo continuo”), especialmente en móvil.
 
-Diagnóstico (rápido):
-- En `sales-advisor` el prompt exige tablas markdown y bullets con `•`.
-- En `FloatingChatWidget` se usa `ReactMarkdown` sin plugins de tablas/saltos suaves, por eso las tablas salen como texto plano y la lectura se vuelve confusa.
-- El prompt actual también mezcla demasiada guía general, y el modelo se extiende de más.
+# Plan: Fix missing trigger + create Marina Mena's profile
 
-Plan de implementación:
+## Root Cause
+The `handle_new_user()` function exists but there is **no trigger** on `auth.users` that calls it. New signups never get a profile or role created.
 
-1) Rediseñar formato obligatorio de respuesta (backend)
-- Archivo: `supabase/functions/sales-advisor/index.ts`
-- Cambiar reglas de salida para imponer una plantilla fija:
-  - `Respuesta directa:` (1 línea)
-  - `Opciones recomendadas:` (máx 3 bullets con `-`)
-  - `Siguiente paso:` (1 línea)
-- Prohibir explícitamente tablas markdown y párrafos largos.
-- Exigir “solo lo que preguntó el usuario” (sin relleno).
-- Limitar longitud (ej. 80–120 palabras) y máximo de bullets.
+## Changes
 
-2) Endurecer parámetros del modelo para consistencia
-- Archivo: `supabase/functions/sales-advisor/index.ts`
-- Ajustar llamada al modelo con menor variabilidad (ej. `temperature` baja) y límite de tokens.
-- Añadir regla de “no copiar bloques completos del catálogo”.
+### 1. DB Migration — Create the trigger + backfill Marina Mena
 
-3) Mejorar render del chat para legibilidad móvil
-- Archivo: `src/components/chat/FloatingChatWidget.tsx`
-- Cambiar render del mensaje asistente a formato que preserve saltos de línea (`whitespace-pre-wrap`) o adaptar markdown para listas claras.
-- Ajustar tipografía del bubble (line-height y tamaño) para evitar “bloque corrido”.
+```sql
+-- Create the trigger on auth.users
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW
+  EXECUTE FUNCTION public.handle_new_user();
 
-4) Normalización mínima de salida (failsafe)
-- Archivo: `src/components/chat/FloatingChatWidget.tsx` (o helper local)
-- Antes de pintar, normalizar texto:
-  - convertir `•` a `-`
-  - compactar espacios duplicados
-  - asegurar salto entre secciones clave
-- Esto protege UX aunque el modelo falle parcialmente en formato.
+-- Backfill the existing user who was missed
+INSERT INTO public.profiles (id, full_name, approval_status)
+VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'Marina Mena', 'pending')
+ON CONFLICT (id) DO NOTHING;
 
-5) Validación funcional
-- Probar con preguntas reales como:
-  - “qué tour me da mejor comisión”
-  - “qué operador maneja x tour”
-  - “cómo cierro una venta en POS”
-- Criterio de éxito:
-  - respuesta en bloques, sin párrafo continuo
-  - máximo 3 opciones
-  - acción siguiente clara y breve
+INSERT INTO public.user_roles (user_id, role)
+VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'seller')
+ON CONFLICT (user_id, role) DO NOTHING;
+```
 
-Archivos a tocar:
-- `supabase/functions/sales-advisor/index.ts`
-- `src/components/chat/FloatingChatWidget.tsx`
+### 2. No code changes needed
+The `AuthContext` and `Configuracion` page already handle the approval flow. Once Marina's profile exists with `pending` status, she'll appear in the user list on Configuracion and you can approve her from there.
+
+## Result
+- Marina Mena will appear in Configuracion with status "Pendiente"
+- You approve her and she can log in
+- Future signups will automatically get profile + seller role via the trigger
+
+| File | Change |
+|---|---|
+| SQL Migration | Attach trigger to auth.users + backfill Marina Mena |
+
