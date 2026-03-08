@@ -777,7 +777,6 @@ export default function Reservas() {
                   />
                 </div>
               </div>
-              </div>
 
               {/* --- Tours --- */}
               <div className="space-y-3">
