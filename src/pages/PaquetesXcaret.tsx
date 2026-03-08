@@ -302,7 +302,7 @@ export default function PaquetesXcaret() {
                   <TableHead className="text-right hidden md:table-cell">Pref. Adulto</TableHead>
                   <TableHead className="text-right hidden md:table-cell">Pref. Menor</TableHead>
                   <TableHead className="text-center">Activo</TableHead>
-                  {isAdmin && <TableHead />}
+                   {isAdmin && <TableHead />}
                 </TableRow>
               </TableHeader>
               <TableBody>
