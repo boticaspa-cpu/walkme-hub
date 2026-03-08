@@ -305,6 +305,12 @@ export default function Tours() {
   const [mappingVariants, setMappingVariants] = useState(false);
   const [sheetImportMode, setSheetImportMode] = useState<"generales" | "paquetes" | "matriz" | null>(null);
   const [sheetImporting, setSheetImporting] = useState(false);
+  // Column mapping intermediate state
+  const [mappingDialogOpen, setMappingDialogOpen] = useState(false);
+  const [pendingMappings, setPendingMappings] = useState<ColumnMapping[]>([]);
+  const [pendingRows, setPendingRows] = useState<Record<string, string>[]>([]);
+  const [pendingAliasMap, setPendingAliasMap] = useState<Record<string, string[]>>({});
+  const [pendingImportMode, setPendingImportMode] = useState<"generales" | "paquetes" | "matriz" | null>(null);
   const docInputRef = useRef<HTMLInputElement>(null);
   const [saving, setSaving] = useState(false);
   const [packages, setPackages] = useState<PackageForm[]>([]);
