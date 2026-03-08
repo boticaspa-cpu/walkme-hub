@@ -85,7 +85,7 @@ export default function VariantSelectDialog({
 
   const childVariant = useMemo(() => {
     if (!zone || !nationality) return null;
-    return variants.find(v => v.zone === zone && v.nationality === nationality && v.pax_type === "Niño") || null;
+    return variants.find(v => v.zone === zone && v.nationality === nationality && v.pax_type === "Menor") || null;
   }, [variants, zone, nationality]);
 
   const fmt = (n: number) => n.toLocaleString("es-MX", { style: "currency", currency: "MXN" });
