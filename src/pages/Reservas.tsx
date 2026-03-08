@@ -124,6 +124,8 @@ export default function Reservas() {
   const [search, setSearch] = useState("");
   const [dateFrom, setDateFrom] = useState<Date | undefined>();
   const [dateTo, setDateTo] = useState<Date | undefined>();
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [filterPayment, setFilterPayment] = useState("all");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
@@ -537,6 +539,8 @@ export default function Reservas() {
       end.setHours(23, 59, 59, 999);
       if (new Date(r.reservation_date) > end) return false;
     }
+    if (filterStatus !== "all" && (r.confirmation_status || "scheduled") !== filterStatus) return false;
+    if (filterPayment !== "all" && (r.payment_status || "unpaid") !== filterPayment) return false;
     if (!search) return true;
     const q = search.toLowerCase();
     const folio = (r.folio ?? "").toLowerCase();
@@ -561,7 +565,7 @@ export default function Reservas() {
       {/* table card */}
       <Card>
         <CardHeader className="pb-3">
-          <div className="flex flex-col sm:flex-row gap-2">
+          <div className="flex flex-col sm:flex-row flex-wrap gap-2">
             <div className="relative max-w-sm">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -569,9 +573,33 @@ export default function Reservas() {
                 className="pl-9"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-            />
+              />
             </div>
             <DateRangeFilter dateFrom={dateFrom} dateTo={dateTo} onDateFromChange={setDateFrom} onDateToChange={setDateTo} />
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <SelectTrigger className="h-9 w-[150px]">
+                <SelectValue placeholder="Estado" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos estados</SelectItem>
+                <SelectItem value="scheduled">Programada</SelectItem>
+                <SelectItem value="confirmed">Confirmada</SelectItem>
+                <SelectItem value="completed">Completada</SelectItem>
+                <SelectItem value="cancelled">Cancelada</SelectItem>
+                <SelectItem value="no_show">No Show</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={filterPayment} onValueChange={setFilterPayment}>
+              <SelectTrigger className="h-9 w-[150px]">
+                <SelectValue placeholder="Pago" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos pagos</SelectItem>
+                <SelectItem value="unpaid">Pendiente</SelectItem>
+                <SelectItem value="deposit">Anticipo</SelectItem>
+                <SelectItem value="paid">Pagado</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </CardHeader>
         <CardContent className="p-0 overflow-x-auto">

@@ -1,23 +1,40 @@
 
 
-# Plan: Filtro por estado en Reservas
+# Plan: Fix missing trigger + create Marina Mena's profile
 
-Agregar dos selects compactos junto a los filtros existentes (búsqueda + fechas) para filtrar por estado de confirmación y estado de pago.
+## Root Cause
+The `handle_new_user()` function exists but there is **no trigger** on `auth.users` that calls it. New signups never get a profile or role created.
 
-## Cambios en `src/pages/Reservas.tsx`
+## Changes
 
-1. **Nuevos estados**: `filterStatus` y `filterPayment` (strings, default `"all"`)
+### 1. DB Migration — Create the trigger + backfill Marina Mena
 
-2. **UI**: Dos `<Select>` compactos en el `CardHeader`, junto al `DateRangeFilter`:
-   - Estado: Todas / Programada / Confirmada / Completada / Cancelada / No Show
-   - Pago: Todos / Pendiente / Depósito / Pagado
+```sql
+-- Create the trigger on auth.users
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW
+  EXECUTE FUNCTION public.handle_new_user();
 
-3. **Filtro**: En el bloque `filtered` (línea ~533), agregar condiciones:
-   ```typescript
-   if (filterStatus !== "all" && r.confirmation_status !== filterStatus) return false;
-   if (filterPayment !== "all" && r.payment_status !== filterPayment) return false;
-   ```
+-- Backfill the existing user who was missed
+INSERT INTO public.profiles (id, full_name, approval_status)
+VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'Marina Mena', 'pending')
+ON CONFLICT (id) DO NOTHING;
 
-## Archivos modificados
-- `src/pages/Reservas.tsx`
+INSERT INTO public.user_roles (user_id, role)
+VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'seller')
+ON CONFLICT (user_id, role) DO NOTHING;
+```
+
+### 2. No code changes needed
+The `AuthContext` and `Configuracion` page already handle the approval flow. Once Marina's profile exists with `pending` status, she'll appear in the user list on Configuracion and you can approve her from there.
+
+## Result
+- Marina Mena will appear in Configuracion with status "Pendiente"
+- You approve her and she can log in
+- Future signups will automatically get profile + seller role via the trigger
+
+| File | Change |
+|---|---|
+| SQL Migration | Attach trigger to auth.users + backfill Marina Mena |
 
