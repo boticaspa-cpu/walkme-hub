@@ -1675,6 +1675,8 @@ export type Database = {
         }
         Returns: boolean
       }
+      owns_quote: { Args: { _quote_id: string }; Returns: boolean }
+      owns_reservation: { Args: { _reservation_id: string }; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "seller"
