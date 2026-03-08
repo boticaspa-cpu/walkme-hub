@@ -160,33 +160,50 @@ export default function SendQuoteDialog({ open, onOpenChange, quote }: Props) {
               </div>
             )}
 
-            {/* Preview del mensaje */}
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <Label className="text-xs text-muted-foreground">Vista previa del mensaje</Label>
-                <Button type="button" variant="ghost" size="sm" className="h-6 text-xs gap-1 px-2" onClick={copyMessage}>
-                  <Copy className="h-3 w-3" /> Copiar
+            {!showQR && (
+              <>
+                {/* Preview del mensaje */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs text-muted-foreground">Vista previa del mensaje</Label>
+                    <Button type="button" variant="ghost" size="sm" className="h-6 text-xs gap-1 px-2" onClick={copyMessage}>
+                      <Copy className="h-3 w-3" /> Copiar
+                    </Button>
+                  </div>
+                  <pre className="text-xs bg-green-50 border border-green-200 rounded-md p-3 whitespace-pre-wrap font-sans leading-relaxed max-h-52 overflow-y-auto">
+                    {buildMessage()}
+                  </pre>
+                </div>
+
+                <p className="text-xs text-muted-foreground">
+                  💡 Se abrirá WhatsApp Web con este mensaje listo para enviar.
+                </p>
+
+                <div className="grid grid-cols-3 gap-3">
+                  <Button variant="outline" className="h-14 flex-col gap-1" onClick={handleWhatsApp}>
+                    <MessageSquare className="h-5 w-5 text-green-600" />
+                    <span className="text-xs">WhatsApp</span>
+                  </Button>
+                  <Button variant="outline" className="h-14 flex-col gap-1" onClick={handleEmail}>
+                    <Mail className="h-5 w-5 text-blue-600" />
+                    <span className="text-xs">Email</span>
+                  </Button>
+                  <Button variant="outline" className="h-14 flex-col gap-1" onClick={async () => { setShowQR(true); await markSent(); }}>
+                    <QrCode className="h-5 w-5 text-foreground" />
+                    <span className="text-xs">Código QR</span>
+                  </Button>
+                </div>
+              </>
+            )}
+
+            {showQR && (
+              <div className="space-y-3">
+                <QRCodeDisplay url={pdfUrl} />
+                <Button variant="ghost" size="sm" className="w-full" onClick={() => setShowQR(false)}>
+                  ← Volver a opciones de envío
                 </Button>
               </div>
-              <pre className="text-xs bg-green-50 border border-green-200 rounded-md p-3 whitespace-pre-wrap font-sans leading-relaxed max-h-52 overflow-y-auto">
-                {buildMessage()}
-              </pre>
-            </div>
-
-            <p className="text-xs text-muted-foreground">
-              💡 Se abrirá WhatsApp Web con este mensaje listo para enviar. Asegúrate de tener el WhatsApp de la agencia conectado en el navegador.
-            </p>
-
-            <div className="grid grid-cols-2 gap-3">
-              <Button variant="outline" className="h-14 flex-col gap-1" onClick={handleWhatsApp}>
-                <MessageSquare className="h-5 w-5 text-green-600" />
-                <span className="text-xs">Enviar por WhatsApp</span>
-              </Button>
-              <Button variant="outline" className="h-14 flex-col gap-1" onClick={handleEmail}>
-                <Mail className="h-5 w-5 text-blue-600" />
-                <span className="text-xs">Enviar por Email</span>
-              </Button>
-            </div>
+            )}
           </div>
         )}
       </DialogContent>
