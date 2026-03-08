@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { Plus, Trash2, BadgePercent, ToggleLeft, ToggleRight } from "lucide-react";
+import { Plus, Trash2, BadgePercent } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -274,11 +274,9 @@ export default function PaquetesXcaret() {
             Combina 2+ tours y aplica la regla del contrato Xcaret (80 / 75 / 70 / 75 %)
           </p>
         </div>
-        {isAdmin && (
-          <Button onClick={openCreate}>
-            <Plus className="mr-2 h-4 w-4" /> Nuevo paquete
-          </Button>
-        )}
+        <Button onClick={openCreate}>
+          <Plus className="mr-2 h-4 w-4" /> Nuevo paquete
+        </Button>
       </div>
 
       {/* Table */}
@@ -304,7 +302,7 @@ export default function PaquetesXcaret() {
                   <TableHead className="text-right hidden md:table-cell">Pref. Adulto</TableHead>
                   <TableHead className="text-right hidden md:table-cell">Pref. Menor</TableHead>
                   <TableHead className="text-center">Activo</TableHead>
-                  {isAdmin && <TableHead />}
+                   <TableHead />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -312,7 +310,7 @@ export default function PaquetesXcaret() {
                   <TableRow
                     key={pkg.id}
                     className="cursor-pointer"
-                    onClick={() => isAdmin && openEdit(pkg)}
+                    onClick={() => openEdit(pkg)}
                   >
                     <TableCell className="font-medium">{pkg.name}</TableCell>
                     <TableCell className="hidden sm:table-cell">
@@ -329,28 +327,20 @@ export default function PaquetesXcaret() {
                     <TableCell className="text-right hidden md:table-cell">{fmt(pkg.preferential_adult_usd)}</TableCell>
                     <TableCell className="text-right hidden md:table-cell">{fmt(pkg.preferential_child_usd)}</TableCell>
                     <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
-                      {isAdmin ? (
-                        <Switch
-                          checked={pkg.active}
-                          onCheckedChange={(v) => toggleMutation.mutate({ id: pkg.id, active: v })}
-                        />
-                      ) : pkg.active ? (
-                        <ToggleRight className="h-4 w-4 text-primary mx-auto" />
-                      ) : (
-                        <ToggleLeft className="h-4 w-4 text-muted-foreground mx-auto" />
-                      )}
+                      <Switch
+                        checked={pkg.active}
+                        onCheckedChange={(v) => toggleMutation.mutate({ id: pkg.id, active: v })}
+                      />
                     </TableCell>
-                    {isAdmin && (
-                      <TableCell onClick={(e) => e.stopPropagation()}>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => deleteMutation.mutate(pkg.id)}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </TableCell>
-                    )}
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => deleteMutation.mutate(pkg.id)}
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
