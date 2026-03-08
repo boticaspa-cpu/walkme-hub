@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
@@ -18,9 +19,11 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
-  Lock, Unlock, ShoppingCart, ArrowDownCircle, ArrowUpCircle, Clock, DollarSign,
+  Lock, Unlock, ShoppingCart, ArrowDownCircle, ArrowUpCircle, Clock, DollarSign, Users,
 } from "lucide-react";
 import { toast } from "sonner";
+import { startOfWeek, startOfMonth, format } from "date-fns";
+import { es } from "date-fns/locale";
 
 const fmt = (n: number) => n.toLocaleString("es-MX", { style: "currency", currency: "MXN" });
 const fmtTime = (iso: string) => new Date(iso).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" });
@@ -35,6 +38,8 @@ const movementLabels: Record<string, string> = {
   withdrawal: "Retiro",
   adjustment: "Ajuste",
 };
+
+type Period = "day" | "week" | "month";
 
 export default function CierreDiario() {
   const { user, role } = useAuth();
@@ -62,6 +67,9 @@ export default function CierreDiario() {
   const [countedCash, setCountedCash] = useState("");
   const [closeNotes, setCloseNotes] = useState("");
 
+  // Admin period filter
+  const [period, setPeriod] = useState<Period>("day");
+
   // === Aggregations for close ===
   const salesCash = sessionSales.filter((s: any) => s.payment_method === "cash").reduce((a: number, s: any) => a + Number(s.total_mxn), 0);
   const salesCard = sessionSales.filter((s: any) => s.payment_method === "card").reduce((a: number, s: any) => a + Number(s.total_mxn), 0);
@@ -74,6 +82,53 @@ export default function CierreDiario() {
 
   const dateLabel = new Date().toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
   const todayStr = new Date().toISOString().split("T")[0];
+
+  // Period date ranges for admin queries
+  const periodRange = useMemo(() => {
+    const now = new Date();
+    const todayStart = `${todayStr}T00:00:00`;
+    const todayEnd = `${todayStr}T23:59:59`;
+    if (period === "day") return { from: todayStart, to: todayEnd, label: "Hoy" };
+    if (period === "week") {
+      const ws = startOfWeek(now, { weekStartsOn: 1 });
+      return { from: ws.toISOString(), to: todayEnd, label: "Esta semana" };
+    }
+    const ms = startOfMonth(now);
+    return { from: ms.toISOString(), to: todayEnd, label: "Este mes" };
+  }, [period, todayStr]);
+
+  // Admin: ALL sales across all sellers for selected period
+  const { data: allPeriodSales = [] } = useQuery({
+    queryKey: ["admin-all-sales", periodRange.from, periodRange.to],
+    enabled: isAdmin,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("sales")
+        .select("*, profiles:sold_by(full_name)")
+        .gte("sold_at", periodRange.from)
+        .lte("sold_at", periodRange.to)
+        .order("sold_at", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  // Admin period totals
+  const periodTotals = useMemo(() => {
+    const cash = allPeriodSales.filter((s: any) => s.payment_method === "cash").reduce((a: number, s: any) => a + Number(s.total_mxn), 0);
+    const card = allPeriodSales.filter((s: any) => s.payment_method === "card").reduce((a: number, s: any) => a + Number(s.total_mxn), 0);
+    const transfer = allPeriodSales.filter((s: any) => s.payment_method === "transfer").reduce((a: number, s: any) => a + Number(s.total_mxn), 0);
+    const total = cash + card + transfer;
+    // Group by seller
+    const bySeller: Record<string, { name: string; total: number; count: number }> = {};
+    allPeriodSales.forEach((s: any) => {
+      const key = s.sold_by || "unknown";
+      const name = (s as any).profiles?.full_name || "Sin asignar";
+      if (!bySeller[key]) bySeller[key] = { name, total: 0, count: 0 };
+      bySeller[key].total += Number(s.total_mxn);
+      bySeller[key].count += 1;
+    });
+    return { cash, card, transfer, total, count: allPeriodSales.length, bySeller };
+  }, [allPeriodSales]);
 
   // Admin-only financial queries for daily summary
   const { data: dailyPayables = [] } = useQuery({
@@ -135,7 +190,6 @@ export default function CierreDiario() {
         notes: closeNotes || undefined,
       });
 
-      // Also upsert daily_closings for backward compat
       const todayStr = activeSession.business_date;
       await supabase.from("daily_closings").insert({
         closing_date: todayStr,
@@ -332,6 +386,106 @@ export default function CierreDiario() {
             </Card>
           )}
 
+          {/* Admin: ALL sales with period filter */}
+          {isAdmin && (
+            <Card>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Users className="h-4 w-4" /> Ventas Totales (Todos los vendedores)
+                  </CardTitle>
+                  <Tabs value={period} onValueChange={(v) => setPeriod(v as Period)}>
+                    <TabsList className="h-8">
+                      <TabsTrigger value="day" className="text-xs px-3 h-7">Hoy</TabsTrigger>
+                      <TabsTrigger value="week" className="text-xs px-3 h-7">Semana</TabsTrigger>
+                      <TabsTrigger value="month" className="text-xs px-3 h-7">Mes</TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Period KPIs */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <div className="rounded-lg border p-3 text-center">
+                    <p className="text-xs text-muted-foreground"># Ventas</p>
+                    <p className="text-lg font-bold">{periodTotals.count}</p>
+                  </div>
+                  <div className="rounded-lg border p-3 text-center">
+                    <p className="text-xs text-muted-foreground">Efectivo</p>
+                    <p className="text-lg font-bold">{fmt(periodTotals.cash)}</p>
+                  </div>
+                  <div className="rounded-lg border p-3 text-center">
+                    <p className="text-xs text-muted-foreground">Tarjeta</p>
+                    <p className="text-lg font-bold">{fmt(periodTotals.card)}</p>
+                  </div>
+                  <div className="rounded-lg border p-3 text-center">
+                    <p className="text-xs text-muted-foreground">Transferencia</p>
+                    <p className="text-lg font-bold">{fmt(periodTotals.transfer)}</p>
+                  </div>
+                </div>
+
+                <div className="rounded-lg bg-primary/5 border border-primary/20 p-3 flex justify-between items-center">
+                  <span className="font-medium">Total {periodRange.label}</span>
+                  <span className="text-xl font-bold text-primary">{fmt(periodTotals.total)}</span>
+                </div>
+
+                {/* By seller breakdown */}
+                {Object.keys(periodTotals.bySeller).length > 0 && (
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-2">Desglose por vendedor</p>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Vendedor</TableHead>
+                          <TableHead className="text-center"># Ventas</TableHead>
+                          <TableHead className="text-right">Total</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {Object.values(periodTotals.bySeller).sort((a, b) => b.total - a.total).map((s, i) => (
+                          <TableRow key={i}>
+                            <TableCell className="text-sm">{s.name}</TableCell>
+                            <TableCell className="text-center text-sm">{s.count}</TableCell>
+                            <TableCell className="text-right text-sm font-medium">{fmt(s.total)}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+
+                {/* Recent sales list */}
+                {allPeriodSales.length > 0 && (
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-2">Detalle de ventas</p>
+                    <div className="max-h-60 overflow-y-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Hora</TableHead>
+                            <TableHead>Vendedor</TableHead>
+                            <TableHead>Método</TableHead>
+                            <TableHead className="text-right">Monto</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {allPeriodSales.map((s: any) => (
+                            <TableRow key={s.id}>
+                              <TableCell className="text-xs">{fmtTime(s.sold_at)}</TableCell>
+                              <TableCell className="text-xs">{(s as any).profiles?.full_name || "—"}</TableCell>
+                              <TableCell className="text-xs capitalize">{s.payment_method}</TableCell>
+                              <TableCell className="text-right text-xs font-medium">{fmt(Number(s.total_mxn))}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           {/* Admin financial summary */}
           {isAdmin && (
             <Card>
@@ -423,7 +577,7 @@ export default function CierreDiario() {
               <Input value={defaultRegister?.name || "—"} disabled />
             </div>
             <div className="space-y-1.5">
-              <Label>Fondo inicial MXN *</Label>
+              <Label>Fondo inicial MXN</Label>
               <Input type="number" value={floatMxn} onChange={(e) => setFloatMxn(e.target.value)} />
             </div>
             <div className="space-y-1.5">
