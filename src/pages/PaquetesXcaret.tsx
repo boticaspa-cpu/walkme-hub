@@ -310,7 +310,7 @@ export default function PaquetesXcaret() {
                   <TableRow
                     key={pkg.id}
                     className="cursor-pointer"
-                    onClick={() => isAdmin && openEdit(pkg)}
+                    onClick={() => openEdit(pkg)}
                   >
                     <TableCell className="font-medium">{pkg.name}</TableCell>
                     <TableCell className="hidden sm:table-cell">
