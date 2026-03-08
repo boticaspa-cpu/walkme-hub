@@ -529,6 +529,12 @@ export default function Reservas() {
 
   /* ── filter ── */
   const filtered = reservations.filter((r: any) => {
+    if (dateFrom && new Date(r.reservation_date) < dateFrom) return false;
+    if (dateTo) {
+      const end = new Date(dateTo);
+      end.setHours(23, 59, 59, 999);
+      if (new Date(r.reservation_date) > end) return false;
+    }
     if (!search) return true;
     const q = search.toLowerCase();
     const folio = (r.folio ?? "").toLowerCase();
