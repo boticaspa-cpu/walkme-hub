@@ -489,8 +489,7 @@ export default function Reservas() {
 
   const handleSendConfirmation = (r: any) => {
     if (isPrepagoBlocked(r)) {
-      toast.warning("Proveedor PREPAGO pendiente — debes pagarlo antes del tour para enviar confirmación.");
-      return;
+      toast.warning("Recuerda: el pago al proveedor (prepago) está pendiente.");
     }
     setSendConfirmReservation(enrichWithPrices(r));
   };
