@@ -504,7 +504,7 @@ export default function Reservas() {
             />
           </div>
         </CardHeader>
-        <CardContent className="p-0">
+        <CardContent className="p-0 overflow-x-auto">
           {isLoading ? (
             <p className="p-6 text-sm text-muted-foreground">Cargando reservas…</p>
           ) : (
