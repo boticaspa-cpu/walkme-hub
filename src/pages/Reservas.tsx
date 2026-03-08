@@ -133,6 +133,10 @@ export default function Reservas() {
   const [highlightId, setHighlightId] = useState<string | null>(null);
   const [taxIncluded, setTaxIncluded] = useState(true);
   const [sendConfirmReservation, setSendConfirmReservation] = useState<any>(null);
+  // operator folio mini-dialog
+  const [folioDialogRes, setFolioDialogRes] = useState<any>(null);
+  const [folioInput, setFolioInput] = useState("");
+  const [cancFolioInput, setCancFolioInput] = useState("");
 
   // mini-dialog nuevo cliente
   const [clientDialogOpen, setClientDialogOpen] = useState(false);
