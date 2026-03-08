@@ -1,49 +1,40 @@
 
 
-# Plan: Asesor IA basado en datos reales de la base de datos
+# Plan: Fix missing trigger + create Marina Mena's profile
 
-## Problema
-El asesor inventa información (ej: impuestos de Xcaret). Debe responder SOLO con datos reales del catálogo.
+## Root Cause
+The `handle_new_user()` function exists but there is **no trigger** on `auth.users` that calls it. New signups never get a profile or role created.
 
-## Solución
-Antes de cada llamada al modelo, la edge function consulta la base de datos para obtener tours, precios y paquetes reales, y los inyecta en el system prompt como contexto.
+## Changes
 
-## Cambios
+### 1. DB Migration — Create the trigger + backfill Marina Mena
 
-### `supabase/functions/sales-advisor/index.ts`
+```sql
+-- Create the trigger on auth.users
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW
+  EXECUTE FUNCTION public.handle_new_user();
 
-1. **Importar createClient de Supabase** para consultar la DB desde la edge function
-2. **Consultar 3 tablas** antes de llamar al modelo:
-   - `tours` (activos): título, precio MXN, precio USD, incluye/excluye, descripción, días
-   - `tour_price_variants` (activos): tour_id, zona, nacionalidad, pax_type, sale_price, package_name
-   - `tour_packages` (activos): tour_id, nombre, precio adulto/niño MXN
-3. **Construir un bloque de contexto** con los datos reales en formato tabla/texto
-4. **Actualizar el system prompt** con regla estricta:
-   - "SOLO responde con información de los datos proporcionados abajo"
-   - "Si no tienes la información, di: 'No tengo esa información en el sistema'"
-   - "NUNCA inventes precios, impuestos o características de tours"
-5. **Cambiar modelo** a `google/gemini-3-flash-preview` (default recomendado, más rápido)
+-- Backfill the existing user who was missed
+INSERT INTO public.profiles (id, full_name, approval_status)
+VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'Marina Mena', 'pending')
+ON CONFLICT (id) DO NOTHING;
 
-### Estructura del prompt dinámico
-
-```
-## DATOS REALES DEL CATÁLOGO (ÚNICA fuente de verdad)
-### Tours disponibles
-| Tour | Precio MXN | Precio USD | Días | Incluye |
-|---|---|---|---|---|
-| Xcaret | 2500 | 140 | L,M,X... | Transporte, entrada... |
-
-### Precios por zona/nacionalidad
-| Tour | Zona | Nacionalidad | Adulto | Menor |
-|---|---|---|---|---|
-| Xcaret | Cancun | Extranjero | 2800 | 1400 |
-
-### Paquetes
-| Tour | Paquete | Adulto MXN | Menor MXN |
-...
+INSERT INTO public.user_roles (user_id, role)
+VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'seller')
+ON CONFLICT (user_id, role) DO NOTHING;
 ```
 
-| Archivo | Cambio |
+### 2. No code changes needed
+The `AuthContext` and `Configuracion` page already handle the approval flow. Once Marina's profile exists with `pending` status, she'll appear in the user list on Configuracion and you can approve her from there.
+
+## Result
+- Marina Mena will appear in Configuracion with status "Pendiente"
+- You approve her and she can log in
+- Future signups will automatically get profile + seller role via the trigger
+
+| File | Change |
 |---|---|
-| `supabase/functions/sales-advisor/index.ts` | Consultar DB + inyectar datos reales en prompt + regla de no inventar |
+| SQL Migration | Attach trigger to auth.users + backfill Marina Mena |
 
