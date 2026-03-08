@@ -75,7 +75,7 @@ export default function Login() {
           <p className="text-sm font-accent text-muted-foreground tracking-wide">Just freedom</p>
         </CardHeader>
         <CardContent className="pt-4">
-          <Tabs defaultValue="login">
+          <Tabs defaultValue={defaultTab}>
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="login">Iniciar sesión</TabsTrigger>
               <TabsTrigger value="signup">Registrarse</TabsTrigger>
