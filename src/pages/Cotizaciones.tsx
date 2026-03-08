@@ -284,7 +284,7 @@ export default function Cotizaciones() {
   }, [searchParams, tours]);
 
   const openEdit = async (q: any) => {
-    setForm({ client_id: q.client_id ?? "", client_name: q.client_name, notes: q.notes ?? "", status: q.status });
+    setForm({ client_id: q.client_id ?? "", client_name: q.client_name, notes: q.notes ?? "", status: q.status, discount_mxn: (q as any).discount_mxn ?? 0 });
     setEditingId(q.id);
     const { data } = await supabase.from("quote_items").select("tour_id, tour_date, qty_adults, qty_children, unit_price_mxn, unit_price_child_mxn, zone, nationality, package_name").eq("quote_id", q.id);
     setItems((data ?? []).map((i: any) => ({
