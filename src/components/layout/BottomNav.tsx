@@ -38,9 +38,9 @@ const primaryItems = [
 ];
 
 const adminMore = [
+  { title: "POS", url: "/pos", icon: ShoppingCart },
   { title: "Leads", url: "/leads", icon: Users },
   { title: "Clientes", url: "/clientes", icon: Contact },
-  { title: "Tours", url: "/tours", icon: Map },
   { title: "Operadores", url: "/operadores", icon: Building2 },
   { title: "Categorías", url: "/categorias", icon: Tags },
   { title: "Destinos", url: "/destinos", icon: MapPin },
