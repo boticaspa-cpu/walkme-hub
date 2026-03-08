@@ -163,7 +163,8 @@ export default function Cotizaciones() {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const total_mxn = items.reduce((s, i) => s + i.qty_adults * i.unit_price_mxn + i.qty_children * i.unit_price_child_mxn, 0);
+      const subtotal = items.reduce((s, i) => s + i.qty_adults * i.unit_price_mxn + i.qty_children * i.unit_price_child_mxn, 0);
+      const total_mxn = Math.max(0, subtotal - (form.discount_mxn || 0));
       const clientName = clients.find((c: any) => c.id === form.client_id)?.name ?? form.client_name;
 
       if (editingId) {
@@ -173,7 +174,8 @@ export default function Cotizaciones() {
           notes: form.notes || null,
           status: form.status,
           total_mxn,
-        }).eq("id", editingId);
+          discount_mxn: form.discount_mxn || 0,
+        } as any).eq("id", editingId);
         if (error) throw error;
 
         await supabase.from("quote_items").delete().eq("quote_id", editingId);
