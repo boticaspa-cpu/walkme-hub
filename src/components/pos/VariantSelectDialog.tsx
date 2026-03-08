@@ -169,7 +169,7 @@ export default function VariantSelectDialog({
                 </div>
                 {childVariant && (
                   <div className="flex justify-between text-sm">
-                    <span>Precio Niño ({childAgeMin}–{childAgeMax} años)</span>
+                    <span>Precio Menor ({childAgeMin}–{childAgeMax} años)</span>
                     <span className="font-bold text-primary">{fmt(childPrice)}</span>
                   </div>
                 )}
