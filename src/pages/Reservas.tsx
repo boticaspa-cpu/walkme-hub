@@ -270,10 +270,11 @@ export default function Reservas() {
           pax_children: form.pax_children,
           zone: form.zone,
           nationality: form.nationality,
-          total_mxn: form.total_mxn,
+          total_mxn: Math.max(0, form.total_mxn - (form.discount_mxn || 0)),
+          discount_mxn: form.discount_mxn || 0,
           notes: form.notes || null,
           status: form.status,
-        };
+        } as any;
         const { error } = await supabase.from("reservations").update(payload).eq("id", editingId);
         if (error) throw error;
       } else {
