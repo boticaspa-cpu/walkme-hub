@@ -334,27 +334,14 @@ export default function ReservationCheckout({ reservation, open, onOpenChange, o
               </>
             )}
             <Separator />
-            {/* Card fee breakdown */}
-            {cardFeeAmount > 0 ? (
-              <>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Subtotal tour</span>
-                  <span>{fmt(baseTotalMxn)}</span>
-                </div>
-                <div className="flex justify-between text-sm text-amber-600">
-                  <span>Comisión tarjeta ({cardFeePercent}%)</span>
-                  <span>+{fmt(cardFeeAmount)}</span>
-                </div>
-                <div className="flex justify-between text-base font-bold">
-                  <span>Total a cobrar</span>
-                  <span>{fmt(totalMxn)}</span>
-                </div>
-              </>
-            ) : (
-              <div className="flex justify-between text-base font-bold">
-                <span>Total</span>
-                <span>{fmt(totalMxn)}</span>
-              </div>
+            <div className="flex justify-between text-base font-bold">
+              <span>Total</span>
+              <span>{fmt(baseTotalMxn)}</span>
+            </div>
+            {paymentMethod === "card" && cardFeePercent > 0 && (
+              <p className="text-xs text-muted-foreground">
+                Incluye absorción de comisión tarjeta ({cardFeePercent}%)
+              </p>
             )}
           </div>
 
