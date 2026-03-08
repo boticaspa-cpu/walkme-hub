@@ -108,6 +108,7 @@ const emptyShared = {
   zone: "",
   nationality: "",
   notes: "",
+  discount_mxn: 0,
 };
 
 export default function Reservas() {
