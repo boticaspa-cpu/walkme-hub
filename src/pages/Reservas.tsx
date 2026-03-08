@@ -570,6 +570,8 @@ export default function Reservas() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
             />
+            </div>
+            <DateRangeFilter dateFrom={dateFrom} dateTo={dateTo} onDateFromChange={setDateFrom} onDateToChange={setDateTo} />
           </div>
         </CardHeader>
         <CardContent className="p-0 overflow-x-auto">
