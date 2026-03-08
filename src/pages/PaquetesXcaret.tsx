@@ -419,27 +419,41 @@ export default function PaquetesXcaret() {
               </div>
             </div>
 
-            {/* Live calculator */}
+            {/* Live calculator – Xcaret-style breakdown */}
             {selectedTourIds.length >= 2 && (
               <Card className="bg-muted/40">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm">Cálculo automático (regla Xcaret)</CardTitle>
+                  <CardTitle className="text-sm">Desglose del paquete</CardTitle>
                 </CardHeader>
-                <CardContent className="text-sm space-y-1">
-                  <p>
-                    Suma precios públicos adulto (MXN): <strong>{fmt(liveCalc.sumMxn)}</strong>
-                  </p>
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 pt-1">
-                    <span className="text-muted-foreground">Público Adulto (×0.80):</span>
-                    <span className="font-semibold">{fmt(liveCalc.publicAdult)}</span>
-                    <span className="text-muted-foreground">Público Menor (×0.75):</span>
-                    <span className="font-semibold">{fmt(liveCalc.publicChild)}</span>
-                    <span className="text-muted-foreground">Pref. Adulto (×0.70):</span>
-                    <span className="font-semibold">{fmt(liveCalc.prefAdult)}</span>
-                    <span className="text-muted-foreground">Pref. Menor (×0.75):</span>
-                    <span className="font-semibold">{fmt(liveCalc.prefChild)}</span>
-                    <span className="text-muted-foreground">Comisión:</span>
-                    <span className="font-semibold">30%</span>
+                <CardContent className="text-sm space-y-3">
+                  {/* Individual tour prices */}
+                  <div className="space-y-1.5">
+                    {selectedTourIds.map((tid) => {
+                      const t = tours.find((x) => x.id === tid);
+                      if (!t) return null;
+                      return (
+                        <div key={tid} className="flex justify-between">
+                          <span className="text-muted-foreground truncate mr-2">{t.title}</span>
+                          <span>{fmt(tourToMxnAdult(t))}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="border-t border-border pt-2 space-y-1.5">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Subtotal</span>
+                      <span>{fmt(liveCalc.sumMxn)}</span>
+                    </div>
+                    <div className="flex justify-between text-green-600">
+                      <span>Dcto. paquete combinable (–20%)</span>
+                      <span>–{fmt(liveCalc.discount)}</span>
+                    </div>
+                  </div>
+
+                  <div className="border-t border-border pt-2 flex justify-between font-bold text-base">
+                    <span>Total Adulto</span>
+                    <span>{fmt(liveCalc.total)}</span>
                   </div>
                 </CardContent>
               </Card>
