@@ -1,40 +1,82 @@
 
 
-# Plan: Fix missing trigger + create Marina Mena's profile
+# Plan: Página de Paquetes Promocionales Xcaret
 
-## Root Cause
-The `handle_new_user()` function exists but there is **no trigger** on `auth.users` that calls it. New signups never get a profile or role created.
+## Concepto
 
-## Changes
+Página dedicada para armar paquetes promocionales del grupo Xcaret aplicando las reglas del contrato:
 
-### 1. DB Migration — Create the trigger + backfill Marina Mena
+- **Precio Público Adulto** = 80% de la suma de precios públicos USD de los tours elegidos
+- **Precio Público Menor** = 75% del precio público adulto del paquete
+- **Tarifa Preferencial Adulto** = 70% del precio público adulto del paquete
+- **Tarifa Preferencial Menor** = 75% de la tarifa preferencial adulto
+- **Comisión**: 30%
+- Mínimo 2 tours, vigencia 15 días, intransferible
 
-```sql
--- Create the trigger on auth.users
-CREATE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW
-  EXECUTE FUNCTION public.handle_new_user();
+## Modelo de datos
 
--- Backfill the existing user who was missed
-INSERT INTO public.profiles (id, full_name, approval_status)
-VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'Marina Mena', 'pending')
-ON CONFLICT (id) DO NOTHING;
+### Tabla `promo_packages`
+| Campo | Tipo | Descripción |
+|---|---|---|
+| id | uuid PK | |
+| name | text | "2 días Xcaret + Xel-Há" |
+| description | text | Notas |
+| discount_rule | text | 'xcaret_contract' (para futuro soporte de otras reglas) |
+| public_price_adult_usd | numeric | Calculado: 80% suma |
+| public_price_child_usd | numeric | 75% del adulto |
+| preferential_adult_usd | numeric | 70% del adulto |
+| preferential_child_usd | numeric | 75% del preferencial adulto |
+| commission_rate | numeric | 0.30 |
+| active | boolean | true |
+| created_at | timestamptz | |
 
-INSERT INTO public.user_roles (user_id, role)
-VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'seller')
-ON CONFLICT (user_id, role) DO NOTHING;
+### Tabla `promo_package_tours` (tours incluidos)
+| Campo | Tipo | Descripción |
+|---|---|---|
+| id | uuid PK | |
+| promo_package_id | uuid FK → promo_packages | |
+| tour_id | uuid FK → tours | |
+
+### RLS
+- Lectura: todos los autenticados
+- Escritura: solo admin (usando `has_role`)
+
+## Página `/paquetes-xcaret` (admin + seller lectura)
+
+### Interfaz
+1. **Lista de paquetes** creados con nombre, tours incluidos, precios calculados, estado
+2. **Crear/Editar paquete**:
+   - Nombre del paquete
+   - Selector multi-tour (filtrado a tours del grupo Xcaret por categoría/operador)
+   - **Calculadora automática en tiempo real**: al seleccionar tours, suma los `public_price_adult_usd` y aplica las 4 fórmulas del contrato
+   - Muestra la tabla de precios resultante (Público Adulto/Menor, Preferencial Adulto/Menor)
+   - Toggle activo/inactivo
+
+### Cálculo en vivo (ejemplo)
+```text
+Tours seleccionados:
+  Xcaret    → $119.99 USD adulto
+  Xel-Há   → $139.99 USD adulto
+  Suma      = $259.98
+
+Precio Público Adulto  = $259.98 × 0.80 = $207.98
+Precio Público Menor   = $207.98 × 0.75 = $155.99
+Tarifa Pref. Adulto    = $207.98 × 0.70 = $145.59
+Tarifa Pref. Menor     = $145.59 × 0.75 = $109.19
+Comisión               = 30%
 ```
 
-### 2. No code changes needed
-The `AuthContext` and `Configuracion` page already handle the approval flow. Once Marina's profile exists with `pending` status, she'll appear in the user list on Configuracion and you can approve her from there.
+## Navegación
+- Agregar "Paquetes Xcaret" al sidebar admin (icono `BadgePercent`) entre Destinos y Cotizaciones
+- También visible para sellers (solo lectura para consultar precios)
+- Ruta `/paquetes-xcaret` en `App.tsx`
 
-## Result
-- Marina Mena will appear in Configuracion with status "Pendiente"
-- You approve her and she can log in
-- Future signups will automatically get profile + seller role via the trigger
+## Archivos
 
-| File | Change |
+| Archivo | Acción |
 |---|---|
-| SQL Migration | Attach trigger to auth.users + backfill Marina Mena |
+| Migración SQL | Crear `promo_packages` y `promo_package_tours` con RLS |
+| `src/pages/PaquetesXcaret.tsx` | Página CRUD con calculadora |
+| `src/App.tsx` | Agregar ruta |
+| `src/components/layout/AppSidebar.tsx` | Agregar enlace en adminNav y sellerNav |
 
