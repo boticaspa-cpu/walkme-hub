@@ -728,99 +728,32 @@ export default function Tours() {
       if (text.trim().startsWith("<!") || text.trim().startsWith("<html")) {
         throw new Error("El Sheet no es público o la pestaña no existe. Verifica el nombre exacto.");
       }
-      // Determine alias keys for header detection based on mode
       const aliasMap = mode === "generales" ? GENERAL_ALIASES : mode === "paquetes" ? PKG_ALIASES : VARIANT_ALIASES;
       const aliasKeys = collectAliasKeys(aliasMap);
       const rows = parseCSV(text, aliasKeys);
       if (rows.length === 0) throw new Error("La pestaña está vacía o no tiene el formato esperado.");
 
-      if (mode === "generales") {
-        const row = rows[0];
-        setForm((prev) => ({
-          ...prev,
-          title: getCol(row, ...GENERAL_ALIASES.title) || prev.title,
-          short_description: getCol(row, ...GENERAL_ALIASES.description) || prev.short_description,
-          itinerary: getCol(row, ...GENERAL_ALIASES.itinerary) || prev.itinerary,
-          includes: getCol(row, ...GENERAL_ALIASES.includes) || prev.includes,
-          excludes: getCol(row, ...GENERAL_ALIASES.excludes) || prev.excludes,
-          meeting_point: getCol(row, ...GENERAL_ALIASES.meeting_point) || prev.meeting_point,
-          what_to_bring: getCol(row, ...GENERAL_ALIASES.what_to_bring) || prev.what_to_bring,
-          recommendations: getCol(row, ...GENERAL_ALIASES.recommendations) || prev.recommendations,
-        }));
-        toast.success("Campos generales importados del Sheet");
+      // Get headers from first row keys
+      const headers = Object.keys(rows[0]);
+      const mappings = autoMapColumns(headers, aliasMap);
 
-      } else if (mode === "paquetes") {
-        const tc = parseFloat(form.exchange_rate_tour) || exchangeRateUsd;
-        const taxAdult = parseFloat(form.tax_adult_usd) || 0;
-        const taxChild = parseFloat(form.tax_child_usd) || 0;
-        const mapped: PackageForm[] = rows
-          .map((row) => {
-            const name = getCol(row, ...PKG_ALIASES.name);
-            if (!name) return null;
-            const pubAdult = parseNum(getCol(row, ...PKG_ALIASES.pub_adult_usd));
-            const pubChild = parseNum(getCol(row, ...PKG_ALIASES.pub_child_usd));
-            const svcRaw = getCol(row, ...PKG_ALIASES.service_type);
-            const svcType = svcRaw.toLowerCase().includes("entrada") ? "entry_only" : "with_transport";
-            const costAdultRaw = getCol(row, ...PKG_ALIASES.cost_adult);
-            const costChildRaw = getCol(row, ...PKG_ALIASES.cost_child);
-            const taxAdultRaw = getCol(row, ...PKG_ALIASES.tax_adult);
-            const taxChildRaw = getCol(row, ...PKG_ALIASES.tax_child);
-            return {
-              ...emptyPackage,
-              name,
-              service_type: svcType,
-              public_price_adult_usd: String(pubAdult),
-              public_price_child_usd: String(pubChild),
-              cost_adult_usd: costAdultRaw ? String(parseNum(costAdultRaw)) : "",
-              cost_child_usd: costChildRaw ? String(parseNum(costChildRaw)) : "",
-              tax_adult_usd: taxAdultRaw ? String(parseNum(taxAdultRaw)) : "",
-              tax_child_usd: taxChildRaw ? String(parseNum(taxChildRaw)) : "",
-              mandatory_fees_usd: getCol(row, ...PKG_ALIASES.fees) ? String(parseNum(getCol(row, ...PKG_ALIASES.fees))) : "",
-              includes: getCol(row, ...PKG_ALIASES.includes),
-              excludes: getCol(row, ...PKG_ALIASES.excludes),
-              price_adult_mxn: ((pubAdult + taxAdult) * tc).toFixed(2),
-              price_child_mxn: ((pubChild + taxChild) * tc).toFixed(2),
-            } as PackageForm;
-          })
-          .filter(Boolean) as PackageForm[];
-        if (!mapped.length) {
-          // Build helpful error message
-          const detected: string[] = [];
-          const missing: string[] = [];
-          const sampleRow = rows[0];
-          if (sampleRow) {
-            if (getCol(sampleRow, ...PKG_ALIASES.name)) detected.push("nombre"); else missing.push("nombre");
-            if (getCol(sampleRow, ...PKG_ALIASES.pub_adult_usd)) detected.push("precio adulto"); else missing.push("precio adulto");
-          }
-          throw new Error(`No se encontraron paquetes.${missing.length ? ` Columnas no detectadas: ${missing.join(", ")}.` : ""}${detected.length ? ` Detectadas: ${detected.join(", ")}.` : ""} Verifica los encabezados.`);
-        }
-        setPackages((prev) => [...prev, ...mapped]);
-        toast.success(`${mapped.length} paquete(s) importado(s) del Sheet`);
+      // Check if any columns need user attention
+      const hasSuggested = mappings.some(m => m.status === "suggested");
+      const hasUnmapped = mappings.some(m => m.status === "unmapped" && normKey(m.header).length > 0);
 
-      } else if (mode === "matriz") {
-        const mapped: VariantForm[] = rows
-          .map((row) => {
-            const salePrice = getCol(row, ...VARIANT_ALIASES.sale_price);
-            if (!salePrice) return null;
-            const pkgRaw = getCol(row, ...VARIANT_ALIASES.package);
-            return {
-              ...emptyVariant,
-              package_name: pkgRaw || "",
-              zone: getCol(row, ...VARIANT_ALIASES.zone) || "Cancun",
-              pax_type: getCol(row, ...VARIANT_ALIASES.pax_type) || "Adulto",
-              nationality: getCol(row, ...VARIANT_ALIASES.nationality) || "Extranjero",
-              sale_price: String(parseNum(salePrice)),
-              net_cost: getCol(row, ...VARIANT_ALIASES.net_cost) ? String(parseNum(getCol(row, ...VARIANT_ALIASES.net_cost))) : "",
-              tax_fee: getCol(row, ...VARIANT_ALIASES.tax_fee) ? String(parseNum(getCol(row, ...VARIANT_ALIASES.tax_fee))) : "",
-            } as VariantForm;
-          })
-          .filter(Boolean) as VariantForm[];
-        if (!mapped.length) throw new Error("No se encontraron variantes. Verifica que haya una columna de precio de venta.");
-        setVariants((prev) => [...prev, ...mapped]);
-        toast.success(`${mapped.length} variante(s) importada(s) del Sheet`);
+      if (hasSuggested || hasUnmapped) {
+        // Show mapping dialog
+        setPendingMappings(mappings);
+        setPendingRows(rows);
+        setPendingAliasMap(aliasMap);
+        setPendingImportMode(mode);
+        setMappingDialogOpen(true);
+        setSheetImportMode(null);
+      } else {
+        // All columns auto-mapped, process directly
+        processImport(mode, rows, mappings, aliasMap);
+        setSheetImportMode(null);
       }
-
-      setSheetImportMode(null);
     } catch (err: any) {
       toast.error(err.message || "Error al importar Sheet");
     } finally {
@@ -828,7 +761,122 @@ export default function Tours() {
     }
   };
 
-  const toggleDay = (day: string) => {
+  const handleMappingConfirm = (finalMappings: ColumnMapping[]) => {
+    if (!pendingImportMode) return;
+    processImport(pendingImportMode, pendingRows, finalMappings, pendingAliasMap);
+    setPendingMappings([]);
+    setPendingRows([]);
+    setPendingAliasMap({});
+    setPendingImportMode(null);
+  };
+
+  /** Apply column mapping to remap row keys, then use getCol as before */
+  const processImport = (
+    mode: "generales" | "paquetes" | "matriz",
+    rows: Record<string, string>[],
+    mappings: ColumnMapping[],
+    aliasMap: Record<string, string[]>
+  ) => {
+    // Build header→fieldKey remap: original header → first alias of the field
+    const remap: Record<string, string> = {};
+    for (const m of mappings) {
+      if (m.fieldKey && aliasMap[m.fieldKey]?.[0]) {
+        remap[m.header] = aliasMap[m.fieldKey][0];
+      }
+    }
+
+    // Remap rows: replace original header keys with canonical alias names
+    const remappedRows = rows.map(row => {
+      const newRow: Record<string, string> = {};
+      for (const [key, val] of Object.entries(row)) {
+        const mappedKey = remap[key] ?? key;
+        newRow[mappedKey] = val;
+      }
+      return newRow;
+    });
+
+    if (mode === "generales") {
+      const row = remappedRows[0];
+      setForm((prev) => ({
+        ...prev,
+        title: getCol(row, ...GENERAL_ALIASES.title) || prev.title,
+        short_description: getCol(row, ...GENERAL_ALIASES.description) || prev.short_description,
+        itinerary: getCol(row, ...GENERAL_ALIASES.itinerary) || prev.itinerary,
+        includes: getCol(row, ...GENERAL_ALIASES.includes) || prev.includes,
+        excludes: getCol(row, ...GENERAL_ALIASES.excludes) || prev.excludes,
+        meeting_point: getCol(row, ...GENERAL_ALIASES.meeting_point) || prev.meeting_point,
+        what_to_bring: getCol(row, ...GENERAL_ALIASES.what_to_bring) || prev.what_to_bring,
+        recommendations: getCol(row, ...GENERAL_ALIASES.recommendations) || prev.recommendations,
+      }));
+      toast.success("Campos generales importados del Sheet");
+
+    } else if (mode === "paquetes") {
+      const tc = parseFloat(form.exchange_rate_tour) || exchangeRateUsd;
+      const taxAdult = parseFloat(form.tax_adult_usd) || 0;
+      const taxChild = parseFloat(form.tax_child_usd) || 0;
+      const mapped: PackageForm[] = remappedRows
+        .map((row) => {
+          const name = getCol(row, ...PKG_ALIASES.name);
+          if (!name) return null;
+          const pubAdult = parseNum(getCol(row, ...PKG_ALIASES.pub_adult_usd));
+          const pubChild = parseNum(getCol(row, ...PKG_ALIASES.pub_child_usd));
+          const svcRaw = getCol(row, ...PKG_ALIASES.service_type);
+          const svcType = svcRaw.toLowerCase().includes("entrada") ? "entry_only" : "with_transport";
+          const costAdultRaw = getCol(row, ...PKG_ALIASES.cost_adult);
+          const costChildRaw = getCol(row, ...PKG_ALIASES.cost_child);
+          const taxAdultRaw = getCol(row, ...PKG_ALIASES.tax_adult);
+          const taxChildRaw = getCol(row, ...PKG_ALIASES.tax_child);
+          return {
+            ...emptyPackage,
+            name,
+            service_type: svcType,
+            public_price_adult_usd: String(pubAdult),
+            public_price_child_usd: String(pubChild),
+            cost_adult_usd: costAdultRaw ? String(parseNum(costAdultRaw)) : "",
+            cost_child_usd: costChildRaw ? String(parseNum(costChildRaw)) : "",
+            tax_adult_usd: taxAdultRaw ? String(parseNum(taxAdultRaw)) : "",
+            tax_child_usd: taxChildRaw ? String(parseNum(taxChildRaw)) : "",
+            mandatory_fees_usd: getCol(row, ...PKG_ALIASES.fees) ? String(parseNum(getCol(row, ...PKG_ALIASES.fees))) : "",
+            includes: getCol(row, ...PKG_ALIASES.includes),
+            excludes: getCol(row, ...PKG_ALIASES.excludes),
+            price_adult_mxn: ((pubAdult + taxAdult) * tc).toFixed(2),
+            price_child_mxn: ((pubChild + taxChild) * tc).toFixed(2),
+          } as PackageForm;
+        })
+        .filter(Boolean) as PackageForm[];
+      if (!mapped.length) {
+        toast.error("No se encontraron paquetes. Verifica los encabezados.");
+        return;
+      }
+      setPackages((prev) => [...prev, ...mapped]);
+      toast.success(`${mapped.length} paquete(s) importado(s) del Sheet`);
+
+    } else if (mode === "matriz") {
+      const mapped: VariantForm[] = remappedRows
+        .map((row) => {
+          const salePrice = getCol(row, ...VARIANT_ALIASES.sale_price);
+          if (!salePrice) return null;
+          const pkgRaw = getCol(row, ...VARIANT_ALIASES.package);
+          return {
+            ...emptyVariant,
+            package_name: pkgRaw || "",
+            zone: getCol(row, ...VARIANT_ALIASES.zone) || "Cancun",
+            pax_type: getCol(row, ...VARIANT_ALIASES.pax_type) || "Adulto",
+            nationality: getCol(row, ...VARIANT_ALIASES.nationality) || "Extranjero",
+            sale_price: String(parseNum(salePrice)),
+            net_cost: getCol(row, ...VARIANT_ALIASES.net_cost) ? String(parseNum(getCol(row, ...VARIANT_ALIASES.net_cost))) : "",
+            tax_fee: getCol(row, ...VARIANT_ALIASES.tax_fee) ? String(parseNum(getCol(row, ...VARIANT_ALIASES.tax_fee))) : "",
+          } as VariantForm;
+        })
+        .filter(Boolean) as VariantForm[];
+      if (!mapped.length) {
+        toast.error("No se encontraron variantes. Verifica que haya una columna de precio de venta.");
+        return;
+      }
+      setVariants((prev) => [...prev, ...mapped]);
+      toast.success(`${mapped.length} variante(s) importada(s) del Sheet`);
+    }
+  };
     setForm((prev) => ({
       ...prev,
       days: prev.days.includes(day) ? prev.days.filter((d) => d !== day) : [...prev.days, day],
