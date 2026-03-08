@@ -1,55 +1,40 @@
 
 
-# Resultados de la revision del flujo + plan de limpieza
+# Plan: Fix missing trigger + create Marina Mena's profile
 
-## Hallazgos
+## Root Cause
+The `handle_new_user()` function exists but there is **no trigger** on `auth.users` that calls it. New signups never get a profile or role created.
 
-### 1. Datos de prueba inconsistentes
-WM-001, WM-002, WM-003 tienen `confirmation_status: "confirmed"` sin `operator_folio` — esto fue antes del fix que separó el pago de la confirmación. Solo WM-004 tiene folio operador ("65433"). Los datos necesitan limpiarse.
+## Changes
 
-### 2. POS query — comportamiento correcto
-El POS filtra con `confirmation_status.eq.scheduled OR payment_status.neq.paid`. Esto muestra reservas que aún no se pagan O que aún están programadas. Después de pagar, si `confirmation_status` se queda en `scheduled`, la reserva sigue visible en POS — lo cual no es ideal ya que ya fue cobrada. **Bug**: una reserva pagada pero sin folio operador sigue apareciendo en el POS.
+### 1. DB Migration — Create the trigger + backfill Marina Mena
 
-**Fix**: El POS debería filtrar solo `payment_status.eq.unpaid` (reservas pendientes de cobro), no incluir las que ya están pagadas.
+```sql
+-- Create the trigger on auth.users
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW
+  EXECUTE FUNCTION public.handle_new_user();
 
-### 3. Edge function `generate-voucher-pdf` — error 404
-La función fue deployada pero retorna 404. Puede ser un problema de timing o de cache. Se necesita re-deploy y verificar.
+-- Backfill the existing user who was missed
+INSERT INTO public.profiles (id, full_name, approval_status)
+VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'Marina Mena', 'pending')
+ON CONFLICT (id) DO NOTHING;
 
-### 4. Checkout flow — funciona correctamente
-El checkout crea: sale → sale_item → cash_movement → actualiza reserva (`payment_status: "paid"`) → operator_payable → commission. Todo encadenado correctamente.
-
-### 5. Folio operador dialog — funciona
-El botón Tag abre un mini-dialog para capturar el folio, y al guardar marca `confirmation_status: "confirmed"`.
-
-## Plan de cambios
-
-### 1. Limpiar datos de prueba (SQL migration)
-Borrar en orden correcto por dependencias:
-- `commissions` (por sale_id)
-- `cash_movements` (por reference)
-- `sale_items` (por sale_id)
-- `sales` (por reservation_id)
-- `operator_payables` (por reservation_id)
-- `reservation_items` (por reservation_id)
-- `quote_items` (por quote_id)
-- `quotes`
-- `reservations`
-
-### 2. Fix POS query
-Cambiar el filtro de `POS.tsx` de:
+INSERT INTO public.user_roles (user_id, role)
+VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'seller')
+ON CONFLICT (user_id, role) DO NOTHING;
 ```
-.or("confirmation_status.eq.scheduled,payment_status.neq.paid")
-```
-a:
-```
-.eq("payment_status", "unpaid")
-```
-Para que solo muestre reservas que realmente faltan por cobrar.
 
-### 3. Re-deploy edge function
-Forzar re-deploy de `generate-voucher-pdf`.
+### 2. No code changes needed
+The `AuthContext` and `Configuracion` page already handle the approval flow. Once Marina's profile exists with `pending` status, she'll appear in the user list on Configuracion and you can approve her from there.
 
-## Archivos modificados
-- **Migration SQL**: DELETE de datos de prueba
-- **`src/pages/POS.tsx`**: Fix filtro de reservas pendientes (linea 31)
+## Result
+- Marina Mena will appear in Configuracion with status "Pendiente"
+- You approve her and she can log in
+- Future signups will automatically get profile + seller role via the trigger
+
+| File | Change |
+|---|---|
+| SQL Migration | Attach trigger to auth.users + backfill Marina Mena |
 

@@ -27,7 +27,7 @@ export default function POS() {
       const { data, error } = await (supabase as any)
         .from("reservations")
         .select("*, tours(title, operator_id), clients(name, phone)")
-        .or("confirmation_status.eq.scheduled,payment_status.neq.paid")
+        .eq("payment_status", "unpaid")
         .order("reservation_date", { ascending: true });
       if (error) throw error;
       return data as any[];
