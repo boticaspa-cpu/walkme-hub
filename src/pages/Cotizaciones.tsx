@@ -530,7 +530,7 @@ export default function Cotizaciones() {
                 <div className="space-y-2 pt-1">
                   <p className="text-sm text-right text-muted-foreground">Subtotal: {fmt(subtotal)}</p>
                   <div className="flex justify-end">
-                    <div className="w-64">
+                    <div className="w-full sm:w-64">
                       <DiscountInput
                         subtotal={subtotal}
                         discountMxn={form.discount_mxn || 0}

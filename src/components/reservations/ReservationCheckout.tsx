@@ -263,7 +263,7 @@ export default function ReservationCheckout({ reservation, open, onOpenChange, o
           {/* Payment Method */}
           <div className="space-y-2">
             <Label className="text-sm font-medium">Método de pago</Label>
-            <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod} className="grid grid-cols-3 gap-2">
+            <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod} className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <Label className="flex items-center gap-2 rounded-lg border p-3 cursor-pointer has-[:checked]:border-primary has-[:checked]:bg-primary/5">
                 <RadioGroupItem value="cash" />
                 <Banknote className="h-4 w-4" />
