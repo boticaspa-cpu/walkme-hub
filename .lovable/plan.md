@@ -1,40 +1,60 @@
 
 
-# Plan: Fix missing trigger + create Marina Mena's profile
+# Plan: Descuentos manuales en Cotizaciones y Reservas
 
-## Root Cause
-The `handle_new_user()` function exists but there is **no trigger** on `auth.users` that calls it. New signups never get a profile or role created.
+## Resumen
+Agregar un campo de descuento directo (en MXN) en los formularios de Cotizaciones y Reservas, visible tanto para admin como para vendedor. El descuento se resta del subtotal calculado para obtener el total final.
 
-## Changes
+## Cambios en base de datos
 
-### 1. DB Migration — Create the trigger + backfill Marina Mena
+**Migración SQL** — agregar columna `discount_mxn` a ambas tablas:
 
 ```sql
--- Create the trigger on auth.users
-CREATE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW
-  EXECUTE FUNCTION public.handle_new_user();
-
--- Backfill the existing user who was missed
-INSERT INTO public.profiles (id, full_name, approval_status)
-VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'Marina Mena', 'pending')
-ON CONFLICT (id) DO NOTHING;
-
-INSERT INTO public.user_roles (user_id, role)
-VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'seller')
-ON CONFLICT (user_id, role) DO NOTHING;
+ALTER TABLE public.quotes ADD COLUMN discount_mxn numeric NOT NULL DEFAULT 0;
+ALTER TABLE public.reservations ADD COLUMN discount_mxn numeric NOT NULL DEFAULT 0;
 ```
 
-### 2. No code changes needed
-The `AuthContext` and `Configuracion` page already handle the approval flow. Once Marina's profile exists with `pending` status, she'll appear in the user list on Configuracion and you can approve her from there.
+## Cambios en código
 
-## Result
-- Marina Mena will appear in Configuracion with status "Pendiente"
-- You approve her and she can log in
-- Future signups will automatically get profile + seller role via the trigger
+### 1. `src/pages/Cotizaciones.tsx`
+- Agregar estado `discount` al form (inicializado en 0, cargado al editar)
+- Mostrar un campo "Descuento MXN" debajo del subtotal de items
+- Mostrar **Subtotal** y **Total (subtotal - descuento)** 
+- Guardar `discount_mxn` en el insert/update de `quotes`
+- Mostrar descuento en la tabla de listado si > 0
 
-| File | Change |
+### 2. `src/pages/Reservas.tsx`
+- **Modo edición**: agregar campo descuento junto al Total MXN existente, recalcular total = subtotal - descuento
+- **Modo creación**: agregar campo descuento por item o global en los datos compartidos
+- Guardar `discount_mxn` en insert/update de `reservations`
+
+### 3. `src/components/reservations/ReservationCheckout.tsx`
+- Leer `reservation.discount_mxn` y mostrarlo en el resumen del ticket
+- Usar `totalMxn` ya neto (total_mxn ya incluye el descuento desde la reserva)
+
+### 4. `src/components/cotizaciones/AcceptQuoteDialog.tsx`
+- Propagar `discount_mxn` de la cotización a la reserva al convertir
+
+### 5. `src/pages/CotizacionPDF.tsx`
+- Mostrar línea de descuento en el PDF si > 0
+
+## UI del descuento
+
+En ambos formularios, debajo de la lista de items/total:
+
+```
+Subtotal:     $5,000.00
+Descuento:    [____input____] MXN
+─────────────────────────
+Total:        $4,500.00
+```
+
+| Archivo | Cambio |
 |---|---|
-| SQL Migration | Attach trigger to auth.users + backfill Marina Mena |
+| SQL Migration | `discount_mxn` en quotes y reservations |
+| `src/pages/Cotizaciones.tsx` | Campo descuento + cálculo subtotal/total |
+| `src/pages/Reservas.tsx` | Campo descuento en edit y create mode |
+| `src/components/reservations/ReservationCheckout.tsx` | Mostrar descuento en resumen |
+| `src/components/cotizaciones/AcceptQuoteDialog.tsx` | Propagar descuento a reserva |
+| `src/pages/CotizacionPDF.tsx` | Mostrar descuento en PDF |
 
