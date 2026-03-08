@@ -73,6 +73,7 @@ const sellerNav = [
   { title: "POS", url: "/pos", icon: ShoppingCart },
   { title: "Cierre Diario", url: "/cierre-diario", icon: ClipboardCheck },
   { title: "Mis Comisiones", url: "/comisiones", icon: BadgeDollarSign },
+  { title: "Asesor IA", url: "/asesor-ventas", icon: Bot },
 ];
 
 export function AppSidebar() {
