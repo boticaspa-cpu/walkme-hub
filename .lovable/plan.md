@@ -1,40 +1,54 @@
 
 
-# Plan: Fix missing trigger + create Marina Mena's profile
+# FASE 1 — Fixes Críticos
 
-## Root Cause
-The `handle_new_user()` function exists but there is **no trigger** on `auth.users` that calls it. New signups never get a profile or role created.
+## Validación de Schema: `reservations`
 
-## Changes
+La columna de ownership es **`created_by`** (uuid, nullable). No existe `seller_id` ni `user_id`. Es la correcta.
 
-### 1. DB Migration — Create the trigger + backfill Marina Mena
+**¿Por qué USING + WITH CHECK?**
+- `USING` controla qué filas puede ver/seleccionar el seller para editar (solo las suyas)
+- `WITH CHECK` asegura que después del UPDATE la fila siga cumpliendo la condición — evita que un seller cambie `created_by` a otro ID y "regale" la reserva
 
-```sql
--- Create the trigger on auth.users
-CREATE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW
-  EXECUTE FUNCTION public.handle_new_user();
+La policy existente de admin (`USING: has_role(auth.uid(), 'admin')`) se mantiene intacta. Ambas policies son RESTRICTIVE, pero Postgres evalúa UPDATE como: debe pasar AL MENOS una policy. Seller pasa por la suya, admin por la suya.
 
--- Backfill the existing user who was missed
-INSERT INTO public.profiles (id, full_name, approval_status)
-VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'Marina Mena', 'pending')
-ON CONFLICT (id) DO NOTHING;
+---
 
-INSERT INTO public.user_roles (user_id, role)
-VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'seller')
-ON CONFLICT (user_id, role) DO NOTHING;
+## Cambios
+
+### 1. Admin Route Guard
+Crear `src/components/layout/AdminRoute.tsx` — verifica `role === "admin"`, redirige a `/dashboard` si no.
+En `App.tsx`: envolver rutas `/reportes`, `/gastos`, `/configuracion` con `<AdminRoute>`.
+
+### 2. Fix null crash en Tours L383
+```ts
+// Antes:
+return parseFloat((data as any).value) || 17.5;
+// Después:
+return parseFloat(data?.value ?? "") || 17.5;
 ```
 
-### 2. No code changes needed
-The `AuthContext` and `Configuracion` page already handle the approval flow. Once Marina's profile exists with `pending` status, she'll appear in the user list on Configuracion and you can approve her from there.
+### 3. Seller UPDATE RLS en reservations
+```sql
+CREATE POLICY "Sellers can update own reservations"
+  ON public.reservations FOR UPDATE
+  TO authenticated
+  USING (created_by = auth.uid())
+  WITH CHECK (created_by = auth.uid());
+```
 
-## Result
-- Marina Mena will appear in Configuracion with status "Pendiente"
-- You approve her and she can log in
-- Future signups will automatically get profile + seller role via the trigger
+### 4. Fix fire-and-forget en ReservationCheckout L81
+Await el update, log error si falla.
 
-| File | Change |
+### 5. CashSessionGuard no-blocking
+Eliminar Case B (modal obligatorio de apertura). Solo mantener Case A (cierre pendiente de día anterior) que sí es bloqueante. Sin caja abierta el usuario puede navegar libremente; POS ya tiene su propio gate.
+
+| Archivo | Cambio |
 |---|---|
-| SQL Migration | Attach trigger to auth.users + backfill Marina Mena |
+| `src/components/layout/AdminRoute.tsx` | **Nuevo** — guard de rol |
+| `src/App.tsx` | Envolver 3 rutas admin |
+| `src/pages/Tours.tsx` | Null-safe L383 |
+| `src/components/reservations/ReservationCheckout.tsx` | Await update L81 |
+| `src/components/cash/CashSessionGuard.tsx` | Eliminar Case B |
+| SQL Migration | RLS policy seller update |
 
