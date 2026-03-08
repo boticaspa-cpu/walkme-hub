@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
   DollarSign, CalendarCheck, Users, TrendingUp, Map, FileText, ArrowRight,
-  Wallet, Percent, Receipt,
+  Wallet, Percent, Receipt, Tag, Package,
 } from "lucide-react";
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -189,11 +189,13 @@ export default function Dashboard() {
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
         <Link to="/cotizaciones"><Card className="cursor-pointer border-dashed hover:border-primary hover:bg-primary/5 transition-colors"><CardContent className="flex items-center gap-3 p-4"><FileText className="h-5 w-5 text-primary" /><span className="font-medium text-sm">Nueva Cotización</span></CardContent></Card></Link>
         <Link to="/reservas"><Card className="cursor-pointer border-dashed hover:border-primary hover:bg-primary/5 transition-colors"><CardContent className="flex items-center gap-3 p-4"><CalendarCheck className="h-5 w-5 text-primary" /><span className="font-medium text-sm">Nueva Reserva</span></CardContent></Card></Link>
         <Link to="/tours"><Card className="cursor-pointer border-dashed hover:border-primary hover:bg-primary/5 transition-colors"><CardContent className="flex items-center gap-3 p-4"><Map className="h-5 w-5 text-primary" /><span className="font-medium text-sm">Ver Catálogo</span></CardContent></Card></Link>
         <Link to="/leads"><Card className="cursor-pointer border-dashed hover:border-primary hover:bg-primary/5 transition-colors"><CardContent className="flex items-center gap-3 p-4"><Users className="h-5 w-5 text-primary" /><span className="font-medium text-sm">Nuevo Lead</span></CardContent></Card></Link>
+        <Link to="/promociones"><Card className="cursor-pointer border-dashed hover:border-primary hover:bg-primary/5 transition-colors"><CardContent className="flex items-center gap-3 p-4"><Tag className="h-5 w-5 text-primary" /><span className="font-medium text-sm">Promociones</span></CardContent></Card></Link>
+        <Link to="/paquetes-xcaret"><Card className="cursor-pointer border-dashed hover:border-primary hover:bg-primary/5 transition-colors"><CardContent className="flex items-center gap-3 p-4"><Package className="h-5 w-5 text-primary" /><span className="font-medium text-sm">Paquetes Xcaret</span></CardContent></Card></Link>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
