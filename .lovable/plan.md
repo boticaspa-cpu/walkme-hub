@@ -1,40 +1,36 @@
 
 
-# Plan: Fix missing trigger + create Marina Mena's profile
+# Plan: Asesor IA como chat flotante en todas las páginas
 
-## Root Cause
-The `handle_new_user()` function exists but there is **no trigger** on `auth.users` that calls it. New signups never get a profile or role created.
+## Resumen
+Convertir el Asesor de Ventas de una página independiente a un **widget de chat flotante** (botón en esquina inferior derecha → se expande como panel de chat), visible en todas las páginas autenticadas.
 
-## Changes
+## Cambios
 
-### 1. DB Migration — Create the trigger + backfill Marina Mena
+### 1. Nuevo componente `src/components/chat/FloatingChatWidget.tsx`
+- Botón flotante (`fixed bottom-4 right-4 z-50`) con icono `Bot`
+- Al hacer click se expande un panel de chat (~400px ancho, ~500px alto) con la misma lógica que ya existe en `AsesorVentas.tsx`
+- Botón para cerrar/minimizar
+- El historial se mantiene en memoria mientras el panel está montado
 
-```sql
--- Create the trigger on auth.users
-CREATE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW
-  EXECUTE FUNCTION public.handle_new_user();
+### 2. `src/components/layout/AppLayout.tsx`
+- Agregar `<FloatingChatWidget />` dentro del layout, después del `<Outlet />`
+- Así aparece en todas las páginas autenticadas
 
--- Backfill the existing user who was missed
-INSERT INTO public.profiles (id, full_name, approval_status)
-VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'Marina Mena', 'pending')
-ON CONFLICT (id) DO NOTHING;
+### 3. `src/App.tsx`
+- Eliminar la ruta `/asesor-ventas` y el import de `AsesorVentas`
 
-INSERT INTO public.user_roles (user_id, role)
-VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'seller')
-ON CONFLICT (user_id, role) DO NOTHING;
-```
+### 4. `src/components/layout/AppSidebar.tsx`
+- Eliminar "Asesor IA" de `adminNav` y `sellerNav`
 
-### 2. No code changes needed
-The `AuthContext` and `Configuracion` page already handle the approval flow. Once Marina's profile exists with `pending` status, she'll appear in the user list on Configuracion and you can approve her from there.
+### 5. `src/pages/AsesorVentas.tsx`
+- Se puede eliminar (la lógica se mueve al widget)
 
-## Result
-- Marina Mena will appear in Configuracion with status "Pendiente"
-- You approve her and she can log in
-- Future signups will automatically get profile + seller role via the trigger
-
-| File | Change |
+| Archivo | Cambio |
 |---|---|
-| SQL Migration | Attach trigger to auth.users + backfill Marina Mena |
+| `src/components/chat/FloatingChatWidget.tsx` | Nuevo: widget flotante con toda la lógica del chat |
+| `src/components/layout/AppLayout.tsx` | Agregar el widget |
+| `src/App.tsx` | Eliminar ruta `/asesor-ventas` |
+| `src/components/layout/AppSidebar.tsx` | Eliminar nav item "Asesor IA" |
+| `src/pages/AsesorVentas.tsx` | Eliminar archivo |
 
