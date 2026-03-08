@@ -274,11 +274,9 @@ export default function PaquetesXcaret() {
             Combina 2+ tours y aplica la regla del contrato Xcaret (80 / 75 / 70 / 75 %)
           </p>
         </div>
-        {isAdmin && (
-          <Button onClick={openCreate}>
-            <Plus className="mr-2 h-4 w-4" /> Nuevo paquete
-          </Button>
-        )}
+        <Button onClick={openCreate}>
+          <Plus className="mr-2 h-4 w-4" /> Nuevo paquete
+        </Button>
       </div>
 
       {/* Table */}
