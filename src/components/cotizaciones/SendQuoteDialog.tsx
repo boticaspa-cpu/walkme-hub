@@ -184,8 +184,28 @@ export default function SendQuoteDialog({ open, onOpenChange, quote }: Props) {
               </div>
             )}
 
+            {/* Language toggle */}
+            <div className="flex items-center gap-2">
+              <Globe className="h-4 w-4 text-muted-foreground" />
+              <div className="flex rounded-md border overflow-hidden">
+                <button
+                  type="button"
+                  className={`px-3 py-1 text-xs font-medium transition-colors ${lang === "es" ? "bg-primary text-primary-foreground" : "bg-muted/50 text-muted-foreground hover:bg-muted"}`}
+                  onClick={() => setLang("es")}
+                >
+                  🇲🇽 Español
+                </button>
+                <button
+                  type="button"
+                  className={`px-3 py-1 text-xs font-medium transition-colors ${lang === "en" ? "bg-primary text-primary-foreground" : "bg-muted/50 text-muted-foreground hover:bg-muted"}`}
+                  onClick={() => setLang("en")}
+                >
+                  🇺🇸 English
+                </button>
+              </div>
+            </div>
+
             {!showQR && (
-              <>
                 {/* Preview del mensaje */}
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
