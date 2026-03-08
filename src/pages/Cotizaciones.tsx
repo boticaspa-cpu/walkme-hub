@@ -154,7 +154,7 @@ export default function Cotizaciones() {
     // 3. tour_packages price (available as soon as package is selected)
     if (packageName) {
       const pkg = allTourPackages.find((p: any) => p.tour_id === tourId && p.name === packageName);
-      if (pkg) return paxType === "Niño" ? (pkg as any).price_child_mxn ?? 0 : (pkg as any).price_adult_mxn ?? 0;
+      if (pkg) return paxType === "Menor" ? (pkg as any).price_child_mxn ?? 0 : (pkg as any).price_adult_mxn ?? 0;
     }
     // 4. Tour base price
     const tour = tours.find((t: any) => t.id === tourId);
