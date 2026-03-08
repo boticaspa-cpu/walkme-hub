@@ -455,6 +455,7 @@ export default function Tours() {
     setImageUrlInput("");
     setPackages([]);
     setVariants([]);
+    setShowTaxFields(false);
     setDialogOpen(true);
   };
 
