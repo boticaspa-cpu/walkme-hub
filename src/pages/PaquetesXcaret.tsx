@@ -46,9 +46,19 @@ interface Tour {
   active: boolean;
 }
 
-/* ── Xcaret pricing formulas ── */
-function calcXcaretPrices(sumPublicAdultUsd: number) {
-  const publicAdult = sumPublicAdultUsd * 0.80;
+/* ── Xcaret pricing formulas (MXN) ── */
+function tourToMxnAdult(t: Tour) {
+  const tc = t.exchange_rate_tour > 0 ? t.exchange_rate_tour : 1;
+  return (t.public_price_adult_usd + (t.tax_adult_usd ?? 0)) * tc;
+}
+
+function tourToMxnChild(t: Tour) {
+  const tc = t.exchange_rate_tour > 0 ? t.exchange_rate_tour : 1;
+  return (t.public_price_child_usd + (t.tax_child_usd ?? 0)) * tc;
+}
+
+function calcXcaretPrices(sumAdultMxn: number) {
+  const publicAdult = sumAdultMxn * 0.80;
   const publicChild = publicAdult * 0.75;
   const prefAdult = publicAdult * 0.70;
   const prefChild = prefAdult * 0.75;
