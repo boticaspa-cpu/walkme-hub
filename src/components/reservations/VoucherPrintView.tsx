@@ -3,6 +3,12 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import walkMeLogo from "@/assets/walkme-logo.png";
 
+interface OnSiteFees {
+  amountPerAdult: number;
+  amountPerChild: number;
+  currency: string;
+}
+
 interface VoucherProps {
   reservation: {
     id: string;
@@ -23,6 +29,7 @@ interface VoucherProps {
     clients?: { name: string; phone: string; email: string | null } | null;
   };
   lang?: "es" | "en";
+  onSiteFees?: OnSiteFees;
 }
 
 const DEFAULT_POLICY_ES = `Cualquier cambio o cancelación deberá realizarse con al menos 48 horas de anticipación. Cancelaciones con menos de 48 horas de anticipación o no shows no son reembolsables. WalkMe Tours se reserva el derecho de modificar horarios o itinerarios por condiciones climáticas o de seguridad. Menores de edad deben ir acompañados de un adulto responsable.`;
