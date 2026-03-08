@@ -325,7 +325,7 @@ export default function CierreDiario() {
 
       {/* === MOVEMENT DIALOG === */}
       <Dialog open={!!movDlg} onOpenChange={() => setMovDlg(null)}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>{movDlg === "in_cash" ? "Entrada de Efectivo" : "Salida de Efectivo"}</DialogTitle>
             <DialogDescription>Registra un movimiento de caja.</DialogDescription>
