@@ -319,9 +319,9 @@ export default function PaquetesXcaret() {
                   <TableHead className="hidden sm:table-cell">Tours</TableHead>
                   <TableHead className="text-right hidden sm:table-cell">Subtotal</TableHead>
                   <TableHead className="text-right hidden sm:table-cell">Dcto. paquete</TableHead>
-                  <TableHead className="text-right">Total Adulto</TableHead>
-                  <TableHead className="text-center">Activo</TableHead>
-                   <TableHead />
+                  <TableHead className="text-right hidden sm:table-cell">Total Adulto</TableHead>
+                  <TableHead className="text-center hidden sm:table-cell">Activo</TableHead>
+                  <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
