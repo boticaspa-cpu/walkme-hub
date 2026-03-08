@@ -130,6 +130,7 @@ export default function Reservas() {
   const voucherRef = useRef<HTMLDivElement>(null);
   const [checkoutReservation, setCheckoutReservation] = useState<any>(null);
   const [highlightId, setHighlightId] = useState<string | null>(null);
+  const [taxIncluded, setTaxIncluded] = useState(true);
 
   // mini-dialog nuevo cliente
   const [clientDialogOpen, setClientDialogOpen] = useState(false);
