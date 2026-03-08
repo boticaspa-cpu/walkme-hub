@@ -132,6 +132,7 @@ export default function Reservas() {
   const [checkoutReservation, setCheckoutReservation] = useState<any>(null);
   const [highlightId, setHighlightId] = useState<string | null>(null);
   const [taxIncluded, setTaxIncluded] = useState(true);
+  const [sendConfirmReservation, setSendConfirmReservation] = useState<any>(null);
 
   // mini-dialog nuevo cliente
   const [clientDialogOpen, setClientDialogOpen] = useState(false);
