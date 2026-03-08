@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Bot, Send, User } from "lucide-react";
+import { Bot, Send, User, X, Minus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import ReactMarkdown from "react-markdown";
@@ -14,8 +14,6 @@ const QUICK_CHIPS = [
   "¿Cuánto descuento puedo dar?",
   "Tips para cerrar una venta",
   "¿Cómo usar el POS?",
-  "¿Cómo manejar objeciones de precio?",
-  "¿Cómo hacer upselling de paquetes?",
 ];
 
 async function streamChat({
@@ -79,7 +77,6 @@ async function streamChat({
     }
   }
 
-  // flush
   if (buf.trim()) {
     for (let raw of buf.split("\n")) {
       if (!raw) continue;
@@ -98,7 +95,8 @@ async function streamChat({
   onDone();
 }
 
-export default function AsesorVentas() {
+export function FloatingChatWidget() {
+  const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -144,33 +142,50 @@ export default function AsesorVentas() {
     }
   };
 
+  if (!isOpen) {
+    return (
+      <div className="fixed bottom-4 right-4 z-50">
+        <Button
+          onClick={() => setIsOpen(true)}
+          size="icon"
+          className="h-12 w-12 rounded-full shadow-lg"
+        >
+          <Bot className="h-6 w-6" />
+        </Button>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex flex-col h-[calc(100vh-5rem)] max-w-3xl mx-auto">
+    <div className="fixed bottom-4 right-4 z-50 flex flex-col w-[360px] h-[520px] max-h-[80vh] rounded-xl border border-border bg-card shadow-2xl overflow-hidden">
       {/* Header */}
-      <div className="flex items-center gap-2 pb-4 border-b border-border">
-        <div className="flex items-center justify-center h-10 w-10 rounded-full bg-primary/10">
-          <Bot className="h-5 w-5 text-primary" />
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-muted/50">
+        <div className="flex items-center justify-center h-8 w-8 rounded-full bg-primary/10">
+          <Bot className="h-4 w-4 text-primary" />
         </div>
-        <div>
-          <h1 className="text-lg font-semibold text-foreground">Asesor de Ventas IA</h1>
-          <p className="text-xs text-muted-foreground">Pregúntame sobre ventas, descuentos o cómo usar la app</p>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-foreground">Asesor de Ventas IA</p>
+          <p className="text-[10px] text-muted-foreground truncate">Pregúntame sobre ventas o la app</p>
         </div>
+        <button onClick={() => setIsOpen(false)} className="text-muted-foreground hover:text-foreground transition-colors">
+          <Minus className="h-4 w-4" />
+        </button>
       </div>
 
       {/* Messages */}
-      <ScrollArea className="flex-1 py-4">
+      <ScrollArea className="flex-1 px-3 py-3">
         {messages.length === 0 && (
-          <div className="flex flex-col items-center justify-center h-full gap-4 text-center px-4">
-            <Bot className="h-12 w-12 text-muted-foreground/40" />
-            <p className="text-sm text-muted-foreground">
-              ¡Hola! Soy tu asesor de ventas. Pregúntame lo que necesites o elige una opción rápida.
+          <div className="flex flex-col items-center justify-center gap-3 text-center pt-8 px-2">
+            <Bot className="h-10 w-10 text-muted-foreground/30" />
+            <p className="text-xs text-muted-foreground">
+              ¡Hola! Soy tu asesor. Elige una opción o escribe tu pregunta.
             </p>
-            <div className="flex flex-wrap justify-center gap-2 max-w-lg">
+            <div className="flex flex-wrap justify-center gap-1.5">
               {QUICK_CHIPS.map((chip) => (
                 <button
                   key={chip}
                   onClick={() => send(chip)}
-                  className="rounded-full border border-border bg-card px-3 py-1.5 text-xs text-foreground hover:bg-accent transition-colors"
+                  className="rounded-full border border-border bg-background px-2.5 py-1 text-[11px] text-foreground hover:bg-accent transition-colors"
                 >
                   {chip}
                 </button>
@@ -180,21 +195,21 @@ export default function AsesorVentas() {
         )}
 
         {messages.map((msg, i) => (
-          <div key={i} className={`flex gap-3 mb-4 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+          <div key={i} className={`flex gap-2 mb-3 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
             {msg.role === "assistant" && (
-              <div className="flex-shrink-0 h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center mt-1">
-                <Bot className="h-4 w-4 text-primary" />
+              <div className="flex-shrink-0 h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center mt-0.5">
+                <Bot className="h-3 w-3 text-primary" />
               </div>
             )}
             <div
-              className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm ${
+              className={`max-w-[80%] rounded-2xl px-3 py-2 text-xs ${
                 msg.role === "user"
-                  ? "bg-primary text-primary-foreground rounded-br-md"
-                  : "bg-muted text-foreground rounded-bl-md"
+                  ? "bg-primary text-primary-foreground rounded-br-sm"
+                  : "bg-muted text-foreground rounded-bl-sm"
               }`}
             >
               {msg.role === "assistant" ? (
-                <div className="prose prose-sm max-w-none dark:prose-invert [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
+                <div className="prose prose-xs max-w-none dark:prose-invert [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 text-xs">
                   <ReactMarkdown>{msg.content}</ReactMarkdown>
                 </div>
               ) : (
@@ -202,23 +217,23 @@ export default function AsesorVentas() {
               )}
             </div>
             {msg.role === "user" && (
-              <div className="flex-shrink-0 h-7 w-7 rounded-full bg-secondary flex items-center justify-center mt-1">
-                <User className="h-4 w-4 text-secondary-foreground" />
+              <div className="flex-shrink-0 h-6 w-6 rounded-full bg-secondary flex items-center justify-center mt-0.5">
+                <User className="h-3 w-3 text-secondary-foreground" />
               </div>
             )}
           </div>
         ))}
 
         {loading && messages[messages.length - 1]?.role === "user" && (
-          <div className="flex gap-3 mb-4">
-            <div className="flex-shrink-0 h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center mt-1">
-              <Bot className="h-4 w-4 text-primary" />
+          <div className="flex gap-2 mb-3">
+            <div className="flex-shrink-0 h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center mt-0.5">
+              <Bot className="h-3 w-3 text-primary" />
             </div>
-            <div className="bg-muted rounded-2xl rounded-bl-md px-4 py-3">
+            <div className="bg-muted rounded-2xl rounded-bl-sm px-3 py-2">
               <div className="flex gap-1">
-                <span className="h-2 w-2 rounded-full bg-muted-foreground/40 animate-bounce [animation-delay:0ms]" />
-                <span className="h-2 w-2 rounded-full bg-muted-foreground/40 animate-bounce [animation-delay:150ms]" />
-                <span className="h-2 w-2 rounded-full bg-muted-foreground/40 animate-bounce [animation-delay:300ms]" />
+                <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40 animate-bounce [animation-delay:0ms]" />
+                <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40 animate-bounce [animation-delay:150ms]" />
+                <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40 animate-bounce [animation-delay:300ms]" />
               </div>
             </div>
           </div>
@@ -227,40 +242,25 @@ export default function AsesorVentas() {
         <div ref={bottomRef} />
       </ScrollArea>
 
-      {/* Quick chips when conversation started */}
-      {messages.length > 0 && !loading && (
-        <div className="flex flex-wrap gap-1.5 pb-2">
-          {QUICK_CHIPS.slice(0, 4).map((chip) => (
-            <button
-              key={chip}
-              onClick={() => send(chip)}
-              className="rounded-full border border-border bg-card px-2.5 py-1 text-[11px] text-muted-foreground hover:bg-accent transition-colors"
-            >
-              {chip}
-            </button>
-          ))}
-        </div>
-      )}
-
       {/* Input */}
       <form
         onSubmit={(e) => { e.preventDefault(); send(input); }}
-        className="flex gap-2 border-t border-border pt-3"
+        className="flex gap-2 px-3 py-2.5 border-t border-border"
       >
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="Escribe tu pregunta..."
           disabled={loading}
-          className="flex-1 rounded-full border border-input bg-background px-4 py-2.5 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+          className="flex-1 rounded-full border border-input bg-background px-3 py-2 text-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
         />
         <Button
           type="submit"
           size="icon"
           disabled={loading || !input.trim()}
-          className="rounded-full h-10 w-10"
+          className="rounded-full h-8 w-8"
         >
-          <Send className="h-4 w-4" />
+          <Send className="h-3.5 w-3.5" />
         </Button>
       </form>
     </div>

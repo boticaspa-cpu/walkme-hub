@@ -4,6 +4,7 @@ import { AppSidebar } from "./AppSidebar";
 import { Topbar } from "./Topbar";
 import { useAuth } from "@/contexts/AuthContext";
 import { Loader2 } from "lucide-react";
+import { FloatingChatWidget } from "@/components/chat/FloatingChatWidget";
 
 export function AppLayout() {
   const { isAuthenticated, loading } = useAuth();
@@ -31,6 +32,7 @@ export function AppLayout() {
           </main>
         </div>
       </div>
+      <FloatingChatWidget />
     </SidebarProvider>
   );
 }
