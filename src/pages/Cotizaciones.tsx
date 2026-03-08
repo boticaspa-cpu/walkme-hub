@@ -204,8 +204,9 @@ export default function Cotizaciones() {
           notes: form.notes || null,
           status: "draft",
           total_mxn,
+          discount_mxn: form.discount_mxn || 0,
           created_by: user?.id,
-        }).select("id").single();
+        } as any).select("id").single();
         if (error) throw error;
         if (items.length > 0) {
           const { error: ie } = await supabase.from("quote_items").insert(
