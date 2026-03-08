@@ -570,6 +570,7 @@ export default function Reservas() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Folio</TableHead>
+                  <TableHead className="hidden lg:table-cell">Folio Op.</TableHead>
                   <TableHead>Tour</TableHead>
                   <TableHead className="hidden sm:table-cell">Cliente</TableHead>
                   <TableHead className="hidden md:table-cell">Fecha</TableHead>
