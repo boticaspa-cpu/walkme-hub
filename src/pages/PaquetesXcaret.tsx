@@ -406,7 +406,7 @@ export default function PaquetesXcaret() {
                       onCheckedChange={() => toggleTour(t.id)}
                     />
                     <span className="flex-1">{t.title}</span>
-                    <span className="text-muted-foreground">{fmt(t.public_price_adult_usd)}</span>
+                    <span className="text-muted-foreground">{fmt(tourToMxnAdult(t))}</span>
                   </label>
                 ))}
               </div>
