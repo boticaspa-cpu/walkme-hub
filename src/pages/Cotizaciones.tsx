@@ -368,7 +368,6 @@ export default function Cotizaciones() {
             </div>
             <DateRangeFilter dateFrom={dateFrom} dateTo={dateTo} onDateFromChange={setDateFrom} onDateToChange={setDateTo} />
           </div>
-          </div>
         </CardHeader>
         <CardContent className="p-0 overflow-x-auto">
           {isLoading ? <p className="p-6 text-sm text-muted-foreground">Cargando…</p> : (
