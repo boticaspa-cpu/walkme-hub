@@ -594,7 +594,7 @@ export default function Reservas() {
                             )}
                             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleVoucherWithCheck(r)}><FileText className="h-3.5 w-3.5" /></Button>
                             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handlePrint(r)}><Printer className="h-3.5 w-3.5" /></Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleWhatsApp(r)}><Send className="h-3.5 w-3.5" /></Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleSendConfirmation(r)}><Send className="h-3.5 w-3.5" /></Button>
                           </div>
                           {/* Mobile: menú desplegable */}
                           <div className="sm:hidden flex justify-end gap-1">
