@@ -1,40 +1,42 @@
 
 
-# Plan: Fix missing trigger + create Marina Mena's profile
+# Plan: Corregir bloqueo de voucher y clarificar flujo
 
-## Root Cause
-The `handle_new_user()` function exists but there is **no trigger** on `auth.users` that calls it. New signups never get a profile or role created.
+## Problema identificado
 
-## Changes
+El bloqueo de voucher por **prepago pendiente al operador** es demasiado estricto. La reserva WM-001 está **confirmada y pagada** por el cliente, pero el sistema bloquea la generación de voucher porque el pago al proveedor (operator_payable) sigue en estado "pending". Esto confunde el flujo.
 
-### 1. DB Migration — Create the trigger + backfill Marina Mena
+## Flujo correcto
 
-```sql
--- Create the trigger on auth.users
-CREATE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW
-  EXECUTE FUNCTION public.handle_new_user();
-
--- Backfill the existing user who was missed
-INSERT INTO public.profiles (id, full_name, approval_status)
-VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'Marina Mena', 'pending')
-ON CONFLICT (id) DO NOTHING;
-
-INSERT INTO public.user_roles (user_id, role)
-VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'seller')
-ON CONFLICT (user_id, role) DO NOTHING;
+```text
+Cotizar → Reservar → Cobrar al cliente (POS/Reservas) → Reserva confirmada+pagada
+  → Generar Voucher / Imprimir / Enviar WhatsApp ✓
+  → El pago al operador es un tema FINANCIERO separado, no debe bloquear la operación
 ```
 
-### 2. No code changes needed
-The `AuthContext` and `Configuracion` page already handle the approval flow. Once Marina's profile exists with `pending` status, she'll appear in the user list on Configuracion and you can approve her from there.
+## Cambios propuestos
 
-## Result
-- Marina Mena will appear in Configuracion with status "Pendiente"
-- You approve her and she can log in
-- Future signups will automatically get profile + seller role via the trigger
+### `src/pages/Reservas.tsx`
 
-| File | Change |
-|---|---|
-| SQL Migration | Attach trigger to auth.users + backfill Marina Mena |
+1. **Cambiar `isPrepagoBlocked` de bloqueo duro a advertencia suave**: En lugar de `return` (bloquear), mostrar un `toast.warning` informativo pero **continuar** con la generación del voucher. El usuario ve la alerta de que falta pagar al operador, pero puede operar normalmente.
+
+2. Modificar `handleVoucherWithCheck`, `handlePrint` y `handleSendConfirmation` para que el prepago pendiente sea solo un aviso, no un bloqueo.
+
+**Antes:**
+```typescript
+if (isPrepagoBlocked(r)) {
+  toast.warning("Proveedor PREPAGO pendiente...");
+  return; // ← BLOQUEA
+}
+```
+
+**Despues:**
+```typescript
+if (isPrepagoBlocked(r)) {
+  toast.warning("Recuerda: el pago al proveedor (prepago) está pendiente.");
+  // NO return → continúa generando el voucher
+}
+```
+
+Solo se modifica 1 archivo: `src/pages/Reservas.tsx` (3 funciones: `handleVoucherWithCheck`, `handlePrint`, `handleSendConfirmation`).
 
