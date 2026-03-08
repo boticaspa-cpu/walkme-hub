@@ -138,7 +138,7 @@ export default function Dashboard() {
         <KpiCard title="Ventas del Día" value={fmt(totalSalesToday)} subtitle="MXN" icon={DollarSign} />
         <KpiCard title="Reservas Hoy" value={reservationsToday.length} subtitle={`${resConfirmed} programadas`} icon={CalendarCheck} />
         <KpiCard title="Leads Activos" value={activeLeads.length} subtitle="sin cerrar" icon={Users} />
-        <KpiCard title="Ventas Hoy" value={salesToday.length} subtitle="transacciones" icon={TrendingUp} />
+        
       </div>
 
       {/* Admin-only financial KPIs */}
