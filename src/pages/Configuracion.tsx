@@ -52,6 +52,7 @@ export default function Configuracion() {
   const [rateUsd, setRateUsd] = useState("");
   const [rateEur, setRateEur] = useState("");
   const [rateCad, setRateCad] = useState("");
+  const [cardFee, setCardFee] = useState("");
 
   // Users query
   const { data: users = [] } = useQuery({

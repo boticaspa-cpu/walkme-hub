@@ -38,6 +38,28 @@ export default function ReservationCheckout({ reservation, open, onOpenChange, o
 
   const fmt = (n: number) => n.toLocaleString("es-MX", { style: "currency", currency: "MXN" });
 
+  // Force MXN when payment is card or transfer
+  useEffect(() => {
+    if (paymentMethod === "card" || paymentMethod === "transfer") {
+      setCurrency("MXN");
+    }
+  }, [paymentMethod]);
+
+  // Fetch card_fee_percent from settings
+  const { data: cardFeePercent = 0 } = useQuery({
+    queryKey: ["settings-card-fee"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("settings")
+        .select("value")
+        .eq("key", "card_fee_percent")
+        .maybeSingle();
+      if (error) throw error;
+      return parseFloat(data?.value ?? "0") || 0;
+    },
+    enabled: open,
+  });
+
   // Fetch tours + variants for recalc if total=0
   const { data: toursForPricing = [] } = useQuery({
     queryKey: ["tours-pricing-checkout"],
@@ -77,7 +99,6 @@ export default function ReservationCheckout({ reservation, open, onOpenChange, o
     const total = computeTotal(result.adultPrice, result.childPrice, reservation.pax_adults || 1, reservation.pax_children || 0);
     if (total > 0) {
       setRecalculatedTotal(total);
-      // Update reservation in DB (fire async, log errors)
       (supabase as any).from("reservations").update({ total_mxn: total }).eq("id", reservation.id)
         .then(({ error: recalcErr }: { error: unknown }) => {
           if (recalcErr) console.warn("Could not update recalculated total:", recalcErr);
@@ -85,25 +106,32 @@ export default function ReservationCheckout({ reservation, open, onOpenChange, o
     }
   }, [reservation, toursForPricing, variantsForPricing]);
 
-  const totalMxn = recalculatedTotal ?? reservation?.total_mxn ?? 0;
+  const baseTotalMxn = recalculatedTotal ?? reservation?.total_mxn ?? 0;
+  const cardFeeAmount = paymentMethod === "card" ? Math.round(baseTotalMxn * cardFeePercent) / 100 : 0;
+  const totalMxn = baseTotalMxn + cardFeeAmount;
   const needsCashSession = paymentMethod === "cash";
 
   const checkoutMutation = useMutation({
     mutationFn: async () => {
+      // Validate: non-cash must be MXN
+      if (paymentMethod !== "cash" && currency !== "MXN") {
+        throw new Error("Pagos con tarjeta/transferencia solo aceptan MXN");
+      }
+
       if (needsCashSession && !isSessionOpen) {
         throw new Error("Debes abrir caja para cobrar en efectivo");
       }
 
       const er = currency !== "MXN" ? parseFloat(exchangeRate) || 1 : 1;
 
-      // 1. Create sale
+      // 1. Create sale (total includes card fee)
       const { data: sale, error: saleErr } = await (supabase as any).from("sales").insert({
         reservation_id: reservation.id,
         client_id: reservation.client_id || null,
         payment_method: paymentMethod,
         currency,
         exchange_rate: er,
-        subtotal_mxn: totalMxn,
+        subtotal_mxn: baseTotalMxn,
         discount_mxn: 0,
         total_mxn: totalMxn,
         sold_by: user?.id,
@@ -118,7 +146,7 @@ export default function ReservationCheckout({ reservation, open, onOpenChange, o
         qty: (reservation.pax_adults || 0) + (reservation.pax_children || 0),
         qty_adults: reservation.pax_adults || 1,
         qty_children: reservation.pax_children || 0,
-        unit_price_mxn: totalMxn / Math.max(1, reservation.pax_adults || 1),
+        unit_price_mxn: baseTotalMxn / Math.max(1, reservation.pax_adults || 1),
         unit_price_child_mxn: 0,
         tour_date: reservation.reservation_date,
       });
@@ -137,7 +165,7 @@ export default function ReservationCheckout({ reservation, open, onOpenChange, o
         });
       }
 
-      // 4. Update reservation — only mark as paid; confirmation requires operator folio
+      // 4. Update reservation
       await (supabase as any).from("reservations").update({
         payment_status: "paid",
         sale_id: sale.id,
@@ -145,7 +173,6 @@ export default function ReservationCheckout({ reservation, open, onOpenChange, o
 
       // 5. Create operator_payable if tour has operator
       if (reservation.tours?.operator_id) {
-        // Fetch operator payment_rules
         const { data: operator } = await (supabase as any)
           .from("operators")
           .select("id, payment_rules, base_currency, exchange_rate")
@@ -169,7 +196,7 @@ export default function ReservationCheckout({ reservation, open, onOpenChange, o
             payableMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
           }
 
-          const amountFx = operator.base_currency !== "MXN" ? totalMxn / (operator.exchange_rate || 1) : null;
+          const amountFx = operator.base_currency !== "MXN" ? baseTotalMxn / (operator.exchange_rate || 1) : null;
 
           await (supabase as any).from("operator_payables").insert({
             reservation_id: reservation.id,
@@ -178,7 +205,7 @@ export default function ReservationCheckout({ reservation, open, onOpenChange, o
             payment_rule_snapshot: rule,
             due_date: dueDate,
             payable_month: payableMonth,
-            amount_mxn: totalMxn,
+            amount_mxn: baseTotalMxn,
             amount_fx: amountFx,
             currency_fx: operator.base_currency !== "MXN" ? operator.base_currency : null,
             status: "pending",
@@ -195,7 +222,6 @@ export default function ReservationCheckout({ reservation, open, onOpenChange, o
           .single();
         const rate = sellerProfile?.commission_rate ?? 0.10;
         if (rate > 0) {
-          // Calculate net cost from tour_price_variants
           let totalNetCost = 0;
           let totalTaxFee = 0;
           if (reservation.tour_id) {
@@ -228,7 +254,7 @@ export default function ReservationCheckout({ reservation, open, onOpenChange, o
             totalNetCost = (adultCost * (reservation.pax_adults || 1)) + (childCost * (reservation.pax_children || 0));
             totalTaxFee = (adultTax * (reservation.pax_adults || 1)) + (childTax * (reservation.pax_children || 0));
           }
-          const profit = Math.max(0, totalMxn - totalNetCost - totalTaxFee);
+          const profit = Math.max(0, baseTotalMxn - totalNetCost - totalTaxFee);
           const commissionAmount = profit * rate;
           if (commissionAmount > 0) {
             await (supabase as any).from("commissions").insert({
@@ -299,7 +325,7 @@ export default function ReservationCheckout({ reservation, open, onOpenChange, o
               <>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Subtotal</span>
-                  <span>{fmt(totalMxn + (reservation as any).discount_mxn)}</span>
+                  <span>{fmt(baseTotalMxn + (reservation as any).discount_mxn)}</span>
                 </div>
                 <div className="flex justify-between text-sm text-green-600">
                   <span>Descuento</span>
@@ -308,10 +334,28 @@ export default function ReservationCheckout({ reservation, open, onOpenChange, o
               </>
             )}
             <Separator />
-            <div className="flex justify-between text-base font-bold">
-              <span>Total</span>
-              <span>{fmt(totalMxn)}</span>
-            </div>
+            {/* Card fee breakdown */}
+            {cardFeeAmount > 0 ? (
+              <>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Subtotal tour</span>
+                  <span>{fmt(baseTotalMxn)}</span>
+                </div>
+                <div className="flex justify-between text-sm text-amber-600">
+                  <span>Comisión tarjeta ({cardFeePercent}%)</span>
+                  <span>+{fmt(cardFeeAmount)}</span>
+                </div>
+                <div className="flex justify-between text-base font-bold">
+                  <span>Total a cobrar</span>
+                  <span>{fmt(totalMxn)}</span>
+                </div>
+              </>
+            ) : (
+              <div className="flex justify-between text-base font-bold">
+                <span>Total</span>
+                <span>{fmt(totalMxn)}</span>
+              </div>
+            )}
           </div>
 
           {/* Payment Method */}
@@ -336,7 +380,7 @@ export default function ReservationCheckout({ reservation, open, onOpenChange, o
             </RadioGroup>
           </div>
 
-          {/* Currency for cash */}
+          {/* Currency for cash only */}
           {paymentMethod === "cash" && (
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">

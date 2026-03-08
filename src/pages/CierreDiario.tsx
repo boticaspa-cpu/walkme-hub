@@ -190,9 +190,9 @@ export default function CierreDiario() {
         notes: closeNotes || undefined,
       });
 
-      const todayStr = activeSession.business_date;
-      await supabase.from("daily_closings").insert({
-        closing_date: todayStr,
+      const businessDate = activeSession.business_date;
+      await (supabase as any).from("daily_closings").upsert({
+        closing_date: businessDate,
         total_sales: sessionSales.length,
         cash_mxn: salesCash,
         cash_usd: 0,
@@ -205,7 +205,7 @@ export default function CierreDiario() {
         exchange_rate_cad: 1,
         grand_total_mxn: salesCash + salesCard + salesTransfer,
         closed_by: user?.id,
-      });
+      }, { onConflict: "closing_date,closed_by" });
 
       toast.success("Caja cerrada exitosamente");
       setCloseDlg(false);
