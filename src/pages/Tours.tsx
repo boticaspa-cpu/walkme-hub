@@ -451,6 +451,7 @@ export default function Tours() {
     setForm(emptyForm);
     setImageFiles([]);
     setImagePreviews([]);
+    setImageUrlInput("");
     setPackages([]);
     setVariants([]);
     setDialogOpen(true);
