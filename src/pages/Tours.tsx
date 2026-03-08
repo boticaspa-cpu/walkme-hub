@@ -300,6 +300,7 @@ export default function Tours() {
   const [form, setForm] = useState<TourForm>(emptyForm);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const [imageUrlInput, setImageUrlInput] = useState("");
   const [parsingDoc, setParsingDoc] = useState(false);
   const [mappingPackages, setMappingPackages] = useState(false);
   const [mappingVariants, setMappingVariants] = useState(false);
