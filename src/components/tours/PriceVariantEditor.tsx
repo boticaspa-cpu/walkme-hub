@@ -19,7 +19,7 @@ export interface VariantForm {
 export const GENERAL_PACKAGE = "__GENERAL__";
 
 export const emptyVariant: VariantForm = {
-  package_name: GENERAL_PACKAGE,
+  package_name: "",
   zone: "Cancun",
   pax_type: "Adulto",
   nationality: "Extranjero",
