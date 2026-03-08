@@ -1,40 +1,49 @@
 
 
-# Plan: Fix missing trigger + create Marina Mena's profile
+# Plan: Folio de Operador + Rediseno del Voucher
 
-## Root Cause
-The `handle_new_user()` function exists but there is **no trigger** on `auth.users` that calls it. New signups never get a profile or role created.
+## Flujo entendido
 
-## Changes
-
-### 1. DB Migration — Create the trigger + backfill Marina Mena
-
-```sql
--- Create the trigger on auth.users
-CREATE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW
-  EXECUTE FUNCTION public.handle_new_user();
-
--- Backfill the existing user who was missed
-INSERT INTO public.profiles (id, full_name, approval_status)
-VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'Marina Mena', 'pending')
-ON CONFLICT (id) DO NOTHING;
-
-INSERT INTO public.user_roles (user_id, role)
-VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'seller')
-ON CONFLICT (user_id, role) DO NOTHING;
+```text
+Cotizacion (COT-001) → Reserva (WM-001) → Operador recibe folio WM-001
+  → Operador responde con su folio (ej: "XC-78432")
+  → Se captura el folio del operador → Reserva CONFIRMADA
+  → Voucher muestra ambos folios: WM-001 + XC-78432
+  
+Si se cancela:
+  → Operador da folio de cancelacion (ej: "XC-CANC-123")
+  → Se captura → Reserva marcada como CANCELADA
 ```
 
-### 2. No code changes needed
-The `AuthContext` and `Configuracion` page already handle the approval flow. Once Marina's profile exists with `pending` status, she'll appear in the user list on Configuracion and you can approve her from there.
+## Cambios en base de datos
 
-## Result
-- Marina Mena will appear in Configuracion with status "Pendiente"
-- You approve her and she can log in
-- Future signups will automatically get profile + seller role via the trigger
+Agregar 2 columnas a `reservations`:
+- `operator_folio` (text, nullable) — folio que da el operador al confirmar
+- `cancellation_folio` (text, nullable) — folio que da el operador al cancelar
 
-| File | Change |
-|---|---|
-| SQL Migration | Attach trigger to auth.users + backfill Marina Mena |
+## Cambios en `src/pages/Reservas.tsx`
+
+1. **Nuevo campo en la tabla/lista**: mostrar columna "Folio Op." cuando existe
+2. **En el formulario de edicion**: agregar campo "Folio del operador" — al llenarlo y guardar, cambiar `confirmation_status` a `"confirmed"` automaticamente
+3. **Agregar campo "Folio de cancelacion"**: visible solo cuando status es `cancelled`
+4. **Accion rapida**: boton/icono para capturar folio del operador sin abrir el editor completo (mini-dialog)
+
+## Rediseno de `src/components/reservations/VoucherPrintView.tsx`
+
+Reescritura completa del componente con diseno profesional:
+
+1. **Header**: Logo grande (h-16), titulo "VOUCHER DE RESERVA" con fondo verde degradado, folio WM + folio operador en badges
+2. **Secciones con tarjetas**: bordes redondeados, headers con iconos y fondo verde claro
+3. **Datos del cliente**: tabla con filas alternas
+4. **Detalles del tour**: tabla con zona y modalidad en badges
+5. **Incluye**: grid 2 columnas con checkmarks verdes
+6. **Resumen de pago**: total destacado con fondo verde
+7. **Folio del operador**: prominente en el header junto al folio WM
+8. **Print styles**: colores preservados en impresion
+
+## Archivos modificados
+
+- **Migration SQL**: agregar `operator_folio` y `cancellation_folio` a `reservations`
+- **`src/pages/Reservas.tsx`**: campo folio operador en edicion + mini-dialog para captura rapida + campo cancelacion
+- **`src/components/reservations/VoucherPrintView.tsx`**: rediseno completo con folio operador visible
 
