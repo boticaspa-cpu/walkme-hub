@@ -357,7 +357,7 @@ export default function Cotizaciones() {
             <Input placeholder="Buscar cotización..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
         </CardHeader>
-        <CardContent className="p-0">
+        <CardContent className="p-0 overflow-x-auto">
           {isLoading ? <p className="p-6 text-sm text-muted-foreground">Cargando…</p> : (
             <Table>
               <TableHeader>
