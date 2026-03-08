@@ -182,6 +182,9 @@ Deno.serve(async (req) => {
     if (r.operator_folio) {
       doc.text(`${labels.opFolio}: ${r.operator_folio}`, margin + 60, y);
     }
+    if (r.operator_confirmation_code) {
+      doc.text(`${labels.confirmCode}: ${r.operator_confirmation_code}`, margin + 120, y);
+    }
     y += 6;
 
     // ── SEPARATOR ──
