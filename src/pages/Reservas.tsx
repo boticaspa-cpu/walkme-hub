@@ -489,15 +489,12 @@ export default function Reservas() {
     }, 100);
   };
 
-  const handleWhatsApp = (r: any) => {
+  const handleSendConfirmation = (r: any) => {
     if (isPrepagoBlocked(r)) {
       toast.warning("Proveedor PREPAGO pendiente — debes pagarlo antes del tour para enviar confirmación.");
       return;
     }
-    const enriched = enrichWithPrices(r);
-    const onSiteFees = !taxIncluded ? computeOnSiteFees(enriched) : null;
-    const msg = buildWhatsAppMessage(enriched, "es", onSiteFees ?? undefined);
-    openWhatsApp(r.clients?.phone, msg);
+    setSendConfirmReservation(enrichWithPrices(r));
   };
 
   /* ── filter ── */
