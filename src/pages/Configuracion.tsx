@@ -75,7 +75,7 @@ export default function Configuracion() {
       const { data, error } = await supabase
         .from("settings" as any)
         .select("key, value")
-        .in("key", ["exchange_rate_usd", "exchange_rate_eur", "exchange_rate_cad"]);
+        .in("key", ["exchange_rate_usd", "exchange_rate_eur", "exchange_rate_cad", "card_fee_percent"]);
       if (error) throw error;
       return (data as any[]) ?? [];
     },
