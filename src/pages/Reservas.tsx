@@ -440,13 +440,13 @@ export default function Reservas() {
   };
 
   const hasTourFees = (r: any) => {
-    return (r._tax_adult_usd > 0 || r._tax_child_usd > 0 || r._mandatory_fees_usd > 0);
+    return (r._tax_adult_usd > 0 || r._tax_child_usd > 0);
   };
 
   const computeOnSiteFees = (r: any) => {
     if (!r) return null;
-    const feeAdult = (r._tax_adult_usd ?? 0) + (r._mandatory_fees_usd ?? 0);
-    const feeChild = (r._tax_child_usd ?? 0) + (r._mandatory_fees_usd ?? 0);
+    const feeAdult = r._tax_adult_usd ?? 0;
+    const feeChild = r._tax_child_usd ?? 0;
     if (feeAdult <= 0 && feeChild <= 0) return null;
     return { amountPerAdult: feeAdult, amountPerChild: feeChild, currency: "USD" };
   };
