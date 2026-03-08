@@ -98,7 +98,7 @@ export default function VariantSelectDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-base">{packageName ? `${tourTitle} — ${packageName}` : tourTitle}</DialogTitle>
           <DialogDescription>Selecciona fecha, zona y nacionalidad</DialogDescription>

@@ -328,7 +328,7 @@ export default function Configuracion() {
 
       {/* Template Dialog */}
       <Dialog open={templateDialogOpen} onOpenChange={(open) => { if (!open) closeTemplateDialog(); }}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>{editingTemplateId ? "Editar Plantilla" : "Nueva Plantilla"}</DialogTitle>
             <DialogDescription>Configura el nombre, contenido y evento de activación.</DialogDescription>
@@ -361,7 +361,7 @@ export default function Configuracion() {
 
       {/* Invite Seller Dialog */}
       <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Invitar Vendedor</DialogTitle>
             <DialogDescription>

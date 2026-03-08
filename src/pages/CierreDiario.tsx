@@ -295,7 +295,7 @@ export default function CierreDiario() {
 
       {/* === OPEN DIALOG === */}
       <Dialog open={openDlg} onOpenChange={setOpenDlg}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Abrir Caja</DialogTitle>
             <DialogDescription>Ingresa el fondo inicial para hoy.</DialogDescription>
@@ -325,7 +325,7 @@ export default function CierreDiario() {
 
       {/* === MOVEMENT DIALOG === */}
       <Dialog open={!!movDlg} onOpenChange={() => setMovDlg(null)}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>{movDlg === "in_cash" ? "Entrada de Efectivo" : "Salida de Efectivo"}</DialogTitle>
             <DialogDescription>Registra un movimiento de caja.</DialogDescription>
@@ -351,7 +351,7 @@ export default function CierreDiario() {
 
       {/* === CLOSE WIZARD === */}
       <Dialog open={closeDlg} onOpenChange={setCloseDlg}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Cerrar Caja — Paso {closeStep}/2</DialogTitle>
             <DialogDescription>

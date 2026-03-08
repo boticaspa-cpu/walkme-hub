@@ -1,34 +1,40 @@
 
 
-# Plan: Arreglar diálogos para que se adapten correctamente en móvil
+# Plan: Fix missing trigger + create Marina Mena's profile
 
-## Problema
-Los diálogos usan clases como `max-w-2xl`, `max-w-md`, `max-w-sm` sin el prefijo `sm:`, lo que limita el ancho del diálogo en móvil en lugar de dejarlo ocupar todo el ancho de pantalla. En la captura se ve cómo el diálogo no llena el ancho en móvil.
+## Root Cause
+The `handle_new_user()` function exists but there is **no trigger** on `auth.users` that calls it. New signups never get a profile or role created.
 
-## Solución
+## Changes
 
-### 1. `src/components/ui/dialog.tsx` — Mejorar base del diálogo
-- Agregar `overflow-y-auto` al contenido base para que siempre sea scrollable
-- Cambiar el `max-w-lg` del desktop default para que funcione bien con los overrides
-- Asegurar que en móvil el diálogo siempre sea full-width sin restricciones de max-width
+### 1. DB Migration — Create the trigger + backfill Marina Mena
 
-### 2. Todos los archivos que usan `DialogContent` con `max-w-*`
-Agregar el prefijo `sm:` a todos los `max-w-*` para que solo apliquen en desktop:
+```sql
+-- Create the trigger on auth.users
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW
+  EXECUTE FUNCTION public.handle_new_user();
 
-| Archivo | Cambio |
+-- Backfill the existing user who was missed
+INSERT INTO public.profiles (id, full_name, approval_status)
+VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'Marina Mena', 'pending')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO public.user_roles (user_id, role)
+VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'seller')
+ON CONFLICT (user_id, role) DO NOTHING;
+```
+
+### 2. No code changes needed
+The `AuthContext` and `Configuracion` page already handle the approval flow. Once Marina's profile exists with `pending` status, she'll appear in the user list on Configuracion and you can approve her from there.
+
+## Result
+- Marina Mena will appear in Configuracion with status "Pendiente"
+- You approve her and she can log in
+- Future signups will automatically get profile + seller role via the trigger
+
+| File | Change |
 |---|---|
-| `Tours.tsx` (×2) | `max-w-2xl` → `sm:max-w-2xl` |
-| `Reservas.tsx` (×2) | `max-w-sm`, `max-w-2xl` → `sm:max-w-sm`, `sm:max-w-2xl` |
-| `Cotizaciones.tsx` | `max-w-sm` → `sm:max-w-sm` |
-| `Leads.tsx` | `max-w-lg` → `sm:max-w-lg` |
-| `Clientes.tsx` | `max-w-md` → `sm:max-w-md` |
-| `Configuracion.tsx` (×2) | `max-w-md`, `max-w-sm` → `sm:max-w-md`, `sm:max-w-sm` |
-| `CierreDiario.tsx` (×3) | `max-w-sm`, `max-w-md` → `sm:max-w-sm`, `sm:max-w-md` |
-| `SendQuoteDialog.tsx` | `max-w-lg` → `sm:max-w-lg` |
-| `AcceptQuoteDialog.tsx` | `max-w-md` → `sm:max-w-md` |
-| `SheetImportDialog.tsx` | `max-w-md` → `sm:max-w-md` |
-| `PackageSelectDialog.tsx` | `max-w-md` → `sm:max-w-md` |
-| `VariantSelectDialog.tsx` | Similar fix |
-
-Esto garantiza que en móvil el diálogo sea full-width (bottom sheet) y en desktop mantenga su tamaño centrado.
+| SQL Migration | Attach trigger to auth.users + backfill Marina Mena |
 

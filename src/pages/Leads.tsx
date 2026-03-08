@@ -187,7 +187,7 @@ export default function Leads() {
       </Card>
 
       <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) closeDialog(); }}>
-        <DialogContent className="max-w-lg max-h-[90dvh] overflow-y-auto">
+        <DialogContent className="sm:max-w-lg max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingId ? "Editar Lead" : "Nuevo Lead"}</DialogTitle>
             <DialogDescription>{editingId ? "Modifica los datos del lead." : "Completa los datos del nuevo lead."}</DialogDescription>

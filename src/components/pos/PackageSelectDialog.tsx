@@ -37,7 +37,7 @@ export default function PackageSelectDialog({ open, onOpenChange, tourTitle, pac
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-md max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-base">{tourTitle}</DialogTitle>
           <DialogDescription>Selecciona un paquete para agregar al carrito</DialogDescription>

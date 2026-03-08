@@ -45,7 +45,7 @@ export default function SheetImportDialog({ open, onOpenChange, defaultTab = "",
 
   return (
     <Dialog open={open} onOpenChange={handleOpen}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Table2 className="h-4 w-4" /> Importar desde Google Sheet

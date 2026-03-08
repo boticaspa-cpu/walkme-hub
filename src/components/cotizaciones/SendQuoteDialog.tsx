@@ -129,7 +129,7 @@ export default function SendQuoteDialog({ open, onOpenChange, quote }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Enviar Cotización</DialogTitle>
           <DialogDescription>{quote?.folio ?? ""} — {fmt(quote?.total_mxn ?? 0)} MXN</DialogDescription>

@@ -235,7 +235,7 @@ function TourImageCarousel({ images, title }: { images?: string[] | null; title:
 function TourShowroom({ tour, onClose, onCreateReservation, onCreateQuote }: { tour: TourRow; onClose: () => void; onCreateReservation: (tourId: string) => void; onCreateQuote: (tourId: string) => void }) {
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90dvh] overflow-y-auto w-full">
+      <DialogContent className="sm:max-w-2xl max-h-[90dvh] overflow-y-auto w-full">
         <DialogHeader>
           <DialogTitle className="text-lg">{tour.title}</DialogTitle>
           <div className="flex items-center gap-2 mt-1">
@@ -1125,7 +1125,7 @@ export default function Tours() {
 
       {/* Create / Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90dvh] overflow-y-auto w-full">
+        <DialogContent className="sm:max-w-2xl max-h-[90dvh] overflow-y-auto w-full">
           <DialogHeader>
             <DialogTitle>{editingId ? "Editar Tour" : "Nuevo Tour"}</DialogTitle>
             <DialogDescription>

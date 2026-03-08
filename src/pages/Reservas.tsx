@@ -902,7 +902,7 @@ export default function Reservas() {
 
       {/* ── Mini-dialog Nuevo Cliente ── */}
       <Dialog open={clientDialogOpen} onOpenChange={setClientDialogOpen}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Nuevo Cliente</DialogTitle>
             <DialogDescription>Crea un cliente rápido para asignar a esta reserva.</DialogDescription>
@@ -932,7 +932,7 @@ export default function Reservas() {
 
       {/* ── Voucher Dialog ── */}
       <Dialog open={!!voucherReservation} onOpenChange={(open) => { if (!open) setVoucherReservation(null); }}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Voucher — {voucherReservation?.folio ?? ""}</DialogTitle>
             <DialogDescription>Previsualiza e imprime el voucher de la reserva.</DialogDescription>
