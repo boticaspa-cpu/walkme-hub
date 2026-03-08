@@ -902,7 +902,7 @@ export default function Reservas() {
 
       {/* ── Mini-dialog Nuevo Cliente ── */}
       <Dialog open={clientDialogOpen} onOpenChange={setClientDialogOpen}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Nuevo Cliente</DialogTitle>
             <DialogDescription>Crea un cliente rápido para asignar a esta reserva.</DialogDescription>
