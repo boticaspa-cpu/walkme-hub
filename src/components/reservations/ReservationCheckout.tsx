@@ -185,7 +185,7 @@ export default function ReservationCheckout({ reservation, open, onOpenChange, o
         }
       }
 
-      // 6. Auto-generate seller commission
+      // 6. Auto-generate seller commission based on PROFIT (sale - net cost)
       if (user?.id) {
         const { data: sellerProfile } = await (supabase as any)
           .from("profiles")
@@ -194,12 +194,45 @@ export default function ReservationCheckout({ reservation, open, onOpenChange, o
           .single();
         const rate = sellerProfile?.commission_rate ?? 0.10;
         if (rate > 0) {
-          await (supabase as any).from("commissions").insert({
-            seller_id: user.id,
-            sale_id: sale.id,
-            rate,
-            amount_mxn: totalMxn * rate,
-          });
+          // Calculate net cost from tour_price_variants
+          let totalNetCost = 0;
+          if (reservation.tour_id) {
+            const zone = reservation.zone || "";
+            const nationality = reservation.nationality || "";
+            const { data: adultVariant } = await (supabase as any)
+              .from("tour_price_variants")
+              .select("net_cost")
+              .eq("tour_id", reservation.tour_id)
+              .eq("zone", zone)
+              .eq("nationality", nationality)
+              .eq("pax_type", "Adulto")
+              .eq("active", true)
+              .limit(1)
+              .maybeSingle();
+            const { data: childVariant } = await (supabase as any)
+              .from("tour_price_variants")
+              .select("net_cost")
+              .eq("tour_id", reservation.tour_id)
+              .eq("zone", zone)
+              .eq("nationality", nationality)
+              .eq("pax_type", "Niño")
+              .eq("active", true)
+              .limit(1)
+              .maybeSingle();
+            const adultCost = adultVariant?.net_cost ?? 0;
+            const childCost = childVariant?.net_cost ?? 0;
+            totalNetCost = (adultCost * (reservation.pax_adults || 1)) + (childCost * (reservation.pax_children || 0));
+          }
+          const profit = Math.max(0, totalMxn - totalNetCost);
+          const commissionAmount = profit * rate;
+          if (commissionAmount > 0) {
+            await (supabase as any).from("commissions").insert({
+              seller_id: user.id,
+              sale_id: sale.id,
+              rate,
+              amount_mxn: commissionAmount,
+            });
+          }
         }
       }
     },
