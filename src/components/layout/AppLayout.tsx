@@ -36,6 +36,7 @@ export function AppLayout() {
       </div>
       <CashSessionGuard />
       <FloatingChatWidget />
+      <BottomNav />
     </SidebarProvider>
   );
 }
