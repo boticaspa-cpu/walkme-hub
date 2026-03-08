@@ -316,6 +316,7 @@ export default function Tours() {
   const [saving, setSaving] = useState(false);
   const [packages, setPackages] = useState<PackageForm[]>([]);
   const [variants, setVariants] = useState<VariantForm[]>([]);
+  const [showTaxFields, setShowTaxFields] = useState(false);
 
   // ── Queries ──
   const { data: tours = [], isLoading } = useQuery({
