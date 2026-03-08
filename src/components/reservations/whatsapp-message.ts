@@ -46,6 +46,10 @@ export function buildWhatsAppMessage(r: ReservationData, lang: "es" | "en" = "es
       lines.push(``, `📝 Notes: ${r.notes}`);
     }
 
+    if (onSiteFees && (onSiteFees.amountPerAdult > 0 || onSiteFees.amountPerChild > 0)) {
+      lines.push(``, `💵 *Fee of $${onSiteFees.amountPerAdult.toFixed(2)} ${onSiteFees.currency} per adult${onSiteFees.amountPerChild > 0 ? ` / $${onSiteFees.amountPerChild.toFixed(2)} ${onSiteFees.currency} per child` : ""} — payable at boarding in cash*`);
+    }
+
     lines.push(``, `Thank you for choosing WalkMe Tours! 🌴`);
     return lines.join("\n");
   }
