@@ -134,11 +134,9 @@ export default function ReservationCheckout({ reservation, open, onOpenChange, o
         });
       }
 
-      // 4. Update reservation
+      // 4. Update reservation — only mark as paid; confirmation requires operator folio
       await (supabase as any).from("reservations").update({
-        confirmation_status: "confirmed",
         payment_status: "paid",
-        confirmed_at: new Date().toISOString(),
         sale_id: sale.id,
       }).eq("id", reservation.id);
 
@@ -246,7 +244,7 @@ export default function ReservationCheckout({ reservation, open, onOpenChange, o
       qc.invalidateQueries({ queryKey: ["cash-movements"] });
       qc.invalidateQueries({ queryKey: ["cash-session-sales"] });
       qc.invalidateQueries({ queryKey: ["pending-reservations"] });
-      toast.success("Reserva confirmada y cobrada");
+      toast.success("Reserva cobrada — pendiente confirmación del operador");
       onOpenChange(false);
       onSuccess?.();
     },
