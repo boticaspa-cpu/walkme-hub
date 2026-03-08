@@ -260,7 +260,9 @@ export default function PaquetesXcaret() {
       const t = tours.find((x) => x.id === tid);
       return acc + (t ? tourToMxnAdult(t) : 0);
     }, 0);
-    return { sumMxn, ...calcXcaretPrices(sumMxn) };
+    const discount = sumMxn * 0.20;
+    const total = sumMxn - discount;
+    return { sumMxn, discount, total, ...calcXcaretPrices(sumMxn) };
   }, [selectedTourIds, tours]);
 
   const tourNameMap = useMemo(() => {
@@ -268,6 +270,14 @@ export default function PaquetesXcaret() {
     tours.forEach((t) => m.set(t.id, t.title));
     return m;
   }, [tours]);
+
+  /* helper: compute subtotal for a saved package from its tour_ids */
+  function pkgSubtotal(pkg: PromoPackage) {
+    return (pkg.tour_ids ?? []).reduce((acc, tid) => {
+      const t = tours.find((x) => x.id === tid);
+      return acc + (t ? tourToMxnAdult(t) : 0);
+    }, 0);
+  }
 
   return (
     <div className="space-y-6 p-4 sm:p-6">
