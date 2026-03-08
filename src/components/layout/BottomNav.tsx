@@ -54,9 +54,9 @@ const adminMore = [
 ];
 
 const sellerMore = [
+  { title: "POS", url: "/pos", icon: ShoppingCart },
   { title: "Leads", url: "/leads", icon: Users },
   { title: "Clientes", url: "/clientes", icon: Contact },
-  { title: "Tours", url: "/tours", icon: Map },
   { title: "Paquetes Xcaret", url: "/paquetes-xcaret", icon: BadgePercent },
   { title: "Promociones", url: "/promociones", icon: Tags },
   { title: "Calendario", url: "/calendario", icon: CalendarDays },
