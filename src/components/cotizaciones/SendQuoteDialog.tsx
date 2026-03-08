@@ -206,6 +206,7 @@ export default function SendQuoteDialog({ open, onOpenChange, quote }: Props) {
             </div>
 
             {!showQR && (
+              <>
                 {/* Preview del mensaje */}
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
