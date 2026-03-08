@@ -70,7 +70,7 @@ export function computeTourPrice(
   const isGeneral = (pn: string | null | undefined) => !pn || pn === "";
   const adultVariant = findVariant("Adulto", isGeneral);
   if (adultVariant) {
-    const childVariant = findVariant("Niño", isGeneral);
+    const childVariant = findVariant("Menor", isGeneral);
     return { adultPrice: adultVariant.sale_price ?? 0, childPrice: childVariant?.sale_price ?? 0, source: "variant" };
   }
 

@@ -227,7 +227,7 @@ export default function ReservationCheckout({ reservation, open, onOpenChange, o
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Pax</span>
-              <span>{reservation.pax_adults || 0} adultos, {reservation.pax_children || 0} niños</span>
+              <span>{reservation.pax_adults || 0} adultos, {reservation.pax_children || 0} menores</span>
             </div>
             {reservation.zone && (
               <div className="flex justify-between text-sm">

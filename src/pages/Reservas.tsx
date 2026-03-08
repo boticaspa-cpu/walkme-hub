@@ -854,7 +854,7 @@ export default function Reservas() {
                         <Input type="number" min={0} value={item.pax_adults} onChange={(e) => updateItem(item.id, "pax_adults", parseInt(e.target.value) || 0)} />
                       </div>
                       <div className="space-y-1">
-                        <Label className="text-xs">Niños</Label>
+                        <Label className="text-xs">Menores</Label>
                         <Input type="number" min={0} value={item.pax_children} onChange={(e) => updateItem(item.id, "pax_children", parseInt(e.target.value) || 0)} />
                       </div>
                       <div className="space-y-1">

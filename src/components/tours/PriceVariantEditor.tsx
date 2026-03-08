@@ -29,8 +29,8 @@ export const emptyVariant: VariantForm = {
 };
 
 const ZONES = ["Cancun", "Playa", "Tulum", "Riviera Maya"];
-const PAX_TYPES = ["Adulto", "Niño"];
-const NATIONALITIES = ["Mexicano", "Extranjero"];
+const PAX_TYPES = ["Adulto", "Menor"];
+const NATIONALITIES = ["Nacional", "Extranjero"];
 
 interface PackageOption {
   id?: string;

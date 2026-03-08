@@ -100,8 +100,8 @@ export default function CotizacionPDF() {
               <th className="py-2 px-3 text-center">Nac.</th>
               <th className="py-2 px-3 text-center">Adultos</th>
               <th className="py-2 px-3 text-right">P/U Adulto</th>
-              <th className="py-2 px-3 text-center">Niños</th>
-              <th className="py-2 px-3 text-right">P/U Niño</th>
+              <th className="py-2 px-3 text-center">Menores</th>
+              <th className="py-2 px-3 text-right">P/U Menor</th>
               <th className="py-2 px-3 text-right">Subtotal</th>
             </tr>
           </thead>

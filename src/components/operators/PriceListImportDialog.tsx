@@ -377,7 +377,7 @@ export default function PriceListImportDialog({ open, onOpenChange, operator }: 
                     <TableHead className="w-10" />
                     <TableHead>Tour</TableHead>
                     <TableHead className="text-right">Pub. Adulto</TableHead>
-                    <TableHead className="text-right">Pub. Niño</TableHead>
+                    <TableHead className="text-right">Pub. Menor</TableHead>
                     <TableHead className="text-right">Tax Ad.</TableHead>
                     <TableHead className="text-right">Variantes</TableHead>
                   </TableRow>

@@ -515,7 +515,7 @@ export default function Cotizaciones() {
                       <Input type="number" min={0} value={item.qty_children} onChange={(e) => updateItem(idx, "qty_children", parseInt(e.target.value) || 0)} />
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">Precio niño</Label>
+                      <Label className="text-xs text-muted-foreground">Precio menor</Label>
                       <Input type="number" min={0} step="0.01" value={item.unit_price_child_mxn} onChange={(e) => updateItem(idx, "unit_price_child_mxn", parseFloat(e.target.value) || 0)} />
                     </div>
                   </div>

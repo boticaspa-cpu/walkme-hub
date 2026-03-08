@@ -109,8 +109,8 @@ Key extraction rules:
                       type: "object",
                       properties: {
                         zone: { type: "string", enum: ["Cancun", "Playa", "Tulum", "Riviera Maya"] },
-                        pax_type: { type: "string", enum: ["Adulto", "Niño"] },
-                        nationality: { type: "string", enum: ["Mexicano", "Extranjero"] },
+                        pax_type: { type: "string", enum: ["Adulto", "Menor"] },
+                        nationality: { type: "string", enum: ["Nacional", "Extranjero"] },
                         sale_price: { type: "number", description: "Sale price in MXN" },
                         net_cost: { type: "number", description: "Net cost if available" },
                         tax_fee: { type: "number", description: "Tax or fees if available" },

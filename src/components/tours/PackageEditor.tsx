@@ -262,7 +262,7 @@ export default function PackageEditor({ packages, onChange, tourExchangeRate, to
                       <p className="text-[10px] text-muted-foreground">= (Púb {parseFloat(pkg.public_price_adult_usd) || 0} + Tax {tourTaxAdultUsd}) × {tourExchangeRate}</p>
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-xs">Precio Niño MXN</Label>
+                      <Label className="text-xs">Precio Menor MXN</Label>
                       <Input type="number" value={pkg.price_child_mxn} disabled className="bg-muted" />
                       <p className="text-[10px] text-muted-foreground">= (Púb {parseFloat(pkg.public_price_child_usd) || 0} + Tax {tourTaxChildUsd}) × {tourExchangeRate}</p>
                     </div>

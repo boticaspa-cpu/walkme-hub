@@ -186,7 +186,7 @@ export default function VariantSelectDialog({
                 </div>
                 {childVariant && (
                   <div className="space-y-1">
-                    <Label className="text-xs">Niños</Label>
+                    <Label className="text-xs">Menores</Label>
                     <div className="flex items-center gap-1">
                       <Button type="button" variant="outline" size="icon" className="h-8 w-8" onClick={() => setQtyChildren(Math.max(0, qtyChildren - 1))}><Minus className="h-3 w-3" /></Button>
                       <Input className="h-8 text-center w-14" value={qtyChildren} readOnly />

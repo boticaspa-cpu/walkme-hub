@@ -54,7 +54,7 @@ export function buildWhatsAppMessage(r: ReservationData, lang: "es" | "en" = "es
     `📍 Zona de pickup: ${r.zone || "—"}`,
     `🚐 Modalidad: ${r.modality === "shared" ? "Compartido" : "Privado"}`,
     `👤 Cliente: ${r.clients?.name ?? "—"}`,
-    `👥 Adultos: ${r.pax_adults} | Niños: ${r.pax_children}`,
+    `👥 Adultos: ${r.pax_adults} | Menores: ${r.pax_children}`,
     `💰 Total: $${r.total_mxn.toLocaleString("es-MX", { minimumFractionDigits: 2 })} MXN`,
   ];
 
