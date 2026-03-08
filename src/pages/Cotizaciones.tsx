@@ -423,7 +423,7 @@ export default function Cotizaciones() {
 
       {/* Dialog crear/editar cotización */}
       <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) closeDialog(); }}>
-        <DialogContent className="max-w-2xl max-h-[90dvh] overflow-y-auto w-full">
+        <DialogContent className="sm:max-w-2xl max-h-[100dvh] sm:max-h-[90dvh] overflow-y-auto w-full">
           <DialogHeader>
             <DialogTitle>{editingId ? "Editar Cotización" : "Nueva Cotización"}</DialogTitle>
             <DialogDescription>{editingId ? "Modifica la cotización." : "El folio se genera automáticamente."}</DialogDescription>
