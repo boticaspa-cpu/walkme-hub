@@ -73,6 +73,7 @@ export default function CierreDiario() {
   const variance = parseFloat(countedCash || "0") - expectedCash;
 
   const dateLabel = new Date().toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  const todayStr = new Date().toISOString().split("T")[0];
 
   // Admin-only financial queries for daily summary
   const { data: dailyPayables = [] } = useQuery({
@@ -114,7 +115,6 @@ export default function CierreDiario() {
     },
   });
 
-  const todayStr = new Date().toISOString().split("T")[0];
   const totalDailyPayables = dailyPayables.reduce((a: number, p: any) => a + Number(p.amount_mxn), 0);
   const totalDailyCommissions = dailyCommissions.reduce((a: number, c: any) => a + Number(c.amount_mxn), 0);
   const totalDailyExpenses = dailyExpenses.reduce((a: number, e: any) => a + Number(e.paid_amount_mxn || 0), 0);

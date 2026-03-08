@@ -173,6 +173,21 @@ export default function Configuracion() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const updateCommissionRateMutation = useMutation({
+    mutationFn: async ({ userId, rate }: { userId: string; rate: number }) => {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ commission_rate: rate } as any)
+        .eq("id", userId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["config-users"] });
+      toast.success("Tasa de comisión actualizada");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const closeTemplateDialog = () => { setTemplateDialogOpen(false); setEditingTemplateId(null); setTemplateForm(emptyTemplate); };
   const openCreateTemplate = () => { setTemplateForm(emptyTemplate); setEditingTemplateId(null); setTemplateDialogOpen(true); };
   const openEditTemplate = (t: any) => {
