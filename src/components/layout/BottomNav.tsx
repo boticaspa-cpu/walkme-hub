@@ -32,7 +32,7 @@ import { cn } from "@/lib/utils";
 
 const primaryItems = [
   { title: "Inicio", url: "/dashboard", icon: LayoutDashboard },
-  { title: "POS", url: "/pos", icon: ShoppingCart },
+  { title: "Tours", url: "/tours", icon: Map },
   { title: "Reservas", url: "/reservas", icon: FolderOpen },
   { title: "Cotizar", url: "/cotizaciones", icon: FileText },
 ];
