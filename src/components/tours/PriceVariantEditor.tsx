@@ -9,8 +9,8 @@ export interface VariantForm {
   id?: string;
   package_name: string;
   zone: string;
-  pax_type: string; // "Adulto" | "Niño"
-  nationality: string; // "Mexicano" | "Extranjero"
+  pax_type: string; // "Adulto" | "Menor"
+  nationality: string; // "Nacional" | "Extranjero"
   sale_price: string;
   net_cost: string;
   tax_fee: string;
