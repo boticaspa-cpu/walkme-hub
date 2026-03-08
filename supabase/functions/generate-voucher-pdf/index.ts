@@ -59,10 +59,12 @@ Deno.serve(async (req) => {
           title: "VOUCHER DE RESERVA",
           folio: "Folio",
           opFolio: "Folio Operador",
+          confirmCode: "Código Confirmación",
           date: "Fecha",
           time: "Hora",
           client: "Cliente",
           phone: "Teléfono",
+          email: "Email",
           tour: "Tour",
           meetingPoint: "Punto de encuentro",
           adults: "Adultos",
@@ -79,15 +81,19 @@ Deno.serve(async (req) => {
           priceAdult: "Precio adulto",
           priceChild: "Precio menor",
           subtotal: "Subtotal",
+          hotel: "Hotel",
+          pickupNotes: "Notas de pickup",
         }
       : {
           title: "RESERVATION VOUCHER",
           folio: "Folio",
           opFolio: "Operator Folio",
+          confirmCode: "Confirmation Code",
           date: "Date",
           time: "Time",
           client: "Client",
           phone: "Phone",
+          email: "Email",
           tour: "Tour",
           meetingPoint: "Meeting point",
           adults: "Adults",
@@ -104,6 +110,8 @@ Deno.serve(async (req) => {
           priceAdult: "Adult price",
           priceChild: "Minor price",
           subtotal: "Subtotal",
+          hotel: "Hotel",
+          pickupNotes: "Pickup notes",
         };
 
     const fmtMXN = (n: number) => `$${n.toLocaleString("en-US", { minimumFractionDigits: 2 })} MXN`;
