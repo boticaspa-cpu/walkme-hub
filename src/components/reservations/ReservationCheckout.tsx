@@ -77,8 +77,11 @@ export default function ReservationCheckout({ reservation, open, onOpenChange, o
     const total = computeTotal(result.adultPrice, result.childPrice, reservation.pax_adults || 1, reservation.pax_children || 0);
     if (total > 0) {
       setRecalculatedTotal(total);
-      // Update reservation in DB
-      (supabase as any).from("reservations").update({ total_mxn: total }).eq("id", reservation.id);
+      // Update reservation in DB (fire async, log errors)
+      (supabase as any).from("reservations").update({ total_mxn: total }).eq("id", reservation.id)
+        .then(({ error: recalcErr }: { error: unknown }) => {
+          if (recalcErr) console.warn("Could not update recalculated total:", recalcErr);
+        });
     }
   }, [reservation, toursForPricing, variantsForPricing]);
 

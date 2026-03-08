@@ -50,56 +50,7 @@ export function CashSessionGuard() {
     return null;
   }
 
-  // Case B: No active session — prompt to open
-  const handleOpen = async () => {
-    if (!defaultRegister) {
-      toast.error("No hay caja registrada. Contacta al administrador.");
-      return;
-    }
-    setIsOpening(true);
-    try {
-      await openSession.mutateAsync({
-        registerId: defaultRegister.id,
-        floatMxn: parseFloat(floatAmount) || 0,
-      });
-      toast.success("Caja abierta correctamente");
-    } catch (err: any) {
-      toast.error("Error al abrir caja: " + (err.message || ""));
-    } finally {
-      setIsOpening(false);
-    }
-  };
-
-  return (
-    <Dialog open>
-      <DialogContent className="sm:max-w-md" onPointerDownOutside={(e) => e.preventDefault()}>
-        <DialogHeader>
-          <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-            <DollarSign className="h-6 w-6 text-primary" />
-          </div>
-          <DialogTitle className="text-center">Abrir Caja</DialogTitle>
-          <DialogDescription className="text-center">
-            Para comenzar a trabajar, abre tu caja del día. Puedes iniciar con fondo $0.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-2 py-2">
-          <Label htmlFor="float">Fondo inicial (MXN)</Label>
-          <Input
-            id="float"
-            type="number"
-            min="0"
-            step="0.01"
-            value={floatAmount}
-            onChange={(e) => setFloatAmount(e.target.value)}
-            placeholder="0.00"
-          />
-        </div>
-        <DialogFooter>
-          <Button className="w-full" onClick={handleOpen} disabled={isOpening}>
-            {isOpening ? "Abriendo..." : "Abrir Caja"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
+  // Case B: No active session — user can navigate freely.
+  // POS has its own internal gate that checks for open cash session.
+  return null;
 }

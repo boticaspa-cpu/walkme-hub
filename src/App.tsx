@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { AdminRoute } from "@/components/layout/AdminRoute";
 import Login from "./pages/Login";
 import CotizacionPDF from "./pages/CotizacionPDF";
 import Dashboard from "./pages/Dashboard";
@@ -57,9 +58,11 @@ const App = () => (
               <Route path="/pos" element={<POS />} />
               <Route path="/cierre-diario" element={<CierreDiario />} />
               <Route path="/comisiones" element={<Comisiones />} />
-              <Route path="/reportes" element={<Reportes />} />
-              <Route path="/configuracion" element={<Configuracion />} />
-              <Route path="/gastos" element={<Gastos />} />
+              <Route element={<AdminRoute />}>
+                <Route path="/reportes" element={<Reportes />} />
+                <Route path="/configuracion" element={<Configuracion />} />
+                <Route path="/gastos" element={<Gastos />} />
+              </Route>
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
