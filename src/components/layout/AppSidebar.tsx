@@ -17,6 +17,7 @@ import {
   Receipt,
   LogOut,
   ChevronDown,
+  Bot,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import walkmeLogo from "@/assets/walkme-logo.png";
