@@ -1,40 +1,64 @@
 
 
-# Plan: Fix missing trigger + create Marina Mena's profile
+# Integración de Paquetes Xcaret en Cotizaciones y Reservas
 
-## Root Cause
-The `handle_new_user()` function exists but there is **no trigger** on `auth.users` that calls it. New signups never get a profile or role created.
+## Enfoque recomendado
 
-## Changes
+La opción más limpia es **agregar botones "Cotizar" y "Reservar" en cada paquete** dentro de la página de Paquetes Xcaret. Al hacer clic, el sistema redirige a Cotizaciones o Reservas con el paquete pre-cargado, reutilizando los formularios que ya existen. No se crean flujos nuevos ni ventanas independientes — solo se pre-llenan los datos del paquete automáticamente.
 
-### 1. DB Migration — Create the trigger + backfill Marina Mena
-
-```sql
--- Create the trigger on auth.users
-CREATE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW
-  EXECUTE FUNCTION public.handle_new_user();
-
--- Backfill the existing user who was missed
-INSERT INTO public.profiles (id, full_name, approval_status)
-VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'Marina Mena', 'pending')
-ON CONFLICT (id) DO NOTHING;
-
-INSERT INTO public.user_roles (user_id, role)
-VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'seller')
-ON CONFLICT (user_id, role) DO NOTHING;
+```text
+┌─────────────────────────────────────┐
+│  Paquetes Xcaret (tabla)            │
+│  ┌─────────────┬────────┬────────┐  │
+│  │ Xcaret+Xplor│ Cotizar│Reservar│  │
+│  │ Xel-Há+Xoxim│ Cotizar│Reservar│  │
+│  └─────────────┴────────┴────────┘  │
+└──────────────┬──────────────────────┘
+               │ click "Cotizar"
+               ▼
+┌─────────────────────────────────────┐
+│  /cotizaciones?promo_package_id=X   │
+│  → Diálogo abierto automáticamente  │
+│  → Tours del paquete ya agregados   │
+│  → Precios Xcaret pre-calculados    │
+│  → Solo falta: cliente, zona, fecha │
+└─────────────────────────────────────┘
 ```
 
-### 2. No code changes needed
-The `AuthContext` and `Configuracion` page already handle the approval flow. Once Marina's profile exists with `pending` status, she'll appear in the user list on Configuracion and you can approve her from there.
+## Cambios por archivo
 
-## Result
-- Marina Mena will appear in Configuracion with status "Pendiente"
-- You approve her and she can log in
-- Future signups will automatically get profile + seller role via the trigger
+### 1. `src/pages/PaquetesXcaret.tsx`
+- Agregar botones "Cotizar" y "Reservar" en cada fila de la tabla (junto al switch y delete)
+- Al hacer clic, navegar con `useNavigate` a:
+  - `/cotizaciones?promo_package_id={id}`
+  - `/reservas?promo_package_id={id}`
 
-| File | Change |
-|---|---|
-| SQL Migration | Attach trigger to auth.users + backfill Marina Mena |
+### 2. `src/pages/Cotizaciones.tsx`
+- Detectar `promo_package_id` en los search params
+- Fetch del paquete + sus tours asociados (`promo_package_tours`)
+- Abrir automáticamente el diálogo de creación
+- Pre-llenar los `items[]` con cada tour del paquete, usando el precio calculado del paquete (public_price_adult dividido proporcionalmente, o el total del paquete como descuento)
+- Mostrar un badge indicando "Paquete Xcaret: {nombre}"
+
+### 3. `src/pages/Reservas.tsx`
+- Misma lógica: detectar `promo_package_id` en search params
+- Pre-cargar el primer tour del paquete como tour principal
+- Agregar los demás como `reservation_items`
+- Aplicar el precio total del paquete
+- Mostrar badge del paquete
+
+## Flujo del usuario
+
+1. Entra a Paquetes Xcaret, ve sus paquetes creados
+2. Hace clic en "Cotizar" en el paquete deseado
+3. Se abre Cotizaciones con el formulario pre-llenado: todos los tours del paquete con sus precios Xcaret
+4. Solo necesita agregar: cliente, zona de pickup, nacionalidad, fechas
+5. Guarda la cotización normalmente
+
+Lo mismo para "Reservar" — redirige a Reservas con datos pre-cargados.
+
+## Notas técnicas
+- Los precios del paquete ya están guardados en `promo_packages.public_price_adult_usd` — se distribuyen proporcionalmente entre los tours o se manejan como descuento global
+- No se necesitan cambios en la base de datos
+- Se reutiliza 100% de los flujos existentes de cotización y reserva
 
