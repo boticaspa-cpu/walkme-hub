@@ -102,7 +102,7 @@ export default function PaquetesXcaret() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("tours")
-        .select("id, title, public_price_adult_usd, active")
+        .select("id, title, public_price_adult_usd, public_price_child_usd, tax_adult_usd, tax_child_usd, exchange_rate_tour, active")
         .eq("active", true)
         .in("category_id", xcaretCatIds)
         .order("title");
