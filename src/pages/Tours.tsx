@@ -478,6 +478,10 @@ export default function Tours() {
       public_price_child_usd: String(tour.public_price_child_usd || ""),
       tax_adult_usd: String(tour.tax_adult_usd || ""),
       tax_child_usd: String(tour.tax_child_usd || ""),
+    });
+    setShowTaxFields((tour.tax_adult_usd || 0) > 0 || (tour.tax_child_usd || 0) > 0);
+    // The rest of the form setup continues below — remove duplicate closing
+    Object.assign(/* noop */{}, {
       calculation_mode: tour.calculation_mode || "net_cost",
       commission_percentage: String(tour.commission_percentage || ""),
       exchange_rate_tour: String((tour as any).exchange_rate_tour || ""),
