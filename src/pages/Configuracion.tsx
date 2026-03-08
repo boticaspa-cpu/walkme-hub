@@ -98,6 +98,7 @@ export default function Configuracion() {
         { key: "exchange_rate_usd", value: rateUsd },
         { key: "exchange_rate_eur", value: rateEur },
         { key: "exchange_rate_cad", value: rateCad },
+        { key: "card_fee_percent", value: cardFee },
       ];
       for (const u of updates) {
         const { error } = await supabase
