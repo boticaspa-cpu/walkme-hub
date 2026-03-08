@@ -66,21 +66,24 @@ async function fetchCatalogContext(): Promise<string> {
   const tours = toursRes.data ?? [];
   const variants = variantsRes.data ?? [];
   const packages = packagesRes.data ?? [];
+  const operators = operatorsRes.data ?? [];
 
   if (tours.length === 0) return "\n## DATOS: No hay tours activos en el sistema.";
 
   const tourMap = new Map(tours.map((t: any) => [t.id, t.title]));
+  const opMap = new Map(operators.map((o: any) => [o.id, o.name]));
 
   let ctx = "\n\n## DATOS REALES DEL CATÁLOGO (ÚNICA fuente de verdad)\n";
 
   // Tours table
   ctx += "\n### Tours disponibles\n";
-  ctx += "| Tour | Precio MXN (Ad/Men) | Precio USD (Ad) | Días | Incluye | Edad niño |\n";
-  ctx += "|---|---|---|---|---|---|\n";
+  ctx += "| Tour | Operador | Precio MXN (Ad/Men) | Precio USD (Ad) | Días | Incluye | Edad niño |\n";
+  ctx += "|---|---|---|---|---|---|---|\n";
   for (const t of tours) {
     const dias = (t.days || []).join(",") || "—";
     const incluye = (t.includes || []).slice(0, 3).join(", ") || "—";
-    ctx += `| ${t.title} | $${t.price_mxn}/$${t.suggested_price_mxn} | $${t.public_price_adult_usd} | ${dias} | ${incluye} | ${t.child_age_min}-${t.child_age_max} |\n`;
+    const op = opMap.get(t.operator_id) || "—";
+    ctx += `| ${t.title} | ${op} | $${t.price_mxn}/$${t.suggested_price_mxn} | $${t.public_price_adult_usd} | ${dias} | ${incluye} | ${t.child_age_min}-${t.child_age_max} |\n`;
   }
 
   // Variants table
@@ -102,6 +105,17 @@ async function fetchCatalogContext(): Promise<string> {
     for (const p of packages) {
       const name = tourMap.get(p.tour_id) || "?";
       ctx += `| ${name} | ${p.name} | $${p.price_adult_mxn} | $${p.price_child_mxn} |\n`;
+    }
+  }
+
+  // Operators table
+  if (operators.length > 0) {
+    ctx += "\n### Operadores (proveedores)\n";
+    ctx += "| Operador | Contacto | Teléfono | Email | Moneda | Pago | Cobro fees | Tags |\n";
+    ctx += "|---|---|---|---|---|---|---|---|\n";
+    for (const o of operators) {
+      const tags = (o.tags || []).join(", ") || "—";
+      ctx += `| ${o.name} | ${o.contact_name || "—"} | ${o.phone || "—"} | ${o.email || "—"} | ${o.base_currency} | ${o.payment_rules} | ${o.fee_collection_mode} | ${tags} |\n`;
     }
   }
 
