@@ -877,6 +877,8 @@ export default function Tours() {
       toast.success(`${mapped.length} variante(s) importada(s) del Sheet`);
     }
   };
+
+  const toggleDay = (day: string) => {
     setForm((prev) => ({
       ...prev,
       days: prev.days.includes(day) ? prev.days.filter((d) => d !== day) : [...prev.days, day],
