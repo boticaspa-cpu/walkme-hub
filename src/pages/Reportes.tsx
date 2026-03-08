@@ -1,13 +1,28 @@
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell,
 } from "recharts";
+import { format, subMonths, startOfMonth, endOfMonth } from "date-fns";
+import { es } from "date-fns/locale";
 
 const COLORS = ["hsl(190, 82%, 40%)", "hsl(175, 60%, 45%)", "hsl(38, 92%, 50%)", "hsl(340, 65%, 50%)", "hsl(260, 60%, 55%)"];
 
+function getLastMonths(count: number) {
+  const now = new Date();
+  return Array.from({ length: count }, (_, i) => {
+    const d = subMonths(now, i);
+    return { value: format(d, "yyyy-MM"), label: format(d, "MMMM yyyy", { locale: es }) };
+  });
+}
+
 export default function Reportes() {
+  const months = useMemo(() => getLastMonths(6), []);
+  const [selectedMonth, setSelectedMonth] = useState(months[0].value);
+
   // Sales by seller
   const { data: salesBySeller = [] } = useQuery({
     queryKey: ["report-sales-seller"],
@@ -51,6 +66,35 @@ export default function Reportes() {
       return order.map(s => ({ stage: labels[s] ?? s, count: map[s] ?? 0 }));
     },
   });
+
+  // Commissions by seller for selected month
+  const { data: commissionData = [] } = useQuery({
+    queryKey: ["report-commissions", selectedMonth],
+    queryFn: async () => {
+      const [year, month] = selectedMonth.split("-").map(Number);
+      const from = startOfMonth(new Date(year, month - 1)).toISOString();
+      const to = endOfMonth(new Date(year, month - 1)).toISOString();
+      const { data, error } = await supabase
+        .from("commissions")
+        .select("amount_mxn, profiles:seller_id(full_name)")
+        .gte("created_at", from)
+        .lte("created_at", to);
+      if (error) throw error;
+      const map: Record<string, number> = {};
+      let count = 0;
+      (data ?? []).forEach((c: any) => {
+        const name = c.profiles?.full_name ?? "Sin asignar";
+        map[name] = (map[name] ?? 0) + Number(c.amount_mxn);
+        count++;
+      });
+      return { rows: Object.entries(map).map(([name, total]) => ({ name, total })), count };
+    },
+    select: (d) => d,
+  });
+
+  const commissionRows = (commissionData as any)?.rows ?? [];
+  const commissionCount = (commissionData as any)?.count ?? 0;
+  const commissionTotal = commissionRows.reduce((s: number, r: any) => s + r.total, 0);
 
   return (
     <div className="space-y-4">
@@ -101,6 +145,44 @@ export default function Reportes() {
                 <Bar dataKey="count" fill="hsl(175, 60%, 40%)" radius={[0, 4, 4, 0]} />
               </BarChart>
             </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        {/* Commissions by seller */}
+        <Card className="lg:col-span-2">
+          <CardHeader className="pb-2 flex flex-row items-center justify-between gap-2">
+            <CardTitle className="text-base">Comisiones por Vendedor</CardTitle>
+            <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+              <SelectTrigger className="w-[180px] h-8 text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {months.map(m => (
+                  <SelectItem key={m.value} value={m.value} className="capitalize">{m.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </CardHeader>
+          <CardContent>
+            {commissionRows.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">Sin comisiones en este mes</p>
+            ) : (
+              <ResponsiveContainer width="100%" height={Math.max(150, commissionRows.length * 50)}>
+                <BarChart data={commissionRows} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 13%, 89%)" />
+                  <XAxis type="number" tick={{ fontSize: 12 }} tickFormatter={(v) => `$${v.toLocaleString()}`} />
+                  <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 12 }} />
+                  <Tooltip formatter={(v: number) => [`$${v.toLocaleString()} MXN`, "Comisión"]} />
+                  <Bar dataKey="total" radius={[0, 4, 4, 0]}>
+                    {commissionRows.map((_: any, i: number) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+            <div className="flex gap-6 mt-3 text-sm text-muted-foreground">
+              <span>Total: <strong className="text-foreground">${commissionTotal.toLocaleString()} MXN</strong></span>
+              <span>Comisiones: <strong className="text-foreground">{commissionCount}</strong></span>
+            </div>
           </CardContent>
         </Card>
       </div>
