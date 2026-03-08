@@ -14,6 +14,7 @@ import {
   BarChart3,
   Settings,
   BadgeDollarSign,
+  BadgePercent,
   Receipt,
   LogOut,
   ChevronDown,
