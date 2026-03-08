@@ -8,6 +8,9 @@ interface ReservationData {
   zone: string;
   modality: string;
   notes: string | null;
+  hotel_name?: string;
+  pickup_notes?: string;
+  operator_confirmation_code?: string;
   tours?: { title: string; includes: string[]; meeting_point: string } | null;
   clients?: { name: string; phone: string; email: string | null } | null;
 }
@@ -33,8 +36,20 @@ export function buildWhatsAppMessage(r: ReservationData, lang: "es" | "en" = "es
       `💰 Total: $${r.total_mxn.toLocaleString("en-US", { minimumFractionDigits: 2 })} MXN`,
     ];
 
+    if (r.hotel_name) {
+      lines.push(`🏨 Hotel: ${r.hotel_name}`);
+    }
+
     if (r.tours?.meeting_point) {
       lines.push(`📌 Meeting point: ${r.tours.meeting_point}`);
+    }
+
+    if (r.pickup_notes) {
+      lines.push(`🚏 Pickup notes: ${r.pickup_notes}`);
+    }
+
+    if (r.operator_confirmation_code) {
+      lines.push(`🔑 Confirmation code: ${r.operator_confirmation_code}`);
     }
 
     if (r.tours?.includes?.length) {
@@ -68,8 +83,20 @@ export function buildWhatsAppMessage(r: ReservationData, lang: "es" | "en" = "es
     `💰 Total: $${r.total_mxn.toLocaleString("es-MX", { minimumFractionDigits: 2 })} MXN`,
   ];
 
+  if (r.hotel_name) {
+    lines.push(`🏨 Hotel: ${r.hotel_name}`);
+  }
+
   if (r.tours?.meeting_point) {
     lines.push(`📌 Punto de encuentro: ${r.tours.meeting_point}`);
+  }
+
+  if (r.pickup_notes) {
+    lines.push(`🚏 Notas de pickup: ${r.pickup_notes}`);
+  }
+
+  if (r.operator_confirmation_code) {
+    lines.push(`🔑 Código de confirmación: ${r.operator_confirmation_code}`);
   }
 
   if (r.tours?.includes?.length) {

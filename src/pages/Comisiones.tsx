@@ -14,12 +14,13 @@ export default function Comisiones() {
   const isAdmin = role === "admin";
 
   const { data: commissions = [], isLoading } = useQuery({
-    queryKey: ["commissions"],
+    queryKey: ["commissions", isAdmin],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const query = supabase
         .from("commissions")
-        .select("*, sales(sold_at, total_mxn)")
+        .select("*, sales(sold_at, total_mxn), profiles!commissions_seller_id_fkey(full_name)")
         .order("created_at", { ascending: false });
+      const { data, error } = await query;
       if (error) throw error;
       return data;
     },
@@ -31,8 +32,12 @@ export default function Comisiones() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold font-display">Mis Comisiones</h1>
-          <p className="text-sm text-muted-foreground">Comisiones generadas por tus ventas</p>
+          <h1 className="text-2xl font-bold font-display">
+            {isAdmin ? "Todas las Comisiones" : "Mis Comisiones"}
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {isAdmin ? "Comisiones de todos los vendedores" : "Comisiones generadas por tus ventas"}
+          </p>
         </div>
         <Card className="px-4 py-2">
           <p className="text-xs text-muted-foreground">Total este periodo</p>
@@ -47,6 +52,7 @@ export default function Comisiones() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Fecha</TableHead>
+                  {isAdmin && <TableHead>Vendedor</TableHead>}
                   <TableHead className="hidden sm:table-cell">Venta Total</TableHead>
                   <TableHead className="hidden md:table-cell">Tasa</TableHead>
                   <TableHead className="hidden md:table-cell">Fee Tarjeta</TableHead>
@@ -55,10 +61,13 @@ export default function Comisiones() {
               </TableHeader>
               <TableBody>
                 {commissions.length === 0 ? (
-                  <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">Sin comisiones registradas</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={isAdmin ? 6 : 5} className="text-center text-muted-foreground py-8">Sin comisiones registradas</TableCell></TableRow>
                 ) : commissions.map((c: any) => (
                   <TableRow key={c.id}>
                     <TableCell className="text-sm">{c.sales?.sold_at ? new Date(c.sales.sold_at).toLocaleDateString("es-MX") : "—"}</TableCell>
+                    {isAdmin && (
+                      <TableCell className="text-sm font-medium">{c.profiles?.full_name ?? "—"}</TableCell>
+                    )}
                     <TableCell className="hidden sm:table-cell text-sm">{c.sales ? fmt(Number(c.sales.total_mxn)) : "—"}</TableCell>
                     <TableCell className="hidden md:table-cell">
                       <Badge variant="outline" className="text-xs">{(Number(c.rate) * 100).toFixed(0)}%</Badge>
