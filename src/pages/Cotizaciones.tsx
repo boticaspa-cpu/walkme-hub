@@ -52,7 +52,7 @@ interface QuoteItem {
   package_name: string;
 }
 
-const emptyForm = { client_id: "", client_name: "", notes: "", status: "draft" };
+const emptyForm = { client_id: "", client_name: "", notes: "", status: "draft", discount_mxn: 0 };
 
 export default function Cotizaciones() {
   const { user, role } = useAuth();
