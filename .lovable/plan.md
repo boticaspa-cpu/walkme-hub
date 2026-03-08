@@ -1,43 +1,40 @@
 
 
-# Optimización móvil de Promociones y Paquetes Xcaret
+# Plan: Fix missing trigger + create Marina Mena's profile
 
-## Problema
-Las tablas de ambas páginas tienen demasiadas columnas visibles en móvil, causando scroll horizontal. Los botones de acciones (Cotizar, Reservar, Editar, Eliminar) están en línea horizontal y desbordan el ancho.
+## Root Cause
+The `handle_new_user()` function exists but there is **no trigger** on `auth.users` that calls it. New signups never get a profile or role created.
 
-## Cambios
+## Changes
 
-### 1. `src/pages/Promociones.tsx` — Tabla
-- Ocultar columnas Subtotal/Descuento/Total en móvil (`hidden sm:table-cell`)
-- Mostrar esos montos **dentro de la celda Nombre** en móvil como texto compacto apilado
-- Convertir los botones de acciones a layout vertical en móvil: apilar Cotizar/Reservar como iconos pequeños, o usar un `DropdownMenu` en móvil
-- Reemplazar la fila horizontal de botones por un `DropdownMenu` con `MoreHorizontal` en pantallas pequeñas, mostrando los botones normales solo en `hidden sm:flex`
+### 1. DB Migration — Create the trigger + backfill Marina Mena
 
-### 2. `src/pages/PaquetesXcaret.tsx` — Tabla
-- Misma estrategia: ocultar Subtotal y Dcto. paquete en móvil (ya están con `hidden sm:table-cell`)
-- Los botones Cotizar/Reservar/Eliminar en la última celda → `DropdownMenu` en móvil
-- Mostrar subtotal resumido dentro de la celda "Paquete" en móvil
+```sql
+-- Create the trigger on auth.users
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW
+  EXECUTE FUNCTION public.handle_new_user();
 
-### 3. Ambas páginas — Diálogos/Modales
-- Los diálogos ya tienen `sm:max-w-2xl max-h-[90dvh] overflow-y-auto` (correcto)
-- Asegurar que `DialogFooter` use `flex-col sm:flex-row` para apilar botones en móvil
-- El tour selector y calculadora ya funcionan bien (son flex verticales)
+-- Backfill the existing user who was missed
+INSERT INTO public.profiles (id, full_name, approval_status)
+VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'Marina Mena', 'pending')
+ON CONFLICT (id) DO NOTHING;
 
-### Patrón concreto para acciones móviles
-En móvil: un solo botón `MoreHorizontal` que abre un `DropdownMenu` con las opciones.
-En desktop: los botones normales visibles.
-
-```text
-Mobile:                    Desktop:
-┌────────┬──────┐         ┌────────┬──────────────────────────────┐
-│ Nombre │  ⋯   │         │ Nombre │ Cotizar Reservar ✏️ 🗑️     │
-│ $10k   │      │         │        │                              │
-│ -$2k   │      │         │        │                              │
-│ =$8k   │      │         │        │                              │
-└────────┴──────┘         └────────┴──────────────────────────────┘
+INSERT INTO public.user_roles (user_id, role)
+VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'seller')
+ON CONFLICT (user_id, role) DO NOTHING;
 ```
 
-### Archivos a modificar
-- `src/pages/Promociones.tsx`
-- `src/pages/PaquetesXcaret.tsx`
+### 2. No code changes needed
+The `AuthContext` and `Configuracion` page already handle the approval flow. Once Marina's profile exists with `pending` status, she'll appear in the user list on Configuracion and you can approve her from there.
+
+## Result
+- Marina Mena will appear in Configuracion with status "Pendiente"
+- You approve her and she can log in
+- Future signups will automatically get profile + seller role via the trigger
+
+| File | Change |
+|---|---|
+| SQL Migration | Attach trigger to auth.users + backfill Marina Mena |
 
