@@ -320,7 +320,7 @@ export default function Configuracion() {
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-xs text-muted-foreground">Define los tipos de cambio que se usan para calcular los precios sugeridos de los tours.</p>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="space-y-1.5">
               <Label className="text-xs">USD → MXN</Label>
               <Input type="number" step="0.01" value={rateUsd} onChange={(e) => setRateUsd(e.target.value)} />
@@ -332,6 +332,11 @@ export default function Configuracion() {
             <div className="space-y-1.5">
               <Label className="text-xs">CAD → MXN</Label>
               <Input type="number" step="0.01" value={rateCad} onChange={(e) => setRateCad(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Comisión tarjeta %</Label>
+              <Input type="number" step="0.1" min="0" max="100" value={cardFee} onChange={(e) => setCardFee(e.target.value)} />
+              <p className="text-[10px] text-muted-foreground">Se suma al total del cliente</p>
             </div>
           </div>
           <Button size="sm" onClick={() => saveRatesMutation.mutate()} disabled={saveRatesMutation.isPending}>
