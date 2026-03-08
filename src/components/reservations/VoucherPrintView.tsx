@@ -87,7 +87,7 @@ const t = {
   },
 };
 
-export default function VoucherPrintView({ reservation, lang: initialLang = "es" }: VoucherProps) {
+export default function VoucherPrintView({ reservation, lang: initialLang = "es", onSiteFees }: VoucherProps) {
   const [lang, setLang] = useState<"es" | "en">(initialLang);
   const l = t[lang];
 
