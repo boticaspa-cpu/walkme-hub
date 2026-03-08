@@ -21,8 +21,8 @@ export interface PriceVariant {
   tour_id: string;
   operator_id: string;
   zone: string;
-  pax_type: string; // "Adulto" | "Niño"
-  nationality: string; // "Mexicano" | "Extranjero"
+  pax_type: string; // "Adulto" | "Menor"
+  nationality: string; // "Nacional" | "Extranjero"
   sale_price: number;
   tax_fee: number;
   net_cost?: number; // only for admins
