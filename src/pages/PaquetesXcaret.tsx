@@ -329,12 +329,18 @@ export default function PaquetesXcaret() {
                   const sub = pkgSubtotal(pkg);
                   const disc = sub * 0.20;
                   return (
-                  <TableRow
-                    key={pkg.id}
-                    className="cursor-pointer"
-                    onClick={() => openEdit(pkg)}
-                  >
-                    <TableCell className="font-medium">{pkg.name}</TableCell>
+                  <TableRow key={pkg.id}>
+                    <TableCell>
+                      <div className="font-medium cursor-pointer" onClick={() => openEdit(pkg)}>{pkg.name}</div>
+                      <div className="sm:hidden text-xs text-muted-foreground mt-1 space-y-0.5">
+                        <div>{(pkg.tour_ids ?? []).length} tour(s)</div>
+                        <div className="flex gap-2">
+                          <span>{fmt(sub)}</span>
+                          <span className="text-green-600">–{fmt(disc)}</span>
+                          <span className="font-semibold text-foreground">={fmt(pkg.public_price_adult_usd)}</span>
+                        </div>
+                      </div>
+                    </TableCell>
                     <TableCell className="hidden sm:table-cell">
                       <div className="flex flex-wrap gap-1">
                         {(pkg.tour_ids ?? []).map((tid) => (
@@ -346,39 +352,52 @@ export default function PaquetesXcaret() {
                     </TableCell>
                     <TableCell className="text-right hidden sm:table-cell text-muted-foreground">{fmt(sub)}</TableCell>
                     <TableCell className="text-right hidden sm:table-cell text-green-600">–{fmt(disc)}</TableCell>
-                    <TableCell className="text-right font-semibold">{fmt(pkg.public_price_adult_usd)}</TableCell>
-                    <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
+                    <TableCell className="text-right font-semibold hidden sm:table-cell">{fmt(pkg.public_price_adult_usd)}</TableCell>
+                    <TableCell className="text-center hidden sm:table-cell" onClick={(e) => e.stopPropagation()}>
                       <Switch
                         checked={pkg.active}
                         onCheckedChange={(v) => toggleMutation.mutate({ id: pkg.id, active: v })}
                       />
                     </TableCell>
-                    <TableCell onClick={(e) => e.stopPropagation()}>
-                      <div className="flex gap-1">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-7 text-xs"
-                          onClick={() => navigate(`/cotizaciones?promo_package_id=${pkg.id}`)}
-                        >
+                    <TableCell className="text-right">
+                      {/* Desktop */}
+                      <div className="hidden sm:flex gap-1 justify-end">
+                        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => navigate(`/cotizaciones?promo_package_id=${pkg.id}`)}>
                           <FileText className="mr-1 h-3 w-3" />Cotizar
                         </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-7 text-xs"
-                          onClick={() => navigate(`/reservas?promo_package_id=${pkg.id}`)}
-                        >
+                        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => navigate(`/reservas?promo_package_id=${pkg.id}`)}>
                           <CalendarCheck className="mr-1 h-3 w-3" />Reservar
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7"
-                          onClick={() => setDeletingId(pkg.id)}
-                        >
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setDeletingId(pkg.id)}>
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
+                      </div>
+                      {/* Mobile */}
+                      <div className="sm:hidden">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => openEdit(pkg)}>
+                              <Pencil className="mr-2 h-4 w-4" />Editar
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => navigate(`/cotizaciones?promo_package_id=${pkg.id}`)}>
+                              <FileText className="mr-2 h-4 w-4" />Cotizar
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => navigate(`/reservas?promo_package_id=${pkg.id}`)}>
+                              <CalendarCheck className="mr-2 h-4 w-4" />Reservar
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => toggleMutation.mutate({ id: pkg.id, active: !pkg.active })}>
+                              {pkg.active ? "Desactivar" : "Activar"}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="text-destructive" onClick={() => setDeletingId(pkg.id)}>
+                              <Trash2 className="mr-2 h-4 w-4" />Eliminar
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     </TableCell>
                   </TableRow>
