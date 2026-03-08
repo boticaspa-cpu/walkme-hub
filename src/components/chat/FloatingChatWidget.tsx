@@ -209,8 +209,8 @@ export function FloatingChatWidget() {
               }`}
             >
               {msg.role === "assistant" ? (
-                <div className="prose prose-xs max-w-none dark:prose-invert [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 text-xs">
-                  <ReactMarkdown>{msg.content}</ReactMarkdown>
+                <div className="prose prose-xs max-w-none dark:prose-invert [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 text-[13px] leading-relaxed [&_ul]:mt-1 [&_ul]:mb-1 [&_li]:mt-0.5 [&_li]:mb-0.5 [&_p]:mb-1.5 [&_strong]:text-foreground">
+                  <ReactMarkdown>{normalizeResponse(msg.content)}</ReactMarkdown>
                 </div>
               ) : (
                 msg.content
