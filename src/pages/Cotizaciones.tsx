@@ -323,7 +323,7 @@ export default function Cotizaciones() {
       if (tourId && priceFields.includes(field)) {
         // lookupPrice handles all fallbacks: variant → package → tour base
         updated.unit_price_mxn = lookupPrice(tourId, zone, nat, "Adulto", pkg || undefined);
-        updated.unit_price_child_mxn = lookupPrice(tourId, zone, nat, "Niño", pkg || undefined);
+        updated.unit_price_child_mxn = lookupPrice(tourId, zone, nat, "Menor", pkg || undefined);
       }
 
       return updated;
