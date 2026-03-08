@@ -560,7 +560,6 @@ export default function Tours() {
     if (e.target) e.target.value = "";
   };
 
-  const [imageUrlInput, setImageUrlInput] = useState("");
   const handleAddImageUrl = () => {
     const url = imageUrlInput.trim();
     if (!url) return;
