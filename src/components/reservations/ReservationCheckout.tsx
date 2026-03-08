@@ -201,7 +201,7 @@ export default function ReservationCheckout({ reservation, open, onOpenChange, o
             const nationality = reservation.nationality || "";
             const { data: adultVariant } = await (supabase as any)
               .from("tour_price_variants")
-              .select("net_cost")
+              .select("net_cost, tax_fee")
               .eq("tour_id", reservation.tour_id)
               .eq("zone", zone)
               .eq("nationality", nationality)
@@ -211,7 +211,7 @@ export default function ReservationCheckout({ reservation, open, onOpenChange, o
               .maybeSingle();
             const { data: childVariant } = await (supabase as any)
               .from("tour_price_variants")
-              .select("net_cost")
+              .select("net_cost, tax_fee")
               .eq("tour_id", reservation.tour_id)
               .eq("zone", zone)
               .eq("nationality", nationality)
@@ -221,9 +221,12 @@ export default function ReservationCheckout({ reservation, open, onOpenChange, o
               .maybeSingle();
             const adultCost = adultVariant?.net_cost ?? 0;
             const childCost = childVariant?.net_cost ?? 0;
+            const adultTax = adultVariant?.tax_fee ?? 0;
+            const childTax = childVariant?.tax_fee ?? 0;
             totalNetCost = (adultCost * (reservation.pax_adults || 1)) + (childCost * (reservation.pax_children || 0));
+            totalTaxFee = (adultTax * (reservation.pax_adults || 1)) + (childTax * (reservation.pax_children || 0));
           }
-          const profit = Math.max(0, totalMxn - totalNetCost);
+          const profit = Math.max(0, totalMxn - totalNetCost - totalTaxFee);
           const commissionAmount = profit * rate;
           if (commissionAmount > 0) {
             await (supabase as any).from("commissions").insert({
