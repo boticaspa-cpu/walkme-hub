@@ -329,7 +329,8 @@ export default function Cotizaciones() {
     }));
   };
 
-  const total = items.reduce((s, i) => s + i.qty_adults * i.unit_price_mxn + i.qty_children * i.unit_price_child_mxn, 0);
+  const subtotal = items.reduce((s, i) => s + i.qty_adults * i.unit_price_mxn + i.qty_children * i.unit_price_child_mxn, 0);
+  const total = Math.max(0, subtotal - (form.discount_mxn || 0));
   const fmt = (n: number) => n.toLocaleString("es-MX", { style: "currency", currency: "MXN" });
 
   const filtered = quotes.filter((q: any) => {
