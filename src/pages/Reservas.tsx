@@ -456,7 +456,11 @@ export default function Reservas() {
       toast.warning("Proveedor PREPAGO pendiente — debes pagarlo antes del tour para emitir voucher.");
       return;
     }
-    setTaxIncluded(true);
+    // Auto-select taxIncluded based on operator's fee_collection_mode
+    const tour = tours.find((t: any) => t.id === r.tour_id);
+    const op = operators.find((o: any) => o.id === tour?.operator_id);
+    const isOnSite = (op as any)?.fee_collection_mode === "on_site";
+    setTaxIncluded(!isOnSite);
     setVoucherReservation(enrichWithPrices(r));
   };
 
