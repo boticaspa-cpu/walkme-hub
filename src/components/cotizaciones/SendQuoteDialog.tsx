@@ -139,7 +139,10 @@ export default function SendQuoteDialog({ open, onOpenChange, quote }: Props) {
 
   const handleEmail = async () => {
     const email = client?.email || contactForm.email;
-    const subject = encodeURIComponent(`Cotización ${quote?.folio ?? ""} — WalkMe Tours`);
+    const subjectText = lang === "en"
+      ? `Quote ${quote?.folio ?? ""} — WalkMe Tours`
+      : `Cotización ${quote?.folio ?? ""} — WalkMe Tours`;
+    const subject = encodeURIComponent(subjectText);
     const body = encodeURIComponent(buildMessage());
     window.open(`mailto:${email || ""}?subject=${subject}&body=${body}`, "_blank");
     await markSent();
