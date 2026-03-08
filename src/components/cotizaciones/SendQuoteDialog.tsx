@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { MessageSquare, Mail, Copy, QrCode } from "lucide-react";
+import { MessageSquare, Mail, Copy, QrCode, Globe } from "lucide-react";
 import { toast } from "sonner";
 import QRCodeDisplay from "@/components/shared/QRCodeDisplay";
 
@@ -22,6 +22,7 @@ export default function SendQuoteDialog({ open, onOpenChange, quote }: Props) {
   const [contactForm, setContactForm] = useState({ name: "", phone: "", email: "" });
   const [needsContact, setNeedsContact] = useState(false);
   const [showQR, setShowQR] = useState(false);
+  const [lang, setLang] = useState<"es" | "en">("es");
 
   // Fetch client if quote has client_id
   const { data: client } = useQuery({
@@ -49,6 +50,7 @@ export default function SendQuoteDialog({ open, onOpenChange, quote }: Props) {
       setNeedsContact(!quote?.client_id);
       setContactForm({ name: "", phone: "", email: "" });
       setShowQR(false);
+      setLang("es");
     }
   }, [open, quote]);
 
@@ -86,7 +88,26 @@ export default function SendQuoteDialog({ open, onOpenChange, quote }: Props) {
     d ? new Date(d + "T12:00:00").toLocaleDateString("es-MX", { day: "2-digit", month: "short" }) : "";
 
   const buildMessage = () => {
-    const clientName = client?.name || contactForm.name || "Cliente";
+    const clientName = client?.name || contactForm.name || (lang === "en" ? "Client" : "Cliente");
+    if (lang === "en") {
+      const lines = [
+        `Hi ${clientName}! 👋`,
+        ``,
+        `Here's your quote from *WalkMe Tours* (${quote?.folio ?? ""}):`,
+        ``,
+      ];
+      items.forEach((it: any) => {
+        const sub = it.qty_adults * it.unit_price_mxn + it.qty_children * it.unit_price_child_mxn;
+        const fecha = fmtDate(it.tour_date);
+        const pax = `${it.qty_adults} adult${it.qty_adults !== 1 ? "s" : ""}${it.qty_children ? `, ${it.qty_children} child${it.qty_children !== 1 ? "ren" : ""}` : ""}`;
+        lines.push(`🏝️ *${it.tours?.title ?? "Tour"}*${fecha ? ` — ${fecha}` : ""}`);
+        lines.push(`   ${pax} — ${fmt(sub)} MXN`);
+      });
+      lines.push(``, `💰 *Total: ${fmt(quote?.total_mxn ?? 0)} MXN*`);
+      lines.push(``, `📄 Full quote: ${pdfUrl}`);
+      lines.push(``, `Feel free to reach out with any questions! 😊`);
+      return lines.join("\n");
+    }
     const lines = [
       `Hola ${clientName}! 👋`,
       ``,
@@ -118,7 +139,10 @@ export default function SendQuoteDialog({ open, onOpenChange, quote }: Props) {
 
   const handleEmail = async () => {
     const email = client?.email || contactForm.email;
-    const subject = encodeURIComponent(`Cotización ${quote?.folio ?? ""} — WalkMe Tours`);
+    const subjectText = lang === "en"
+      ? `Quote ${quote?.folio ?? ""} — WalkMe Tours`
+      : `Cotización ${quote?.folio ?? ""} — WalkMe Tours`;
+    const subject = encodeURIComponent(subjectText);
     const body = encodeURIComponent(buildMessage());
     window.open(`mailto:${email || ""}?subject=${subject}&body=${body}`, "_blank");
     await markSent();
@@ -160,6 +184,27 @@ export default function SendQuoteDialog({ open, onOpenChange, quote }: Props) {
               </div>
             )}
 
+            {/* Language toggle */}
+            <div className="flex items-center gap-2">
+              <Globe className="h-4 w-4 text-muted-foreground" />
+              <div className="flex rounded-md border overflow-hidden">
+                <button
+                  type="button"
+                  className={`px-3 py-1 text-xs font-medium transition-colors ${lang === "es" ? "bg-primary text-primary-foreground" : "bg-muted/50 text-muted-foreground hover:bg-muted"}`}
+                  onClick={() => setLang("es")}
+                >
+                  🇲🇽 Español
+                </button>
+                <button
+                  type="button"
+                  className={`px-3 py-1 text-xs font-medium transition-colors ${lang === "en" ? "bg-primary text-primary-foreground" : "bg-muted/50 text-muted-foreground hover:bg-muted"}`}
+                  onClick={() => setLang("en")}
+                >
+                  🇺🇸 English
+                </button>
+              </div>
+            </div>
+
             {!showQR && (
               <>
                 {/* Preview del mensaje */}
@@ -176,7 +221,7 @@ export default function SendQuoteDialog({ open, onOpenChange, quote }: Props) {
                 </div>
 
                 <p className="text-xs text-muted-foreground">
-                  💡 Se abrirá WhatsApp Web con este mensaje listo para enviar.
+                  💡 {lang === "en" ? "WhatsApp Web will open with this message ready to send." : "Se abrirá WhatsApp Web con este mensaje listo para enviar."}
                 </p>
 
                 <div className="grid grid-cols-3 gap-3">
