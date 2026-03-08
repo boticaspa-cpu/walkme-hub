@@ -39,6 +39,7 @@ interface OperatorForm {
 const emptyForm: OperatorForm = {
   name: "", contact_name: "", phone: "", email: "", tags: "",
   exchange_rate: "1", base_currency: "USD", payment_rules: "prepago",
+  fee_collection_mode: "agency",
 };
 
 export default function Operadores() {
