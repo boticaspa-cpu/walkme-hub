@@ -33,6 +33,7 @@ export function AppLayout() {
           </main>
         </div>
       </div>
+      <CashSessionGuard />
       <FloatingChatWidget />
     </SidebarProvider>
   );
