@@ -593,6 +593,7 @@ export default function Reservas() {
                     return (
                       <TableRow key={r.id} id={`res-row-${r.id}`} className={highlightId === r.id ? "bg-green-50 transition-colors" : ""}>
                         <TableCell className="font-mono text-xs font-bold">{r.folio ?? "—"}</TableCell>
+                        <TableCell className="hidden lg:table-cell text-xs font-mono text-muted-foreground">{(r as any).operator_folio ?? "—"}</TableCell>
                         <TableCell className="text-sm font-medium">{r.tours?.title ?? "—"}</TableCell>
                         <TableCell className="hidden sm:table-cell text-sm">{r.clients?.name ?? "—"}</TableCell>
                         <TableCell className="hidden md:table-cell text-sm">{r.reservation_date} {r.reservation_time}</TableCell>
