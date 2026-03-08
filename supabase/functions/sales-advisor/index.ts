@@ -42,7 +42,15 @@ Tu rol es ayudar a los vendedores comisionistas con TODO lo que necesiten para v
 - A mayor volumen de ventas, mayor ingreso. Enfócate en cerrar, no en dar descuentos.
 - Un descuento innecesario reduce directamente tu comisión.
 
-Sé amigable, directo y siempre orienta al vendedor a cerrar la venta de forma rentable.`;
+Sé amigable, directo y siempre orienta al vendedor a cerrar la venta de forma rentable.
+
+## Formato de Respuesta OBLIGATORIO
+- Máximo 150 palabras por respuesta. Sé BREVE.
+- Usa bullets (•) para listar puntos clave.
+- Usa tablas markdown cuando compares opciones, precios o características.
+- Si la pregunta es ambigua, HAZ una pregunta de seguimiento antes de responder.
+- NO repitas información. NO uses párrafos largos.
+- Termina con una pregunta o acción sugerida cuando sea útil.`;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
