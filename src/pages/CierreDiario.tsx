@@ -74,6 +74,51 @@ export default function CierreDiario() {
 
   const dateLabel = new Date().toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 
+  // Admin-only financial queries for daily summary
+  const { data: dailyPayables = [] } = useQuery({
+    queryKey: ["cierre-payables", todayStr],
+    enabled: isAdmin,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("operator_payables")
+        .select("amount_mxn, operators(name)")
+        .eq("service_date", todayStr);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const { data: dailyCommissions = [] } = useQuery({
+    queryKey: ["cierre-commissions", todayStr],
+    enabled: isAdmin,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("commissions")
+        .select("amount_mxn, rate, profiles:seller_id(full_name)")
+        .gte("created_at", `${todayStr}T00:00:00`)
+        .lte("created_at", `${todayStr}T23:59:59`);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const { data: dailyExpenses = [] } = useQuery({
+    queryKey: ["cierre-expenses", todayStr],
+    enabled: isAdmin,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("expense_items")
+        .select("paid_amount_mxn, expense_concepts(name)")
+        .gte("paid_at", `${todayStr}T00:00:00`)
+        .lte("paid_at", `${todayStr}T23:59:59`)
+        .eq("status", "paid");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const todayStr = new Date().toISOString().split("T")[0];
+  const totalDailyPayables = dailyPayables.reduce((a: number, p: any) => a + Number(p.amount_mxn), 0);
+  const totalDailyCommissions = dailyCommissions.reduce((a: number, c: any) => a + Number(c.amount_mxn), 0);
+  const totalDailyExpenses = dailyExpenses.reduce((a: number, e: any) => a + Number(e.paid_amount_mxn || 0), 0);
+
   // Upsert daily_closings on close
   const handleClose = async () => {
     if (!activeSession) return;
