@@ -44,6 +44,9 @@ export default function Configuracion() {
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
   const [templateForm, setTemplateForm] = useState(emptyTemplate);
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+
+  const inviteUrl = typeof window !== "undefined" ? `${window.location.origin}/login?tab=signup` : "";
 
   // Exchange rates state
   const [rateUsd, setRateUsd] = useState("");
