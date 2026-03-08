@@ -332,6 +332,77 @@ export default function CierreDiario() {
             </Card>
           )}
 
+          {/* Admin financial summary */}
+          {isAdmin && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Resumen Financiero del Día</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Payables */}
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-1">Pagos a Proveedores (tours de hoy)</p>
+                  {dailyPayables.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">Sin pagos a proveedores hoy</p>
+                  ) : dailyPayables.map((p: any, i: number) => (
+                    <div key={i} className="flex justify-between text-sm">
+                      <span>{(p as any).operators?.name ?? "—"}</span>
+                      <span className="font-medium">{fmt(Number(p.amount_mxn))}</span>
+                    </div>
+                  ))}
+                  {dailyPayables.length > 0 && (
+                    <div className="flex justify-between text-sm font-bold mt-1 pt-1 border-t">
+                      <span>Total proveedores</span>
+                      <span>{fmt(totalDailyPayables)}</span>
+                    </div>
+                  )}
+                </div>
+
+                <Separator />
+
+                {/* Commissions */}
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-1">Comisiones Generadas</p>
+                  {dailyCommissions.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">Sin comisiones hoy</p>
+                  ) : dailyCommissions.map((c: any, i: number) => (
+                    <div key={i} className="flex justify-between text-sm">
+                      <span>{(c as any).profiles?.full_name ?? "—"} ({Math.round(c.rate * 100)}%)</span>
+                      <span className="font-medium">{fmt(Number(c.amount_mxn))}</span>
+                    </div>
+                  ))}
+                  {dailyCommissions.length > 0 && (
+                    <div className="flex justify-between text-sm font-bold mt-1 pt-1 border-t">
+                      <span>Total comisiones</span>
+                      <span>{fmt(totalDailyCommissions)}</span>
+                    </div>
+                  )}
+                </div>
+
+                <Separator />
+
+                {/* Expenses */}
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-1">Gastos Pagados Hoy</p>
+                  {dailyExpenses.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">Sin gastos pagados hoy</p>
+                  ) : dailyExpenses.map((e: any, i: number) => (
+                    <div key={i} className="flex justify-between text-sm">
+                      <span>{(e as any).expense_concepts?.name ?? "—"}</span>
+                      <span className="font-medium">{fmt(Number(e.paid_amount_mxn))}</span>
+                    </div>
+                  ))}
+                  {dailyExpenses.length > 0 && (
+                    <div className="flex justify-between text-sm font-bold mt-1 pt-1 border-t">
+                      <span>Total gastos</span>
+                      <span>{fmt(totalDailyExpenses)}</span>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Close button */}
           <Button variant="destructive" size="lg" className="w-full" onClick={() => { setCloseStep(1); setCloseDlg(true); }}>
             <Lock className="mr-2 h-4 w-4" /> Cerrar Caja

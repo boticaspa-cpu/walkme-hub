@@ -54,7 +54,7 @@ export default function Configuracion() {
   const { data: users = [] } = useQuery({
     queryKey: ["config-users"],
     queryFn: async () => {
-      const { data: profiles, error } = await supabase.from("profiles").select("id, full_name, approval_status").order("full_name");
+      const { data: profiles, error } = await supabase.from("profiles").select("id, full_name, approval_status, commission_rate").order("full_name");
       if (error) throw error;
       const { data: roles } = await supabase.from("user_roles").select("user_id, role");
       return (profiles ?? []).map((p: any) => ({
