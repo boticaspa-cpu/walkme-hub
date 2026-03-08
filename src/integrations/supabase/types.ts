@@ -1040,15 +1040,19 @@ export type Database = {
           created_by: string | null
           discount_mxn: number
           folio: string | null
+          hotel_name: string
           id: string
           modality: string
           nationality: string
           notes: string | null
+          operator_confirmation_code: string
           operator_folio: string | null
           pax: number
           pax_adults: number
           pax_children: number
+          pax_email: string
           payment_status: string
+          pickup_notes: string
           reservation_date: string
           reservation_time: string
           sale_id: string | null
@@ -1067,15 +1071,19 @@ export type Database = {
           created_by?: string | null
           discount_mxn?: number
           folio?: string | null
+          hotel_name?: string
           id?: string
           modality?: string
           nationality?: string
           notes?: string | null
+          operator_confirmation_code?: string
           operator_folio?: string | null
           pax?: number
           pax_adults?: number
           pax_children?: number
+          pax_email?: string
           payment_status?: string
+          pickup_notes?: string
           reservation_date: string
           reservation_time?: string
           sale_id?: string | null
@@ -1094,15 +1102,19 @@ export type Database = {
           created_by?: string | null
           discount_mxn?: number
           folio?: string | null
+          hotel_name?: string
           id?: string
           modality?: string
           nationality?: string
           notes?: string | null
+          operator_confirmation_code?: string
           operator_folio?: string | null
           pax?: number
           pax_adults?: number
           pax_children?: number
+          pax_email?: string
           payment_status?: string
+          pickup_notes?: string
           reservation_date?: string
           reservation_time?: string
           sale_id?: string | null
