@@ -503,11 +503,12 @@ export default function PaquetesXcaret() {
             )}
           </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={closeDialog}>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button variant="outline" className="w-full sm:w-auto" onClick={closeDialog}>
               Cancelar
             </Button>
             <Button
+              className="w-full sm:w-auto"
               onClick={() => saveMutation.mutate()}
               disabled={!name.trim() || selectedTourIds.length < 2 || saveMutation.isPending}
             >

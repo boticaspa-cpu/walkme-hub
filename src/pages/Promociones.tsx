@@ -468,11 +468,11 @@ export default function Promociones() {
             )}
           </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => { resetForm(); setDialogOpen(false); }}>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button variant="outline" className="w-full sm:w-auto" onClick={() => { resetForm(); setDialogOpen(false); }}>
               Cancelar
             </Button>
-            <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
+            <Button className="w-full sm:w-auto" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
               {saveMutation.isPending ? "Guardando…" : editingId ? "Actualizar" : "Crear"}
             </Button>
           </DialogFooter>
