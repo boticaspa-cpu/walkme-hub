@@ -80,6 +80,10 @@ const emptyForm = {
   discount_mxn: 0,
   notes: "",
   status: "scheduled",
+  hotel_name: "",
+  pickup_notes: "",
+  pax_email: "",
+  operator_confirmation_code: "",
 };
 
 /* ── multi-tour create types ── */
