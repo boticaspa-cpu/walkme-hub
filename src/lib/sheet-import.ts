@@ -198,6 +198,7 @@ export const GENERAL_ALIASES = {
   meeting_point: ["punto_de_encuentro", "meeting_point", "punto encuentro", "punto de encuentro"],
   what_to_bring: ["que_llevar", "what_to_bring", "que llevar"],
   recommendations: ["recomendaciones", "recommendations"],
+  image_url: ["image_url", "imagen", "foto", "url imagen", "image", "images", "fotos", "url foto", "url_imagen", "photo", "picture"],
 };
 
 /** Collect all alias keys (normalized) for header detection */

@@ -300,6 +300,7 @@ export default function Tours() {
   const [form, setForm] = useState<TourForm>(emptyForm);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const [imageUrlInput, setImageUrlInput] = useState("");
   const [parsingDoc, setParsingDoc] = useState(false);
   const [mappingPackages, setMappingPackages] = useState(false);
   const [mappingVariants, setMappingVariants] = useState(false);
@@ -450,6 +451,7 @@ export default function Tours() {
     setForm(emptyForm);
     setImageFiles([]);
     setImagePreviews([]);
+    setImageUrlInput("");
     setPackages([]);
     setVariants([]);
     setDialogOpen(true);
@@ -552,11 +554,26 @@ export default function Tours() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
-    const remaining = 4 - imageFiles.length;
+    const remaining = 4 - imagePreviews.length;
     const toAdd = files.slice(0, remaining);
     setImageFiles(prev => [...prev, ...toAdd]);
     setImagePreviews(prev => [...prev, ...toAdd.map(f => URL.createObjectURL(f))]);
     if (e.target) e.target.value = "";
+  };
+
+  const handleAddImageUrl = () => {
+    const url = imageUrlInput.trim();
+    if (!url) return;
+    if (!/^https?:\/\/.+/i.test(url)) {
+      toast.error("URL no válida — debe empezar con http:// o https://");
+      return;
+    }
+    if (imagePreviews.length >= 4) {
+      toast.error("Máximo 4 imágenes");
+      return;
+    }
+    setImagePreviews(prev => [...prev, url]);
+    setImageUrlInput("");
   };
 
   const removeImage = (index: number) => {
@@ -1467,6 +1484,20 @@ export default function Tours() {
                 )}
               </div>
               <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleFileChange} />
+              {imagePreviews.length < 4 && (
+                <div className="flex gap-2 mt-2">
+                  <Input
+                    placeholder="https://ejemplo.com/imagen.jpg"
+                    value={imageUrlInput}
+                    onChange={(e) => setImageUrlInput(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddImageUrl())}
+                    className="flex-1"
+                  />
+                  <Button type="button" variant="outline" size="sm" onClick={handleAddImageUrl} disabled={!imageUrlInput.trim()}>
+                    + URL
+                  </Button>
+                </div>
+              )}
             </div>
 
             {/* AI Document Mapping (admin only) */}
