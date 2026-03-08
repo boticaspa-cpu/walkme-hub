@@ -51,6 +51,7 @@ const adminNav = [
   { title: "Operadores", url: "/operadores", icon: Building2 },
   { title: "Categorías", url: "/categorias", icon: Tags },
   { title: "Destinos", url: "/destinos", icon: MapPin },
+  { title: "Paquetes Xcaret", url: "/paquetes-xcaret", icon: BadgePercent },
   { title: "Cotizaciones", url: "/cotizaciones", icon: FileText },
   { title: "Reservas", url: "/reservas", icon: FolderOpen },
   { title: "Calendario", url: "/calendario", icon: CalendarDays },
