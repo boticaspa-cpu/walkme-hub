@@ -39,6 +39,10 @@ interface Tour {
   id: string;
   title: string;
   public_price_adult_usd: number;
+  public_price_child_usd: number;
+  tax_adult_usd: number;
+  tax_child_usd: number;
+  exchange_rate_tour: number;
   active: boolean;
 }
 
