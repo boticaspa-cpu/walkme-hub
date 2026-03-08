@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { MessageSquare, Mail, QrCode, Copy } from "lucide-react";
+import { MessageSquare, Mail, QrCode, Copy, Globe } from "lucide-react";
 import { toast } from "sonner";
 import { buildWhatsAppMessage, openWhatsApp } from "./whatsapp-message";
 import QRCodeDisplay from "@/components/shared/QRCodeDisplay";
@@ -22,12 +22,13 @@ interface Props {
 
 export default function SendConfirmationDialog({ open, onOpenChange, reservation, onSiteFees }: Props) {
   const [showQR, setShowQR] = useState(false);
+  const [lang, setLang] = useState<"es" | "en">("es");
   const r = reservation;
   if (!r) return null;
 
   const fmt = (n: number) => `$${n.toLocaleString("es-MX", { minimumFractionDigits: 2 })}`;
-  const message = buildWhatsAppMessage(r, "es", onSiteFees ?? undefined);
-  const voucherUrl = `${window.location.origin}/cotizaciones/${r.id}/pdf`; // placeholder URL for voucher
+  const message = buildWhatsAppMessage(r, lang, onSiteFees ?? undefined);
+  const voucherUrl = `${window.location.origin}/cotizaciones/${r.id}/pdf`;
 
   const handleWhatsApp = () => {
     openWhatsApp(r.clients?.phone, message);
@@ -36,7 +37,10 @@ export default function SendConfirmationDialog({ open, onOpenChange, reservation
 
   const handleEmail = () => {
     const email = r.clients?.email || "";
-    const subject = encodeURIComponent(`Confirmación Reserva ${r.folio ?? ""} — WalkMe Tours`);
+    const subjectText = lang === "en"
+      ? `Reservation Confirmation ${r.folio ?? ""} — WalkMe Tours`
+      : `Confirmación Reserva ${r.folio ?? ""} — WalkMe Tours`;
+    const subject = encodeURIComponent(subjectText);
     const body = encodeURIComponent(message);
     window.open(`mailto:${email}?subject=${subject}&body=${body}`, "_blank");
     onOpenChange(false);
@@ -61,6 +65,27 @@ export default function SendConfirmationDialog({ open, onOpenChange, reservation
               <p><span className="font-medium">Para:</span> {r.clients.name}{r.clients.phone ? ` · ${r.clients.phone}` : ""}</p>
             </div>
           )}
+
+          {/* Language toggle */}
+          <div className="flex items-center gap-2">
+            <Globe className="h-4 w-4 text-muted-foreground" />
+            <div className="flex rounded-md border overflow-hidden">
+              <button
+                type="button"
+                className={`px-3 py-1 text-xs font-medium transition-colors ${lang === "es" ? "bg-primary text-primary-foreground" : "bg-muted/50 text-muted-foreground hover:bg-muted"}`}
+                onClick={() => setLang("es")}
+              >
+                🇲🇽 Español
+              </button>
+              <button
+                type="button"
+                className={`px-3 py-1 text-xs font-medium transition-colors ${lang === "en" ? "bg-primary text-primary-foreground" : "bg-muted/50 text-muted-foreground hover:bg-muted"}`}
+                onClick={() => setLang("en")}
+              >
+                🇺🇸 English
+              </button>
+            </div>
+          </div>
 
           {!showQR && (
             <>
