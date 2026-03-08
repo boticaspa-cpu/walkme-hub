@@ -1,40 +1,41 @@
 
 
-# Plan: Fix missing trigger + create Marina Mena's profile
+# Plan: QR que descarga PDF directamente
 
-## Root Cause
-The `handle_new_user()` function exists but there is **no trigger** on `auth.users` that calls it. New signups never get a profile or role created.
+## Problema actual
+El QR apunta a `/cotizaciones/:id/pdf`, una pagina web dentro de la app de Lovable. Al escanear, el cliente ve una pagina web en lugar de recibir un PDF descargable.
 
-## Changes
+## Solucion
 
-### 1. DB Migration — Create the trigger + backfill Marina Mena
+Crear una **backend function** que genera un PDF real del voucher y lo retorna como archivo descargable. El QR apuntara a esta funcion, asi al escanear se descarga el PDF directamente.
 
-```sql
--- Create the trigger on auth.users
-CREATE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW
-  EXECUTE FUNCTION public.handle_new_user();
+## Cambios
 
--- Backfill the existing user who was missed
-INSERT INTO public.profiles (id, full_name, approval_status)
-VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'Marina Mena', 'pending')
-ON CONFLICT (id) DO NOTHING;
+### 1. Nueva edge function `generate-voucher-pdf`
+- Recibe el `id` de la reservacion como query param
+- Consulta los datos de la reservacion, cliente y tour desde la base de datos
+- Genera un PDF usando **jsPDF** (compatible con Deno) con el mismo diseno del voucher: logo, datos del cliente, tour, pago, politicas
+- Retorna el PDF con headers `Content-Type: application/pdf` y `Content-Disposition: inline` para que el navegador lo muestre/descargue
 
-INSERT INTO public.user_roles (user_id, role)
-VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'seller')
-ON CONFLICT (user_id, role) DO NOTHING;
-```
+### 2. Actualizar `SendConfirmationDialog.tsx`
+- Cambiar `voucherUrl` de la ruta web a la URL de la edge function:
+  ```
+  ${SUPABASE_URL}/functions/v1/generate-voucher-pdf?id=${r.id}
+  ```
 
-### 2. No code changes needed
-The `AuthContext` and `Configuracion` page already handle the approval flow. Once Marina's profile exists with `pending` status, she'll appear in the user list on Configuracion and you can approve her from there.
+### 3. Actualizar `QRCodeDisplay.tsx`
+- Sin cambios estructurales, solo recibe la nueva URL
 
-## Result
-- Marina Mena will appear in Configuracion with status "Pendiente"
-- You approve her and she can log in
-- Future signups will automatically get profile + seller role via the trigger
+## Detalle tecnico de la edge function
 
-| File | Change |
-|---|---|
-| SQL Migration | Attach trigger to auth.users + backfill Marina Mena |
+- Usa `jsPDF` importado desde esm.sh (compatible con Deno)
+- Consulta `reservations` con join a `clients` y `tours`
+- Construye el PDF programaticamente: header con texto "WALKME TOURS", datos en tabla, total destacado, politicas al pie
+- El logo se embebe como base64 o se omite para simplificar (texto "WALKME TOURS" prominente como alternativa)
+- No requiere autenticacion (es publico, igual que la ruta `/cotizaciones/:id/pdf` actual)
+
+## Archivos
+
+- **Nuevo**: `supabase/functions/generate-voucher-pdf/index.ts`
+- **Modificado**: `src/components/reservations/SendConfirmationDialog.tsx` (cambiar URL del QR)
 
