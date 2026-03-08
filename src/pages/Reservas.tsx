@@ -255,6 +255,58 @@ export default function Reservas() {
     }
   }, [searchParams, tours]);
 
+  // ── Detect ?promo_package_id= to pre-fill with Xcaret package tours ──
+  useEffect(() => {
+    const promoId = searchParams.get("promo_package_id");
+    if (!promoId || tours.length === 0) return;
+
+    (async () => {
+      try {
+        const { data: pkg, error: e1 } = await supabase
+          .from("promo_packages")
+          .select("name, public_price_adult_usd, public_price_child_usd")
+          .eq("id", promoId)
+          .single();
+        if (e1 || !pkg) return;
+
+        const { data: links, error: e2 } = await supabase
+          .from("promo_package_tours")
+          .select("tour_id")
+          .eq("promo_package_id", promoId);
+        if (e2 || !links?.length) return;
+
+        const tourIds = links.map((l: any) => l.tour_id);
+
+        // Distribute package price proportionally
+        const toursInPkg = tourIds.map((tid: string) => tours.find((t: any) => t.id === tid)).filter(Boolean);
+        const sumBase = toursInPkg.reduce((acc: number, t: any) => acc + ((t as any).price_mxn || (t as any).suggested_price_mxn || 0), 0);
+
+        const newItems: ResItem[] = tourIds.map((tid: string) => {
+          const t = tours.find((x: any) => x.id === tid);
+          const basePrice = (t as any)?.price_mxn || (t as any)?.suggested_price_mxn || 0;
+          const ratio = sumBase > 0 ? basePrice / sumBase : 1 / tourIds.length;
+          const totalForItem = Math.round((pkg as any).public_price_adult_usd * ratio * 100) / 100;
+
+          return {
+            ...emptyResItem(),
+            tour_id: tid,
+            pax_adults: 1,
+            pax_children: 0,
+            total_mxn: totalForItem,
+          };
+        });
+
+        setShared({ ...emptyShared, notes: `Paquete Xcaret: ${(pkg as any).name}` });
+        setItems(newItems);
+        setEditingId(null);
+        setDialogOpen(true);
+      } catch {
+        // silently fail
+      }
+      setSearchParams({}, { replace: true });
+    })();
+  }, [searchParams, tours]);
+
   // ── Detect ?highlight= from quote acceptance ──
   useEffect(() => {
     const id = searchParams.get("highlight");

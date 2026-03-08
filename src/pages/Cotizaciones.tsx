@@ -287,6 +287,66 @@ export default function Cotizaciones() {
     }
   }, [searchParams, tours]);
 
+  // ── Detect ?promo_package_id= to pre-fill with Xcaret package tours ──
+  useEffect(() => {
+    const promoId = searchParams.get("promo_package_id");
+    if (!promoId || tours.length === 0) return;
+
+    (async () => {
+      try {
+        // Fetch package info
+        const { data: pkg, error: e1 } = await supabase
+          .from("promo_packages")
+          .select("name, public_price_adult_usd, public_price_child_usd")
+          .eq("id", promoId)
+          .single();
+        if (e1 || !pkg) return;
+
+        // Fetch linked tours
+        const { data: links, error: e2 } = await supabase
+          .from("promo_package_tours")
+          .select("tour_id")
+          .eq("promo_package_id", promoId);
+        if (e2 || !links?.length) return;
+
+        const tourIds = links.map((l: any) => l.tour_id);
+
+        // Distribute package price proportionally across tours
+        const toursInPkg = tourIds.map((tid: string) => tours.find((t: any) => t.id === tid)).filter(Boolean);
+        const sumBase = toursInPkg.reduce((acc: number, t: any) => acc + ((t as any).price_mxn || 0), 0);
+
+        const newItems: QuoteItem[] = tourIds.map((tid: string) => {
+          const t = tours.find((x: any) => x.id === tid);
+          const basePrice = (t as any)?.price_mxn ?? 0;
+          // Proportional allocation of package total price
+          const ratio = sumBase > 0 ? basePrice / sumBase : 1 / tourIds.length;
+          const adultPrice = Math.round((pkg as any).public_price_adult_usd * ratio * 100) / 100;
+          const childPrice = Math.round((pkg as any).public_price_child_usd * ratio * 100) / 100;
+
+          return {
+            tour_id: tid,
+            tour_date: "",
+            qty_adults: 1,
+            qty_children: 0,
+            unit_price_mxn: adultPrice,
+            unit_price_child_mxn: childPrice,
+            zone: "",
+            nationality: "",
+            package_name: "",
+          };
+        });
+
+        setForm({ ...emptyForm, notes: `Paquete Xcaret: ${(pkg as any).name}` });
+        setItems(newItems);
+        setEditingId(null);
+        setDialogOpen(true);
+      } catch {
+        // silently fail
+      }
+      setSearchParams({}, { replace: true });
+    })();
+  }, [searchParams, tours]);
+
   const openEdit = async (q: any) => {
     setForm({ client_id: q.client_id ?? "", client_name: q.client_name, notes: q.notes ?? "", status: q.status, discount_mxn: (q as any).discount_mxn ?? 0 });
     setEditingId(q.id);
