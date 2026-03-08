@@ -750,6 +750,7 @@ export type Database = {
           client_name: string
           created_at: string
           created_by: string | null
+          discount_mxn: number
           folio: string | null
           id: string
           notes: string | null
@@ -763,6 +764,7 @@ export type Database = {
           client_name?: string
           created_at?: string
           created_by?: string | null
+          discount_mxn?: number
           folio?: string | null
           id?: string
           notes?: string | null
@@ -776,6 +778,7 @@ export type Database = {
           client_name?: string
           created_at?: string
           created_by?: string | null
+          discount_mxn?: number
           folio?: string | null
           id?: string
           notes?: string | null
@@ -878,6 +881,7 @@ export type Database = {
           confirmed_at: string | null
           created_at: string
           created_by: string | null
+          discount_mxn: number
           folio: string | null
           id: string
           modality: string
@@ -902,6 +906,7 @@ export type Database = {
           confirmed_at?: string | null
           created_at?: string
           created_by?: string | null
+          discount_mxn?: number
           folio?: string | null
           id?: string
           modality?: string
@@ -926,6 +931,7 @@ export type Database = {
           confirmed_at?: string | null
           created_at?: string
           created_by?: string | null
+          discount_mxn?: number
           folio?: string | null
           id?: string
           modality?: string
