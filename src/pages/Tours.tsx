@@ -380,7 +380,7 @@ export default function Tours() {
         .eq("key", "exchange_rate_usd")
         .maybeSingle();
       if (error) return 17.5;
-      return parseFloat((data as any).value) || 17.5;
+      return parseFloat(data?.value ?? "") || 17.5;
     },
   });
 

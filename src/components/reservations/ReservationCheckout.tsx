@@ -78,7 +78,8 @@ export default function ReservationCheckout({ reservation, open, onOpenChange, o
     if (total > 0) {
       setRecalculatedTotal(total);
       // Update reservation in DB
-      (supabase as any).from("reservations").update({ total_mxn: total }).eq("id", reservation.id);
+      const { error: recalcErr } = await (supabase as any).from("reservations").update({ total_mxn: total }).eq("id", reservation.id);
+      if (recalcErr) console.warn("Could not update recalculated total:", recalcErr);
     }
   }, [reservation, toursForPricing, variantsForPricing]);
 

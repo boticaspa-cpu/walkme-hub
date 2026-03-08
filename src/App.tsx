@@ -58,9 +58,11 @@ const App = () => (
               <Route path="/pos" element={<POS />} />
               <Route path="/cierre-diario" element={<CierreDiario />} />
               <Route path="/comisiones" element={<Comisiones />} />
-              <Route path="/reportes" element={<Reportes />} />
-              <Route path="/configuracion" element={<Configuracion />} />
-              <Route path="/gastos" element={<Gastos />} />
+              <Route element={<AdminRoute />}>
+                <Route path="/reportes" element={<Reportes />} />
+                <Route path="/configuracion" element={<Configuracion />} />
+                <Route path="/gastos" element={<Gastos />} />
+              </Route>
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
