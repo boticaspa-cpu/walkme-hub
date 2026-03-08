@@ -12,7 +12,13 @@ interface ReservationData {
   clients?: { name: string; phone: string; email: string | null } | null;
 }
 
-export function buildWhatsAppMessage(r: ReservationData, lang: "es" | "en" = "es"): string {
+interface OnSiteFees {
+  amountPerAdult: number;
+  amountPerChild: number;
+  currency: string;
+}
+
+export function buildWhatsAppMessage(r: ReservationData, lang: "es" | "en" = "es", onSiteFees?: OnSiteFees): string {
   if (lang === "en") {
     const lines = [
       `🎫 *WalkMe Tours — Reservation Confirmation*`,
