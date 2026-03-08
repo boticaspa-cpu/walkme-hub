@@ -167,7 +167,7 @@ export default function Reservas() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("operators")
-        .select("id, name, payment_rules");
+        .select("id, name, payment_rules, fee_collection_mode");
       if (error) throw error;
       return data;
     },
