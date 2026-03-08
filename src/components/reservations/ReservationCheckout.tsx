@@ -241,6 +241,18 @@ export default function ReservationCheckout({ reservation, open, onOpenChange, o
                 <span>{reservation.nationality}</span>
               </div>
             )}
+            {(reservation as any).discount_mxn > 0 && (
+              <>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Subtotal</span>
+                  <span>{fmt(totalMxn + (reservation as any).discount_mxn)}</span>
+                </div>
+                <div className="flex justify-between text-sm text-green-600">
+                  <span>Descuento</span>
+                  <span>-{fmt((reservation as any).discount_mxn)}</span>
+                </div>
+              </>
+            )}
             <Separator />
             <div className="flex justify-between text-base font-bold">
               <span>Total</span>

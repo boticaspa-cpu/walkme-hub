@@ -73,6 +73,7 @@ const emptyForm = {
   zone: "",
   nationality: "",
   total_mxn: 0,
+  discount_mxn: 0,
   notes: "",
   status: "scheduled",
 };
@@ -107,6 +108,7 @@ const emptyShared = {
   zone: "",
   nationality: "",
   notes: "",
+  discount_mxn: 0,
 };
 
 export default function Reservas() {
@@ -268,14 +270,17 @@ export default function Reservas() {
           pax_children: form.pax_children,
           zone: form.zone,
           nationality: form.nationality,
-          total_mxn: form.total_mxn,
+          total_mxn: Math.max(0, form.total_mxn - (form.discount_mxn || 0)),
+          discount_mxn: form.discount_mxn || 0,
           notes: form.notes || null,
           status: form.status,
-        };
+        } as any;
         const { error } = await supabase.from("reservations").update(payload).eq("id", editingId);
         if (error) throw error;
       } else {
         // Create mode: insert one row per tour item
+        const itemsSubtotal = items.reduce((a, i) => a + i.total_mxn, 0);
+        const discountPerItem = items.length > 0 ? (shared.discount_mxn || 0) / items.length : 0;
         const inserts = items.map((item) => ({
           tour_id: item.tour_id || null,
           client_id: shared.client_id || null,
@@ -287,10 +292,11 @@ export default function Reservas() {
           pax_children: item.pax_children,
           zone: shared.zone,
           nationality: shared.nationality,
-          total_mxn: item.total_mxn,
+          total_mxn: Math.max(0, item.total_mxn - discountPerItem),
+          discount_mxn: items.length === 1 ? (shared.discount_mxn || 0) : Math.round(discountPerItem * 100) / 100,
           notes: shared.notes || null,
           created_by: user?.id,
-        }));
+        } as any));
         const { error } = await supabase.from("reservations").insert(inserts);
         if (error) throw error;
       }
@@ -398,6 +404,7 @@ export default function Reservas() {
       zone: r.zone ?? "",
       nationality: r.nationality ?? "",
       total_mxn: r.total_mxn,
+      discount_mxn: (r as any).discount_mxn ?? 0,
       notes: r.notes ?? "",
       status: r.status,
     });
@@ -677,7 +684,7 @@ export default function Reservas() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div className="space-y-1.5">
                   <Label>Adultos</Label>
                   <Input type="number" min={0} value={form.pax_adults} onChange={(e) => setForm((p) => ({ ...p, pax_adults: parseInt(e.target.value) || 0 }))} />
@@ -687,10 +694,17 @@ export default function Reservas() {
                   <Input type="number" min={0} value={form.pax_children} onChange={(e) => setForm((p) => ({ ...p, pax_children: parseInt(e.target.value) || 0 }))} />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Total MXN</Label>
+                  <Label>Subtotal MXN</Label>
                   <Input type="number" min={0} step="0.01" value={form.total_mxn} onChange={(e) => setForm((p) => ({ ...p, total_mxn: parseFloat(e.target.value) || 0 }))} />
                 </div>
+                <div className="space-y-1.5">
+                  <Label>Descuento</Label>
+                  <Input type="number" min={0} step="0.01" value={form.discount_mxn || ""} onChange={(e) => setForm((p) => ({ ...p, discount_mxn: parseFloat(e.target.value) || 0 }))} placeholder="0.00" />
+                </div>
               </div>
+              {form.discount_mxn > 0 && (
+                <p className="text-sm font-semibold text-right">Total: {fmt(Math.max(0, form.total_mxn - form.discount_mxn))}</p>
+              )}
 
               <div className="space-y-1.5">
                 <Label>Estado</Label>
@@ -750,6 +764,10 @@ export default function Reservas() {
                 <div className="space-y-1.5">
                   <Label>Notas</Label>
                   <Textarea value={shared.notes} onChange={(e) => setShared((p) => ({ ...p, notes: e.target.value }))} placeholder="Notas opcionales…" rows={2} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Descuento MXN (global)</Label>
+                  <Input type="number" min={0} step="0.01" value={shared.discount_mxn || ""} onChange={(e) => setShared((p) => ({ ...p, discount_mxn: parseFloat(e.target.value) || 0 }))} placeholder="0.00" />
                 </div>
               </div>
 
@@ -839,10 +857,18 @@ export default function Reservas() {
                   </div>
                 ))}
 
-                {/* Total general si hay más de 1 tour */}
-                {items.length > 1 && (
-                  <div className="flex justify-end text-sm font-semibold text-primary pt-1">
-                    Total: {fmt(items.reduce((a, i) => a + i.total_mxn, 0))}
+                {/* Total general */}
+                {items.length > 0 && (
+                  <div className="space-y-1 pt-1 text-right">
+                    {shared.discount_mxn > 0 && (
+                      <p className="text-xs text-muted-foreground">Subtotal: {fmt(items.reduce((a, i) => a + i.total_mxn, 0))}</p>
+                    )}
+                    {shared.discount_mxn > 0 && (
+                      <p className="text-xs text-muted-foreground">Descuento: -{fmt(shared.discount_mxn)}</p>
+                    )}
+                    <p className="text-sm font-semibold text-primary">
+                      Total: {fmt(Math.max(0, items.reduce((a, i) => a + i.total_mxn, 0) - (shared.discount_mxn || 0)))}
+                    </p>
                   </div>
                 )}
               </div>

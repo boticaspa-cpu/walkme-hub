@@ -52,7 +52,7 @@ interface QuoteItem {
   package_name: string;
 }
 
-const emptyForm = { client_id: "", client_name: "", notes: "", status: "draft" };
+const emptyForm = { client_id: "", client_name: "", notes: "", status: "draft", discount_mxn: 0 };
 
 export default function Cotizaciones() {
   const { user, role } = useAuth();
@@ -163,7 +163,8 @@ export default function Cotizaciones() {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const total_mxn = items.reduce((s, i) => s + i.qty_adults * i.unit_price_mxn + i.qty_children * i.unit_price_child_mxn, 0);
+      const subtotal = items.reduce((s, i) => s + i.qty_adults * i.unit_price_mxn + i.qty_children * i.unit_price_child_mxn, 0);
+      const total_mxn = Math.max(0, subtotal - (form.discount_mxn || 0));
       const clientName = clients.find((c: any) => c.id === form.client_id)?.name ?? form.client_name;
 
       if (editingId) {
@@ -173,7 +174,8 @@ export default function Cotizaciones() {
           notes: form.notes || null,
           status: form.status,
           total_mxn,
-        }).eq("id", editingId);
+          discount_mxn: form.discount_mxn || 0,
+        } as any).eq("id", editingId);
         if (error) throw error;
 
         await supabase.from("quote_items").delete().eq("quote_id", editingId);
@@ -202,8 +204,9 @@ export default function Cotizaciones() {
           notes: form.notes || null,
           status: "draft",
           total_mxn,
+          discount_mxn: form.discount_mxn || 0,
           created_by: user?.id,
-        }).select("id").single();
+        } as any).select("id").single();
         if (error) throw error;
         if (items.length > 0) {
           const { error: ie } = await supabase.from("quote_items").insert(
@@ -281,7 +284,7 @@ export default function Cotizaciones() {
   }, [searchParams, tours]);
 
   const openEdit = async (q: any) => {
-    setForm({ client_id: q.client_id ?? "", client_name: q.client_name, notes: q.notes ?? "", status: q.status });
+    setForm({ client_id: q.client_id ?? "", client_name: q.client_name, notes: q.notes ?? "", status: q.status, discount_mxn: (q as any).discount_mxn ?? 0 });
     setEditingId(q.id);
     const { data } = await supabase.from("quote_items").select("tour_id, tour_date, qty_adults, qty_children, unit_price_mxn, unit_price_child_mxn, zone, nationality, package_name").eq("quote_id", q.id);
     setItems((data ?? []).map((i: any) => ({
@@ -326,7 +329,8 @@ export default function Cotizaciones() {
     }));
   };
 
-  const total = items.reduce((s, i) => s + i.qty_adults * i.unit_price_mxn + i.qty_children * i.unit_price_child_mxn, 0);
+  const subtotal = items.reduce((s, i) => s + i.qty_adults * i.unit_price_mxn + i.qty_children * i.unit_price_child_mxn, 0);
+  const total = Math.max(0, subtotal - (form.discount_mxn || 0));
   const fmt = (n: number) => n.toLocaleString("es-MX", { style: "currency", currency: "MXN" });
 
   const filtered = quotes.filter((q: any) => {
@@ -522,7 +526,22 @@ export default function Cotizaciones() {
                 </div>
               ))}
               {items.length > 0 && (
-                <p className="text-sm font-semibold text-right">Total: {fmt(total)}</p>
+                <div className="space-y-2 pt-1">
+                  <p className="text-sm text-right text-muted-foreground">Subtotal: {fmt(subtotal)}</p>
+                  <div className="flex items-center justify-end gap-2">
+                    <Label className="text-sm text-muted-foreground">Descuento MXN</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      className="w-32 h-8 text-right"
+                      value={form.discount_mxn || ""}
+                      onChange={(e) => setForm(p => ({ ...p, discount_mxn: parseFloat(e.target.value) || 0 }))}
+                      placeholder="0.00"
+                    />
+                  </div>
+                  <p className="text-sm font-semibold text-right">Total: {fmt(total)}</p>
+                </div>
               )}
             </div>
 
