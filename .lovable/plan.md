@@ -1,40 +1,97 @@
 
 
-# Plan: Fix missing trigger + create Marina Mena's profile
+# FASE 1.5 — Cerrar RLS en quote_items y reservation_items
 
-## Root Cause
-The `handle_new_user()` function exists but there is **no trigger** on `auth.users` that calls it. New signups never get a profile or role created.
+## Problema
+`quote_items` y `reservation_items` tienen policies `USING (true)` para UPDATE y DELETE. Cualquier seller autenticado puede modificar o borrar items de cotizaciones/reservas ajenas via API directo.
 
-## Changes
+## Estrategia
+No puedo hacer `created_by = auth.uid()` porque estas tablas no tienen `created_by`. La ownership se hereda del parent (`quotes.created_by` via `quote_id`, `reservations.created_by` via `reservation_id`).
 
-### 1. DB Migration — Create the trigger + backfill Marina Mena
+Creo **2 funciones SECURITY DEFINER** que verifican ownership del parent, y luego reemplazo las policies permisivas.
+
+## SQL exacto
 
 ```sql
--- Create the trigger on auth.users
-CREATE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW
-  EXECUTE FUNCTION public.handle_new_user();
+-- 1. Función: ¿el usuario es dueño del quote?
+CREATE OR REPLACE FUNCTION public.owns_quote(_quote_id uuid)
+RETURNS boolean
+LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.quotes
+    WHERE id = _quote_id AND created_by = auth.uid()
+  )
+$$;
 
--- Backfill the existing user who was missed
-INSERT INTO public.profiles (id, full_name, approval_status)
-VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'Marina Mena', 'pending')
-ON CONFLICT (id) DO NOTHING;
+-- 2. Función: ¿el usuario es dueño de la reserva?
+CREATE OR REPLACE FUNCTION public.owns_reservation(_reservation_id uuid)
+RETURNS boolean
+LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.reservations
+    WHERE id = _reservation_id AND created_by = auth.uid()
+  )
+$$;
 
-INSERT INTO public.user_roles (user_id, role)
-VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'seller')
-ON CONFLICT (user_id, role) DO NOTHING;
+-- 3. quote_items: reemplazar UPDATE y DELETE permisivos
+DROP POLICY "Auth users can update quote_items" ON public.quote_items;
+DROP POLICY "Auth users can delete quote_items" ON public.quote_items;
+
+CREATE POLICY "Owner or admin can update quote_items"
+  ON public.quote_items FOR UPDATE TO authenticated
+  USING (owns_quote(quote_id) OR has_role(auth.uid(), 'admin'));
+
+CREATE POLICY "Owner or admin can delete quote_items"
+  ON public.quote_items FOR DELETE TO authenticated
+  USING (owns_quote(quote_id) OR has_role(auth.uid(), 'admin'));
+
+-- 4. reservation_items: reemplazar ALL permisivo
+DROP POLICY "Allow all for authenticated users" ON public.reservation_items;
+
+CREATE POLICY "Auth read reservation_items"
+  ON public.reservation_items FOR SELECT TO authenticated
+  USING (true);
+
+CREATE POLICY "Auth insert reservation_items"
+  ON public.reservation_items FOR INSERT TO authenticated
+  WITH CHECK (true);
+
+CREATE POLICY "Owner or admin can update reservation_items"
+  ON public.reservation_items FOR UPDATE TO authenticated
+  USING (owns_reservation(reservation_id) OR has_role(auth.uid(), 'admin'));
+
+CREATE POLICY "Owner or admin can delete reservation_items"
+  ON public.reservation_items FOR DELETE TO authenticated
+  USING (owns_reservation(reservation_id) OR has_role(auth.uid(), 'admin'));
 ```
 
-### 2. No code changes needed
-The `AuthContext` and `Configuracion` page already handle the approval flow. Once Marina's profile exists with `pending` status, she'll appear in the user list on Configuracion and you can approve her from there.
+## Explicación por policy
 
-## Result
-- Marina Mena will appear in Configuracion with status "Pendiente"
-- You approve her and she can log in
-- Future signups will automatically get profile + seller role via the trigger
+| Policy | Tabla | Qué hace |
+|---|---|---|
+| `owns_quote()` | función | Verifica que `quotes.created_by = auth.uid()` sin exponer la tabla quotes a recursión RLS |
+| `owns_reservation()` | función | Verifica que `reservations.created_by = auth.uid()` |
+| Owner or admin can update quote_items | quote_items | Solo el dueño del quote o admin puede editar items |
+| Owner or admin can delete quote_items | quote_items | Solo el dueño del quote o admin puede borrar items |
+| Auth read reservation_items | reservation_items | Todos los autenticados pueden leer (reemplaza el ALL) |
+| Auth insert reservation_items | reservation_items | Todos pueden insertar (al crear reserva) |
+| Owner or admin can update reservation_items | reservation_items | Solo dueño de la reserva o admin |
+| Owner or admin can delete reservation_items | reservation_items | Solo dueño de la reserva o admin |
 
-| File | Change |
+## Validación
+- Seller A crea quote → puede editar/borrar sus quote_items ✓
+- Seller B intenta UPDATE/DELETE en items de Seller A → `owns_quote()` retorna false, `has_role('admin')` retorna false → DENIED ✓
+- Admin → `has_role('admin')` retorna true → permitido siempre ✓
+- INSERT/SELECT no se tocan → operación normal no se rompe ✓
+
+## Archivos
+Solo SQL migration. Cero cambios de frontend.
+
+| Cambio | Detalle |
 |---|---|
-| SQL Migration | Attach trigger to auth.users + backfill Marina Mena |
+| SQL Migration | 2 funciones + drop 3 policies permisivas + crear 6 policies nuevas |
 
