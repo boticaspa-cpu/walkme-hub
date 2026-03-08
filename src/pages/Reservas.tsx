@@ -455,8 +455,7 @@ export default function Reservas() {
 
   const handleVoucherWithCheck = (r: any) => {
     if (isPrepagoBlocked(r)) {
-      toast.warning("Proveedor PREPAGO pendiente — debes pagarlo antes del tour para emitir voucher.");
-      return;
+      toast.warning("Recuerda: el pago al proveedor (prepago) está pendiente.");
     }
     // Auto-select taxIncluded based on operator's fee_collection_mode
     const tour = tours.find((t: any) => t.id === r.tour_id);
@@ -468,8 +467,7 @@ export default function Reservas() {
 
   const handlePrint = (r: any) => {
     if (isPrepagoBlocked(r)) {
-      toast.warning("Proveedor PREPAGO pendiente — debes pagarlo antes del tour.");
-      return;
+      toast.warning("Recuerda: el pago al proveedor (prepago) está pendiente.");
     }
     setVoucherReservation(enrichWithPrices(r));
     setTimeout(() => {
@@ -491,8 +489,7 @@ export default function Reservas() {
 
   const handleSendConfirmation = (r: any) => {
     if (isPrepagoBlocked(r)) {
-      toast.warning("Proveedor PREPAGO pendiente — debes pagarlo antes del tour para enviar confirmación.");
-      return;
+      toast.warning("Recuerda: el pago al proveedor (prepago) está pendiente.");
     }
     setSendConfirmReservation(enrichWithPrices(r));
   };
