@@ -404,6 +404,7 @@ export default function Reservas() {
       zone: r.zone ?? "",
       nationality: r.nationality ?? "",
       total_mxn: r.total_mxn,
+      discount_mxn: (r as any).discount_mxn ?? 0,
       notes: r.notes ?? "",
       status: r.status,
     });
