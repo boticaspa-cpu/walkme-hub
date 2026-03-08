@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
   DollarSign, CalendarCheck, Users, TrendingUp, Map, FileText, ArrowRight,
-  Wallet, Percent, Receipt,
+  Wallet, Percent, Receipt, Tag, Package,
 } from "lucide-react";
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
