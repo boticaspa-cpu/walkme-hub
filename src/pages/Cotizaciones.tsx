@@ -6,6 +6,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import SendQuoteDialog from "@/components/cotizaciones/SendQuoteDialog";
 import AcceptQuoteDialog from "@/components/cotizaciones/AcceptQuoteDialog";
+import DiscountInput from "@/components/shared/DiscountInput";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";

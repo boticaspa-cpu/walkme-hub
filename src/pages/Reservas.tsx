@@ -10,6 +10,7 @@ import { computeTourPrice, computeTotal, TourPackageRow } from "@/lib/tour-prici
 import VoucherPrintView from "@/components/reservations/VoucherPrintView";
 import ReservationCheckout from "@/components/reservations/ReservationCheckout";
 import { buildWhatsAppMessage, openWhatsApp } from "@/components/reservations/whatsapp-message";
+import DiscountInput from "@/components/shared/DiscountInput";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
