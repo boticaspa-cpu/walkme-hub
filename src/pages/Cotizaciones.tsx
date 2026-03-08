@@ -357,7 +357,7 @@ export default function Cotizaciones() {
             <Input placeholder="Buscar cotización..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
         </CardHeader>
-        <CardContent className="p-0">
+        <CardContent className="p-0 overflow-x-auto">
           {isLoading ? <p className="p-6 text-sm text-muted-foreground">Cargando…</p> : (
             <Table>
               <TableHeader>
@@ -423,7 +423,7 @@ export default function Cotizaciones() {
 
       {/* Dialog crear/editar cotización */}
       <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) closeDialog(); }}>
-        <DialogContent className="max-w-2xl max-h-[90dvh] overflow-y-auto w-full">
+        <DialogContent className="sm:max-w-2xl max-h-[100dvh] sm:max-h-[90dvh] overflow-y-auto w-full">
           <DialogHeader>
             <DialogTitle>{editingId ? "Editar Cotización" : "Nueva Cotización"}</DialogTitle>
             <DialogDescription>{editingId ? "Modifica la cotización." : "El folio se genera automáticamente."}</DialogDescription>
@@ -530,7 +530,7 @@ export default function Cotizaciones() {
                 <div className="space-y-2 pt-1">
                   <p className="text-sm text-right text-muted-foreground">Subtotal: {fmt(subtotal)}</p>
                   <div className="flex justify-end">
-                    <div className="w-64">
+                    <div className="w-full sm:w-64">
                       <DiscountInput
                         subtotal={subtotal}
                         discountMxn={form.discount_mxn || 0}

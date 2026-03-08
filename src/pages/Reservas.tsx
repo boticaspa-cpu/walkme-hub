@@ -504,7 +504,7 @@ export default function Reservas() {
             />
           </div>
         </CardHeader>
-        <CardContent className="p-0">
+        <CardContent className="p-0 overflow-x-auto">
           {isLoading ? (
             <p className="p-6 text-sm text-muted-foreground">Cargando reservas…</p>
           ) : (
@@ -612,7 +612,7 @@ export default function Reservas() {
 
       {/* ── Dialog Crear / Editar Reserva ── */}
       <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) closeDialog(); }}>
-        <DialogContent className="max-w-2xl max-h-[90dvh] overflow-y-auto">
+        <DialogContent className="sm:max-w-2xl max-h-[100dvh] sm:max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingId ? "Editar Reserva" : "Nueva Reserva"}</DialogTitle>
             <DialogDescription>
