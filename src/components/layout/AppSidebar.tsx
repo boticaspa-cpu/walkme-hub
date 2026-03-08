@@ -69,6 +69,7 @@ const sellerNav = [
   { title: "Clientes", url: "/clientes", icon: Contact },
   { title: "Tours", url: "/tours", icon: Map },
   { title: "Paquetes Xcaret", url: "/paquetes-xcaret", icon: BadgePercent },
+  { title: "Promociones", url: "/promociones", icon: Tags },
   { title: "Cotizaciones", url: "/cotizaciones", icon: FileText },
   { title: "Reservas", url: "/reservas", icon: FolderOpen },
   { title: "Calendario", url: "/calendario", icon: CalendarDays },
