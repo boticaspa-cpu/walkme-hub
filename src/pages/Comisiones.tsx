@@ -55,7 +55,7 @@ export default function Comisiones() {
               </TableHeader>
               <TableBody>
                 {commissions.length === 0 ? (
-                  <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">Sin comisiones registradas</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">Sin comisiones registradas</TableCell></TableRow>
                 ) : commissions.map((c: any) => (
                   <TableRow key={c.id}>
                     <TableCell className="text-sm">{c.sales?.sold_at ? new Date(c.sales.sold_at).toLocaleDateString("es-MX") : "—"}</TableCell>
