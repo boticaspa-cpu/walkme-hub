@@ -196,7 +196,7 @@ export default function ReservationCheckout({ reservation, open, onOpenChange, o
         if (rate > 0) {
           // Calculate net cost from tour_price_variants
           let totalNetCost = 0;
-          if (reservation.tour_id) {
+          let totalTaxFee = 0;
             const zone = reservation.zone || "";
             const nationality = reservation.nationality || "";
             const { data: adultVariant } = await (supabase as any)
