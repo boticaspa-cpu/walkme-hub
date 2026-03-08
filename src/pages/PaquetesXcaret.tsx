@@ -79,6 +79,7 @@ export default function PaquetesXcaret() {
   const { role } = useAuth();
   const isAdmin = role === "admin";
   const qc = useQueryClient();
+  const navigate = useNavigate();
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
