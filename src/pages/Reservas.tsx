@@ -343,6 +343,34 @@ export default function Reservas() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const saveFolioMutation = useMutation({
+    mutationFn: async () => {
+      if (!folioDialogRes) return;
+      const update: any = {};
+      if (folioInput.trim()) {
+        update.operator_folio = folioInput.trim();
+        update.confirmation_status = "confirmed";
+        update.confirmed_at = new Date().toISOString();
+      }
+      if (cancFolioInput.trim()) {
+        update.cancellation_folio = cancFolioInput.trim();
+        update.status = "cancelled";
+        update.confirmation_status = "cancelled";
+      }
+      if (Object.keys(update).length === 0) return;
+      const { error } = await supabase.from("reservations").update(update).eq("id", folioDialogRes.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["reservations"] });
+      toast.success("Folio guardado");
+      setFolioDialogRes(null);
+      setFolioInput("");
+      setCancFolioInput("");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   /* ── helpers ── */
   const closeDialog = () => {
     setDialogOpen(false);
