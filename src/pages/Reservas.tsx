@@ -396,6 +396,10 @@ export default function Reservas() {
           discount_mxn: form.discount_mxn || 0,
           notes: form.notes || null,
           status: form.status,
+          hotel_name: form.hotel_name,
+          pickup_notes: form.pickup_notes,
+          pax_email: form.pax_email,
+          operator_confirmation_code: form.operator_confirmation_code,
         } as any;
         const { error } = await supabase.from("reservations").update(payload).eq("id", editingId);
         if (error) throw error;
