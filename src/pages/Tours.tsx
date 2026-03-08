@@ -1483,6 +1483,20 @@ export default function Tours() {
                 )}
               </div>
               <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleFileChange} />
+              {imagePreviews.length < 4 && (
+                <div className="flex gap-2 mt-2">
+                  <Input
+                    placeholder="https://ejemplo.com/imagen.jpg"
+                    value={imageUrlInput}
+                    onChange={(e) => setImageUrlInput(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddImageUrl())}
+                    className="flex-1"
+                  />
+                  <Button type="button" variant="outline" size="sm" onClick={handleAddImageUrl} disabled={!imageUrlInput.trim()}>
+                    + URL
+                  </Button>
+                </div>
+              )}
             </div>
 
             {/* AI Document Mapping (admin only) */}
