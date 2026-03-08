@@ -455,8 +455,7 @@ export default function Reservas() {
 
   const handleVoucherWithCheck = (r: any) => {
     if (isPrepagoBlocked(r)) {
-      toast.warning("Proveedor PREPAGO pendiente — debes pagarlo antes del tour para emitir voucher.");
-      return;
+      toast.warning("Recuerda: el pago al proveedor (prepago) está pendiente.");
     }
     // Auto-select taxIncluded based on operator's fee_collection_mode
     const tour = tours.find((t: any) => t.id === r.tour_id);
