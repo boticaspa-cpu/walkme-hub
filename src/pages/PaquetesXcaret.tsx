@@ -286,7 +286,7 @@ export default function PaquetesXcaret() {
         <div>
           <h1 className="text-2xl font-bold text-foreground">Paquetes Xcaret</h1>
           <p className="text-sm text-muted-foreground">
-            Combina 2+ tours y aplica la regla del contrato Xcaret (80 / 75 / 70 / 75 %)
+            Combina 2+ tours y aplica el descuento de paquete Xcaret (–20%)
           </p>
         </div>
         <Button onClick={openCreate}>
