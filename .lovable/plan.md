@@ -1,22 +1,40 @@
 
 
-# Plan: Reporte mensual de comisiones por vendedor
+# Plan: Fix missing trigger + create Marina Mena's profile
 
-## Cambio
+## Root Cause
+The `handle_new_user()` function exists but there is **no trigger** on `auth.users` that calls it. New signups never get a profile or role created.
 
-Agregar una nueva card en `src/pages/Reportes.tsx` con:
+## Changes
 
-1. **Selector de mes** — `<Select>` con los últimos 6 meses (formato "2026-03", "2026-02", etc.). Default: mes actual.
+### 1. DB Migration — Create the trigger + backfill Marina Mena
 
-2. **Query** — Consultar `commissions` con join a `profiles` via `seller_id`, filtrado por `created_at` dentro del mes seleccionado. Agrupar por vendedor y sumar `amount_mxn`.
+```sql
+-- Create the trigger on auth.users
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW
+  EXECUTE FUNCTION public.handle_new_user();
 
-3. **Gráfica de barras comparativa** — BarChart horizontal con cada vendedor en el eje Y y el total de comisiones en X. Cada barra con color distinto del array COLORS existente.
+-- Backfill the existing user who was missed
+INSERT INTO public.profiles (id, full_name, approval_status)
+VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'Marina Mena', 'pending')
+ON CONFLICT (id) DO NOTHING;
 
-4. **Resumen numérico** — Debajo de la gráfica, mostrar total general del mes y número de comisiones.
+INSERT INTO public.user_roles (user_id, role)
+VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'seller')
+ON CONFLICT (user_id, role) DO NOTHING;
+```
 
-## Archivo a modificar
-- `src/pages/Reportes.tsx` — Agregar state para mes, query con filtro, y nueva Card con BarChart + selector.
+### 2. No code changes needed
+The `AuthContext` and `Configuracion` page already handle the approval flow. Once Marina's profile exists with `pending` status, she'll appear in the user list on Configuracion and you can approve her from there.
 
-## Ubicación
-Nueva card de ancho completo (`lg:col-span-2`) después del Funnel de Leads.
+## Result
+- Marina Mena will appear in Configuracion with status "Pendiente"
+- You approve her and she can log in
+- Future signups will automatically get profile + seller role via the trigger
+
+| File | Change |
+|---|---|
+| SQL Migration | Attach trigger to auth.users + backfill Marina Mena |
 
