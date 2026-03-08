@@ -1,40 +1,42 @@
 
 
-# Plan: Fix missing trigger + create Marina Mena's profile
+# Plan: Cobro de impuestos en ficha del operador + simplificar campos en tour
 
-## Root Cause
-The `handle_new_user()` function exists but there is **no trigger** on `auth.users` that calls it. New signups never get a profile or role created.
+## Resumen
+Mover la preferencia de cobro de impuestos a la ficha del operador ("Con impuestos" / "Sin impuestos") y eliminar el campo "Fees al Abordar USD (muelle/parques)" del formulario de tours, ya que es redundante con los tax fields.
 
-## Changes
+## Cambios
 
-### 1. DB Migration — Create the trigger + backfill Marina Mena
-
+### 1. Migración DB
 ```sql
--- Create the trigger on auth.users
-CREATE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW
-  EXECUTE FUNCTION public.handle_new_user();
-
--- Backfill the existing user who was missed
-INSERT INTO public.profiles (id, full_name, approval_status)
-VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'Marina Mena', 'pending')
-ON CONFLICT (id) DO NOTHING;
-
-INSERT INTO public.user_roles (user_id, role)
-VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'seller')
-ON CONFLICT (user_id, role) DO NOTHING;
+ALTER TABLE operators ADD COLUMN fee_collection_mode text NOT NULL DEFAULT 'agency';
 ```
+Valores: `'agency'` (nosotros cobramos) / `'on_site'` (se pagan al abordar en efectivo).
 
-### 2. No code changes needed
-The `AuthContext` and `Configuracion` page already handle the approval flow. Once Marina's profile exists with `pending` status, she'll appear in the user list on Configuracion and you can approve her from there.
+### 2. `src/pages/Operadores.tsx`
+- Agregar `fee_collection_mode` al `OperatorForm` interface y `emptyForm`
+- Agregar Select en el formulario: "Cobro de Impuestos" con opciones:
+  - "Los cobramos nosotros" (`agency`)
+  - "Se pagan al abordar" (`on_site`)
+- Leer/guardar en el payload de create/update
+- Pre-llenar al editar
 
-## Result
-- Marina Mena will appear in Configuracion with status "Pendiente"
-- You approve her and she can log in
-- Future signups will automatically get profile + seller role via the trigger
+### 3. `src/pages/Tours.tsx`
+- Eliminar el campo "Fees al Abordar USD (muelle/parques)" (`mandatory_fees_usd`) del formulario
+- Mantener los campos de tax_adult_usd y tax_child_usd (son los impuestos reales)
+- Actualizar la alerta ⚠️ para que diga que depende de la configuración del operador
 
-| File | Change |
+### 4. `src/pages/Reservas.tsx`
+- Cargar `fee_collection_mode` del operador del tour
+- En `handleVoucherWithCheck`, pre-seleccionar `taxIncluded` basado en el operador:
+  - `on_site` → `setTaxIncluded(false)`
+  - `agency` → `setTaxIncluded(true)`
+- En `computeOnSiteFees`, ya no sumar `mandatory_fees_usd` (solo usar tax_adult/child)
+
+| Archivo | Cambio |
 |---|---|
-| SQL Migration | Attach trigger to auth.users + backfill Marina Mena |
+| SQL Migration | `ALTER TABLE operators ADD COLUMN fee_collection_mode` |
+| `Operadores.tsx` | Campo Select "Cobro de Impuestos" en formulario |
+| `Tours.tsx` | Eliminar campo `mandatory_fees_usd` del form |
+| `Reservas.tsx` | Pre-seleccionar toggle según operador, quitar mandatory_fees del cálculo |
 
