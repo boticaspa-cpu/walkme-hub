@@ -151,7 +151,7 @@ export function FloatingChatWidget() {
 
   if (!isOpen) {
     return (
-      <div className="fixed bottom-4 right-4 z-50">
+      <div className="fixed bottom-20 sm:bottom-4 right-4 z-50">
         <Button
           onClick={() => setIsOpen(true)}
           size="icon"
