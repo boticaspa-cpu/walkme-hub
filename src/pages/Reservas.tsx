@@ -684,7 +684,7 @@ export default function Reservas() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div className="space-y-1.5">
                   <Label>Adultos</Label>
                   <Input type="number" min={0} value={form.pax_adults} onChange={(e) => setForm((p) => ({ ...p, pax_adults: parseInt(e.target.value) || 0 }))} />
@@ -694,10 +694,17 @@ export default function Reservas() {
                   <Input type="number" min={0} value={form.pax_children} onChange={(e) => setForm((p) => ({ ...p, pax_children: parseInt(e.target.value) || 0 }))} />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Total MXN</Label>
+                  <Label>Subtotal MXN</Label>
                   <Input type="number" min={0} step="0.01" value={form.total_mxn} onChange={(e) => setForm((p) => ({ ...p, total_mxn: parseFloat(e.target.value) || 0 }))} />
                 </div>
+                <div className="space-y-1.5">
+                  <Label>Descuento</Label>
+                  <Input type="number" min={0} step="0.01" value={form.discount_mxn || ""} onChange={(e) => setForm((p) => ({ ...p, discount_mxn: parseFloat(e.target.value) || 0 }))} placeholder="0.00" />
+                </div>
               </div>
+              {form.discount_mxn > 0 && (
+                <p className="text-sm font-semibold text-right">Total: {fmt(Math.max(0, form.total_mxn - form.discount_mxn))}</p>
+              )}
 
               <div className="space-y-1.5">
                 <Label>Estado</Label>
