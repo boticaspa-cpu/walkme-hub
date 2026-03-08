@@ -122,17 +122,49 @@ Deno.serve(async (req) => {
     const gray = [120, 120, 120];
     const lightGray = [200, 200, 200];
 
+    // Fetch logo from storage and convert to base64
+    let logoBase64: string | null = null;
+    try {
+      const logoUrl = `${Deno.env.get("SUPABASE_URL")}/storage/v1/object/public/media/walkme-logo.png`;
+      const logoRes = await fetch(logoUrl);
+      if (logoRes.ok) {
+        const logoBuffer = await logoRes.arrayBuffer();
+        const bytes = new Uint8Array(logoBuffer);
+        let binary = "";
+        const chunkSize = 8192;
+        for (let i = 0; i < bytes.length; i += chunkSize) {
+          binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+        }
+        logoBase64 = btoa(binary);
+      }
+    } catch (e) {
+      console.warn("Could not load logo:", e);
+    }
+
     // ── HEADER BAR ──
     doc.setFillColor(green[0], green[1], green[2]);
-    doc.rect(margin, y, cw, 14, "F");
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(16);
-    doc.setFont("helvetica", "bold");
-    doc.text("WALKME TOURS", margin + 4, y + 9);
+    const headerH = 16;
+    doc.rect(margin, y, cw, headerH, "F");
+
+    // Add logo if available
+    if (logoBase64) {
+      const logoSize = 12;
+      const logoPad = 2;
+      doc.addImage(`data:image/png;base64,${logoBase64}`, "PNG", margin + logoPad, y + (headerH - logoSize) / 2, logoSize, logoSize);
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(16);
+      doc.setFont("helvetica", "bold");
+      doc.text("WALKME TOURS", margin + logoPad + logoSize + 3, y + 10);
+    } else {
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(16);
+      doc.setFont("helvetica", "bold");
+      doc.text("WALKME TOURS", margin + 4, y + 10);
+    }
     doc.setFontSize(8);
     doc.setFont("helvetica", "normal");
-    doc.text(labels.title, margin + cw - 4, y + 9, { align: "right" });
-    y += 18;
+    doc.text(labels.title, margin + cw - 4, y + 10, { align: "right" });
+    y += headerH + 4;
 
     // ── FOLIO ROW ──
     doc.setTextColor(0, 0, 0);
