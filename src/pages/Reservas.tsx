@@ -565,7 +565,7 @@ export default function Reservas() {
       {/* table card */}
       <Card>
         <CardHeader className="pb-3">
-          <div className="flex flex-col sm:flex-row gap-2">
+          <div className="flex flex-col sm:flex-row flex-wrap gap-2">
             <div className="relative max-w-sm">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -573,9 +573,33 @@ export default function Reservas() {
                 className="pl-9"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-            />
+              />
             </div>
             <DateRangeFilter dateFrom={dateFrom} dateTo={dateTo} onDateFromChange={setDateFrom} onDateToChange={setDateTo} />
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <SelectTrigger className="h-9 w-[150px]">
+                <SelectValue placeholder="Estado" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos estados</SelectItem>
+                <SelectItem value="scheduled">Programada</SelectItem>
+                <SelectItem value="confirmed">Confirmada</SelectItem>
+                <SelectItem value="completed">Completada</SelectItem>
+                <SelectItem value="cancelled">Cancelada</SelectItem>
+                <SelectItem value="no_show">No Show</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={filterPayment} onValueChange={setFilterPayment}>
+              <SelectTrigger className="h-9 w-[150px]">
+                <SelectValue placeholder="Pago" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos pagos</SelectItem>
+                <SelectItem value="unpaid">Pendiente</SelectItem>
+                <SelectItem value="deposit">Anticipo</SelectItem>
+                <SelectItem value="paid">Pagado</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </CardHeader>
         <CardContent className="p-0 overflow-x-auto">
