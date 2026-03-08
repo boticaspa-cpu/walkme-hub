@@ -240,7 +240,7 @@ export default function PackageEditor({ packages, onChange, tourExchangeRate, to
                       <Input type="number" value={pkg.cost_adult_usd} onChange={(e) => update(i, "cost_adult_usd", e.target.value)} placeholder="0" />
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-xs">Costo Neto Niño USD</Label>
+                      <Label className="text-xs">Costo Neto Menor USD</Label>
                       <Input type="number" value={pkg.cost_child_usd} onChange={(e) => update(i, "cost_child_usd", e.target.value)} placeholder="0" />
                     </div>
                   </div>
