@@ -1,40 +1,60 @@
 
 
-# Plan: Fix missing trigger + create Marina Mena's profile
+# Plan: Asesor de Ventas IA (con GPT-5-mini)
 
-## Root Cause
-The `handle_new_user()` function exists but there is **no trigger** on `auth.users` that calls it. New signups never get a profile or role created.
+## Cambios
 
-## Changes
+### 1. Edge Function `supabase/functions/sales-advisor/index.ts`
+- Streaming chat usando `openai/gpt-5-mini` vía Lovable AI Gateway
+- System prompt especializado en:
+  - Uso de la app WalkMe Tours (POS, Cotizaciones, Reservas, Calendario, etc.)
+  - Técnicas de cierre de ventas y manejo de objeciones
+  - Política de descuentos: hasta dónde bajar sin perder margen, cuándo ofrecer paquetes
+  - Costos operativos y cuándo ceder en precio
+  - Respuestas en español
 
-### 1. DB Migration — Create the trigger + backfill Marina Mena
+### 2. `supabase/config.toml`
+- Agregar `[functions.sales-advisor]` con `verify_jwt = false`
 
-```sql
--- Create the trigger on auth.users
-CREATE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW
-  EXECUTE FUNCTION public.handle_new_user();
+### 3. Nueva página `src/pages/AsesorVentas.tsx`
+- Chat con streaming token-by-token
+- Historial en memoria (no persiste)
+- Chips de preguntas rápidas: "¿Cómo cotizar?", "¿Cuánto descuento puedo dar?", "Tips para cerrar venta", "¿Cómo usar el POS?"
+- Renderizado markdown con `react-markdown` (nueva dependencia)
 
--- Backfill the existing user who was missed
-INSERT INTO public.profiles (id, full_name, approval_status)
-VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'Marina Mena', 'pending')
-ON CONFLICT (id) DO NOTHING;
+### 4. `src/App.tsx`
+- Ruta `/asesor-ventas` dentro del layout protegido
 
-INSERT INTO public.user_roles (user_id, role)
-VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'seller')
-ON CONFLICT (user_id, role) DO NOTHING;
+### 5. `src/components/layout/AppSidebar.tsx`
+- Agregar "Asesor IA" con icono `Bot` a `sellerNav` y `adminNav`
+
+## UI
+
+```text
+┌─────────────────────────────────┐
+│  🤖 Asesor de Ventas IA        │
+│─────────────────────────────────│
+│  [¿Cómo cotizar?] [Descuentos] │
+│  [Tips de cierre] [Usar POS]   │
+│                                 │
+│  👤 ¿Cuánto descuento puedo    │
+│     dar en Xcaret?              │
+│                                 │
+│  🤖 Para Xcaret, el margen...  │
+│     (streaming markdown)        │
+│                                 │
+│  ┌─────────────────────┐ [➤]   │
+│  │ Escribe tu pregunta  │       │
+│  └─────────────────────┘        │
+└─────────────────────────────────┘
 ```
 
-### 2. No code changes needed
-The `AuthContext` and `Configuracion` page already handle the approval flow. Once Marina's profile exists with `pending` status, she'll appear in the user list on Configuracion and you can approve her from there.
-
-## Result
-- Marina Mena will appear in Configuracion with status "Pendiente"
-- You approve her and she can log in
-- Future signups will automatically get profile + seller role via the trigger
-
-| File | Change |
+| Archivo | Cambio |
 |---|---|
-| SQL Migration | Attach trigger to auth.users + backfill Marina Mena |
+| `package.json` | Agregar `react-markdown` |
+| `supabase/functions/sales-advisor/index.ts` | Nuevo: edge function streaming con GPT-5-mini |
+| `supabase/config.toml` | Agregar config función |
+| `src/pages/AsesorVentas.tsx` | Nuevo: página de chat |
+| `src/App.tsx` | Agregar ruta |
+| `src/components/layout/AppSidebar.tsx` | Agregar nav item |
 
