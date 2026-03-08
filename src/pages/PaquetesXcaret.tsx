@@ -312,16 +312,18 @@ export default function PaquetesXcaret() {
                 <TableRow>
                   <TableHead>Paquete</TableHead>
                   <TableHead className="hidden sm:table-cell">Tours</TableHead>
-                  <TableHead className="text-right">Pub. Adulto</TableHead>
-                  <TableHead className="text-right hidden sm:table-cell">Pub. Menor</TableHead>
-                  <TableHead className="text-right hidden md:table-cell">Pref. Adulto</TableHead>
-                  <TableHead className="text-right hidden md:table-cell">Pref. Menor</TableHead>
+                  <TableHead className="text-right hidden sm:table-cell">Subtotal</TableHead>
+                  <TableHead className="text-right hidden sm:table-cell">Dcto. paquete</TableHead>
+                  <TableHead className="text-right">Total Adulto</TableHead>
                   <TableHead className="text-center">Activo</TableHead>
                    <TableHead />
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {packages.map((pkg) => (
+                {packages.map((pkg) => {
+                  const sub = pkgSubtotal(pkg);
+                  const disc = sub * 0.20;
+                  return (
                   <TableRow
                     key={pkg.id}
                     className="cursor-pointer"
@@ -337,10 +339,9 @@ export default function PaquetesXcaret() {
                         ))}
                       </div>
                     </TableCell>
-                    <TableCell className="text-right">{fmt(pkg.public_price_adult_usd)}</TableCell>
-                    <TableCell className="text-right hidden sm:table-cell">{fmt(pkg.public_price_child_usd)}</TableCell>
-                    <TableCell className="text-right hidden md:table-cell">{fmt(pkg.preferential_adult_usd)}</TableCell>
-                    <TableCell className="text-right hidden md:table-cell">{fmt(pkg.preferential_child_usd)}</TableCell>
+                    <TableCell className="text-right hidden sm:table-cell text-muted-foreground">{fmt(sub)}</TableCell>
+                    <TableCell className="text-right hidden sm:table-cell text-green-600">–{fmt(disc)}</TableCell>
+                    <TableCell className="text-right font-semibold">{fmt(pkg.public_price_adult_usd)}</TableCell>
                     <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
                       <Switch
                         checked={pkg.active}
@@ -357,7 +358,8 @@ export default function PaquetesXcaret() {
                       </Button>
                     </TableCell>
                   </TableRow>
-                ))}
+                  );
+                })}
               </TableBody>
             </Table>
           </CardContent>
