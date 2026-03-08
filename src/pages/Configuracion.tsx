@@ -88,6 +88,7 @@ export default function Configuracion() {
       setRateUsd(get("exchange_rate_usd"));
       setRateEur(get("exchange_rate_eur"));
       setRateCad(get("exchange_rate_cad"));
+      setCardFee(get("card_fee_percent"));
     }
   }, [settings]);
 
