@@ -63,6 +63,9 @@ export default function Comisiones() {
                     <TableCell className="hidden md:table-cell">
                       <Badge variant="outline" className="text-xs">{(Number(c.rate) * 100).toFixed(0)}%</Badge>
                     </TableCell>
+                    <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
+                      {Number(c.card_fee_mxn) > 0 ? fmt(Number(c.card_fee_mxn)) : "—"}
+                    </TableCell>
                     <TableCell className="text-right font-semibold text-primary">{fmt(Number(c.amount_mxn))}</TableCell>
                   </TableRow>
                 ))}
