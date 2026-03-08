@@ -1,40 +1,70 @@
 
 
-# Plan: Fix missing trigger + create Marina Mena's profile
+# Plan: Integrar Pagos a Proveedores, Comisiones y Gastos al Flujo de Trabajo (Solo Admin)
 
-## Root Cause
-The `handle_new_user()` function exists but there is **no trigger** on `auth.users` that calls it. New signups never get a profile or role created.
+## Resumen
 
-## Changes
+3 cambios principales:
+1. **Auto-generar comisión al cobrar** usando tasa por vendedor
+2. **Dashboard admin** con 3 KPIs financieros nuevos
+3. **Cierre Diario** con resumen financiero
 
-### 1. DB Migration — Create the trigger + backfill Marina Mena
+---
+
+## 1. DB: Agregar campo `commission_rate` a `profiles`
 
 ```sql
--- Create the trigger on auth.users
-CREATE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW
-  EXECUTE FUNCTION public.handle_new_user();
-
--- Backfill the existing user who was missed
-INSERT INTO public.profiles (id, full_name, approval_status)
-VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'Marina Mena', 'pending')
-ON CONFLICT (id) DO NOTHING;
-
-INSERT INTO public.user_roles (user_id, role)
-VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'seller')
-ON CONFLICT (user_id, role) DO NOTHING;
+ALTER TABLE profiles ADD COLUMN commission_rate numeric NOT NULL DEFAULT 0.10;
 ```
 
-### 2. No code changes needed
-The `AuthContext` and `Configuracion` page already handle the approval flow. Once Marina's profile exists with `pending` status, she'll appear in the user list on Configuracion and you can approve her from there.
+Esto permite al admin configurar la tasa de comisión por vendedor (ej: 0.10 = 10%).
 
-## Result
-- Marina Mena will appear in Configuracion with status "Pendiente"
-- You approve her and she can log in
-- Future signups will automatically get profile + seller role via the trigger
+---
 
-| File | Change |
+## 2. Auto-generar comisión al cobrar (`ReservationCheckout.tsx`)
+
+Después del paso 5 (operator_payable), agregar paso 6:
+
+- Leer `commission_rate` del perfil del vendedor (`user.id`)
+- Insertar en `commissions`: `seller_id`, `sale_id`, `rate`, `amount_mxn = totalMxn * rate`
+
+---
+
+## 3. Dashboard Admin — 3 KPIs financieros nuevos (`Dashboard.tsx`)
+
+Solo visibles si `role === "admin"`:
+
+| KPI | Query |
 |---|---|
-| SQL Migration | Attach trigger to auth.users + backfill Marina Mena |
+| Pagos pendientes a proveedores | `operator_payables` WHERE status=pending, mes actual → SUM(amount_mxn) |
+| Comisiones generadas del mes | `commissions` del mes → SUM(amount_mxn) |
+| Gastos: pagado vs planeado | `expense_items` del mes → SUM(paid) vs SUM(estimated) |
+
+Se muestran como una fila de 3 cards debajo de los KPIs actuales.
+
+---
+
+## 4. Cierre Diario — Sección financiera (`CierreDiario.tsx`)
+
+Solo visible si `role === "admin"`. Debajo del resumen de caja:
+
+- **Pagos a proveedores del día**: operator_payables con service_date = hoy
+- **Comisiones generadas**: commissions vinculadas a sales del día
+- **Gastos pagados hoy**: expense_items con paid_at = hoy
+
+---
+
+## 5. Configuración: Editar tasa por vendedor
+
+En la sección de usuarios de `Configuracion.tsx`, agregar campo editable de "% Comisión" junto al nombre/rol de cada vendedor.
+
+---
+
+| Archivo | Cambio |
+|---|---|
+| **Migration SQL** | Agregar `commission_rate` a `profiles` |
+| `ReservationCheckout.tsx` | Paso 6: auto-insert comisión |
+| `Dashboard.tsx` | 3 KPIs financieros (admin only) |
+| `CierreDiario.tsx` | Sección resumen financiero (admin only) |
+| `Configuracion.tsx` | Campo editable tasa comisión por vendedor |
 
