@@ -1,40 +1,44 @@
 
 
-# Plan: Fix missing trigger + create Marina Mena's profile
+# Plan: Flujo obligatorio de apertura/cierre de caja
 
-## Root Cause
-The `handle_new_user()` function exists but there is **no trigger** on `auth.users` that calls it. New signups never get a profile or role created.
+## Resumen
 
-## Changes
+Agregar un componente `CashSessionGuard` que se muestre como modal/banner en el Dashboard (o en el AppLayout) para:
 
-### 1. DB Migration — Create the trigger + backfill Marina Mena
+1. **Al entrar**: Si no hay caja abierta hoy, mostrar diálogo para abrir caja (permitiendo fondo $0).
+2. **Cierre pendiente**: Detectar si hay una sesión abierta de un día anterior y mostrar alerta de que debe cerrarla antes de continuar.
+3. **Permitir fondo $0**: Quitar cualquier validación que impida abrir sin fondo.
 
-```sql
--- Create the trigger on auth.users
-CREATE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW
-  EXECUTE FUNCTION public.handle_new_user();
+## Cambios
 
--- Backfill the existing user who was missed
-INSERT INTO public.profiles (id, full_name, approval_status)
-VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'Marina Mena', 'pending')
-ON CONFLICT (id) DO NOTHING;
+### 1. Nuevo componente `src/components/cash/CashSessionGuard.tsx`
 
-INSERT INTO public.user_roles (user_id, role)
-VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'seller')
-ON CONFLICT (user_id, role) DO NOTHING;
+- Usa `useCashSession()` para verificar estado.
+- **Caso A**: Hay una sesión abierta de un día anterior (`activeSession.business_date < hoy`) → Muestra diálogo bloqueante: "Tienes una caja pendiente de cerrar del día {fecha}. Debes cerrarla antes de continuar." con botón que lleva a `/cierre-diario`.
+- **Caso B**: No hay sesión abierta → Muestra diálogo: "Abre caja para comenzar tu día" con campo de fondo inicial (default 0, no obligatorio) y botón "Abrir Caja".
+- **Caso C**: Sesión abierta de hoy → No muestra nada, deja pasar.
+
+### 2. Modificar `src/components/layout/AppLayout.tsx`
+
+- Importar y renderizar `<CashSessionGuard />` dentro del layout, después del `<Outlet />`.
+- Se muestra como Dialog modal sobre cualquier página.
+
+### 3. Modificar `src/pages/CierreDiario.tsx`
+
+- Asegurar que el campo de fondo inicial acepte 0 sin error (ya lo hace, solo confirmar).
+
+## Lógica clave
+
+```text
+Al montar AppLayout:
+  ├─ Carga sesión activa (useCashSession)
+  ├─ Si hay sesión abierta con business_date < hoy
+  │    → Modal: "Cierre pendiente del {fecha}" → Ir a Cierre Diario
+  ├─ Si no hay sesión abierta
+  │    → Modal: "Abre caja" (fondo default 0, permitido)
+  └─ Si sesión abierta de hoy → nada
 ```
 
-### 2. No code changes needed
-The `AuthContext` and `Configuracion` page already handle the approval flow. Once Marina's profile exists with `pending` status, she'll appear in the user list on Configuracion and you can approve her from there.
-
-## Result
-- Marina Mena will appear in Configuracion with status "Pendiente"
-- You approve her and she can log in
-- Future signups will automatically get profile + seller role via the trigger
-
-| File | Change |
-|---|---|
-| SQL Migration | Attach trigger to auth.users + backfill Marina Mena |
+Solo se crean/modifican 2 archivos: `CashSessionGuard.tsx` (nuevo) y `AppLayout.tsx` (agregar import + render).
 
