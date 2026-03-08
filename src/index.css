@@ -163,6 +163,9 @@
 
 /* Scrollbar styling */
 @layer utilities {
+  .safe-area-pb {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
   .scrollbar-thin {
     scrollbar-width: thin;
   }
