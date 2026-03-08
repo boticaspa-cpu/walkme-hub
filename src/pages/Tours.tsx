@@ -847,7 +847,7 @@ export default function Tours() {
     const rows = variants.map(v => ({
       tour_id: tourId,
       operator_id: form.operator_id || "",
-      package_name: v.package_name === "__GENERAL__" ? "" : (v.package_name || ""),
+      package_name: v.package_name || "",
       zone: v.zone,
       pax_type: v.pax_type,
       nationality: v.nationality,
