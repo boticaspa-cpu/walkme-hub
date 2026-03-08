@@ -30,61 +30,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 const PLACEHOLDER_IMG = "/placeholder.svg";
 const ALL_DAYS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 
-// ── CSV parsing utilities ──
-function parseCSV(text: string): Record<string, string>[] {
-  const lines = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
-  const nonEmpty = lines.filter((l) => l.trim() !== "");
-  if (nonEmpty.length < 2) return [];
-
-  const parseRow = (line: string): string[] => {
-    const fields: string[] = [];
-    let cur = "";
-    let inQ = false;
-    for (let i = 0; i < line.length; i++) {
-      const ch = line[i];
-      if (ch === '"') {
-        if (inQ && line[i + 1] === '"') { cur += '"'; i++; }
-        else inQ = !inQ;
-      } else if (ch === "," && !inQ) {
-        fields.push(cur.trim());
-        cur = "";
-      } else {
-        cur += ch;
-      }
-    }
-    fields.push(cur.trim());
-    return fields;
-  };
-
-  const headers = parseRow(nonEmpty[0]);
-  const rows: Record<string, string>[] = [];
-  for (let i = 1; i < nonEmpty.length; i++) {
-    const vals = parseRow(nonEmpty[i]);
-    const row: Record<string, string> = {};
-    headers.forEach((h, j) => { row[h] = vals[j] ?? ""; });
-    if (Object.values(row).some((v) => v !== "")) rows.push(row);
-  }
-  return rows;
-}
-
-function normKey(s: string): string {
-  return s
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_|_$/g, "");
-}
-
-function getCol(row: Record<string, string>, ...keys: string[]): string {
-  const normalized: Record<string, string> = {};
-  for (const [k, v] of Object.entries(row)) normalized[normKey(k)] = v;
-  for (const key of keys) {
-    const v = normalized[normKey(key)];
-    if (v !== undefined && v !== "") return v;
-  }
-  return "";
-}
+// CSV parsing utilities moved to @/lib/sheet-import
 
 interface TourRow {
   id: string;
