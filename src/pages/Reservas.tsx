@@ -765,6 +765,10 @@ export default function Reservas() {
                   <Label>Notas</Label>
                   <Textarea value={shared.notes} onChange={(e) => setShared((p) => ({ ...p, notes: e.target.value }))} placeholder="Notas opcionales…" rows={2} />
                 </div>
+                <div className="space-y-1.5">
+                  <Label>Descuento MXN (global)</Label>
+                  <Input type="number" min={0} step="0.01" value={shared.discount_mxn || ""} onChange={(e) => setShared((p) => ({ ...p, discount_mxn: parseFloat(e.target.value) || 0 }))} placeholder="0.00" />
+                </div>
               </div>
 
               {/* --- Tours --- */}
