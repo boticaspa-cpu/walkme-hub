@@ -287,8 +287,30 @@ export default function VoucherPrintView({ reservation, lang: initialLang = "es"
               <div>
                 <p className="text-[10px] uppercase text-gray-400">{l.departure}</p>
                 <p className="text-sm font-medium">{tour?.meeting_point || "—"}</p>
-              </div>
+          </div>
+          {/* Hotel & pickup notes */}
+          {(r.hotel_name || r.pickup_notes) && (
+            <div className="grid grid-cols-2 gap-3 pt-1" style={{ borderTop: "1px solid #f3f4f6" }}>
+              {r.hotel_name && (
+                <div className="flex items-start gap-1.5">
+                  <span className="mt-0.5 text-gray-400 shrink-0">🏨</span>
+                  <div>
+                    <p className="text-[10px] uppercase text-gray-400">{l.hotel}</p>
+                    <p className="text-sm font-medium">{r.hotel_name}</p>
+                  </div>
+                </div>
+              )}
+              {r.pickup_notes && (
+                <div className="flex items-start gap-1.5">
+                  <span className="mt-0.5 text-gray-400 shrink-0">🚏</span>
+                  <div>
+                    <p className="text-[10px] uppercase text-gray-400">{l.pickupNotes}</p>
+                    <p className="text-sm font-medium">{r.pickup_notes}</p>
+                  </div>
+                </div>
+              )}
             </div>
+          )}
             <div className="flex items-start gap-1.5">
               <FileText size={12} className="mt-0.5 text-gray-400 shrink-0" />
               <div>
