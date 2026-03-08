@@ -5,6 +5,13 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import ReactMarkdown from "react-markdown";
 import { toast } from "sonner";
 
+function normalizeResponse(text: string): string {
+  return text
+    .replace(/•/g, "-")
+    .replace(/\n{3,}/g, "\n\n")
+    .replace(/  +/g, " ");
+}
+
 type Msg = { role: "user" | "assistant"; content: string };
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sales-advisor`;
