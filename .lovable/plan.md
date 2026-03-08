@@ -1,45 +1,40 @@
 
 
-# Filtrar tours por categoría Xcaret
+# Plan: Fix missing trigger + create Marina Mena's profile
 
-## Cambio
+## Root Cause
+The `handle_new_user()` function exists but there is **no trigger** on `auth.users` that calls it. New signups never get a profile or role created.
 
-En `src/pages/PaquetesXcaret.tsx`, modificar la query de tours para:
+## Changes
 
-1. Primero obtener el ID de la categoría cuyo nombre contiene "xcaret" (case-insensitive via `ilike`)
-2. Filtrar tours por ese `category_id`
+### 1. DB Migration — Create the trigger + backfill Marina Mena
 
-```typescript
-// 1. Fetch Xcaret category
-const { data: xcaretCategories = [] } = useQuery({
-  queryKey: ["xcaret-categories"],
-  queryFn: async () => {
-    const { data } = await supabase
-      .from("categories")
-      .select("id")
-      .ilike("name", "%xcaret%");
-    return data ?? [];
-  },
-});
+```sql
+-- Create the trigger on auth.users
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW
+  EXECUTE FUNCTION public.handle_new_user();
 
-// 2. Filter tours by category IDs
-const xcaretCatIds = xcaretCategories.map(c => c.id);
+-- Backfill the existing user who was missed
+INSERT INTO public.profiles (id, full_name, approval_status)
+VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'Marina Mena', 'pending')
+ON CONFLICT (id) DO NOTHING;
 
-const { data: tours = [] } = useQuery({
-  queryKey: ["tours-for-promos", xcaretCatIds],
-  queryFn: async () => {
-    const { data } = await supabase
-      .from("tours")
-      .select("id, title, public_price_adult_usd, active")
-      .eq("active", true)
-      .in("category_id", xcaretCatIds)
-      .order("title");
-    return data ?? [];
-  },
-  enabled: xcaretCatIds.length > 0,
-});
+INSERT INTO public.user_roles (user_id, role)
+VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'seller')
+ON CONFLICT (user_id, role) DO NOTHING;
 ```
 
-## Archivo
-- `src/pages/PaquetesXcaret.tsx` — reemplazar la query de tours (líneas 71-82) con las dos queries anteriores
+### 2. No code changes needed
+The `AuthContext` and `Configuracion` page already handle the approval flow. Once Marina's profile exists with `pending` status, she'll appear in the user list on Configuracion and you can approve her from there.
+
+## Result
+- Marina Mena will appear in Configuracion with status "Pendiente"
+- You approve her and she can log in
+- Future signups will automatically get profile + seller role via the trigger
+
+| File | Change |
+|---|---|
+| SQL Migration | Attach trigger to auth.users + backfill Marina Mena |
 
