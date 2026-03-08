@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCashSession } from "@/hooks/useCashSession";
@@ -37,7 +37,8 @@ const movementLabels: Record<string, string> = {
 };
 
 export default function CierreDiario() {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
+  const isAdmin = role === "admin";
   const navigate = useNavigate();
   const qc = useQueryClient();
   const {
@@ -72,6 +73,51 @@ export default function CierreDiario() {
   const variance = parseFloat(countedCash || "0") - expectedCash;
 
   const dateLabel = new Date().toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  const todayStr = new Date().toISOString().split("T")[0];
+
+  // Admin-only financial queries for daily summary
+  const { data: dailyPayables = [] } = useQuery({
+    queryKey: ["cierre-payables", todayStr],
+    enabled: isAdmin,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("operator_payables")
+        .select("amount_mxn, operators(name)")
+        .eq("service_date", todayStr);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const { data: dailyCommissions = [] } = useQuery({
+    queryKey: ["cierre-commissions", todayStr],
+    enabled: isAdmin,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("commissions")
+        .select("amount_mxn, rate, profiles:seller_id(full_name)")
+        .gte("created_at", `${todayStr}T00:00:00`)
+        .lte("created_at", `${todayStr}T23:59:59`);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const { data: dailyExpenses = [] } = useQuery({
+    queryKey: ["cierre-expenses", todayStr],
+    enabled: isAdmin,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("expense_items")
+        .select("paid_amount_mxn, expense_concepts(name)")
+        .gte("paid_at", `${todayStr}T00:00:00`)
+        .lte("paid_at", `${todayStr}T23:59:59`)
+        .eq("status", "paid");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const totalDailyPayables = dailyPayables.reduce((a: number, p: any) => a + Number(p.amount_mxn), 0);
+  const totalDailyCommissions = dailyCommissions.reduce((a: number, c: any) => a + Number(c.amount_mxn), 0);
+  const totalDailyExpenses = dailyExpenses.reduce((a: number, e: any) => a + Number(e.paid_amount_mxn || 0), 0);
 
   // Upsert daily_closings on close
   const handleClose = async () => {
@@ -282,6 +328,77 @@ export default function CierreDiario() {
                     ))}
                   </TableBody>
                 </Table>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Admin financial summary */}
+          {isAdmin && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Resumen Financiero del Día</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Payables */}
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-1">Pagos a Proveedores (tours de hoy)</p>
+                  {dailyPayables.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">Sin pagos a proveedores hoy</p>
+                  ) : dailyPayables.map((p: any, i: number) => (
+                    <div key={i} className="flex justify-between text-sm">
+                      <span>{(p as any).operators?.name ?? "—"}</span>
+                      <span className="font-medium">{fmt(Number(p.amount_mxn))}</span>
+                    </div>
+                  ))}
+                  {dailyPayables.length > 0 && (
+                    <div className="flex justify-between text-sm font-bold mt-1 pt-1 border-t">
+                      <span>Total proveedores</span>
+                      <span>{fmt(totalDailyPayables)}</span>
+                    </div>
+                  )}
+                </div>
+
+                <Separator />
+
+                {/* Commissions */}
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-1">Comisiones Generadas</p>
+                  {dailyCommissions.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">Sin comisiones hoy</p>
+                  ) : dailyCommissions.map((c: any, i: number) => (
+                    <div key={i} className="flex justify-between text-sm">
+                      <span>{(c as any).profiles?.full_name ?? "—"} ({Math.round(c.rate * 100)}%)</span>
+                      <span className="font-medium">{fmt(Number(c.amount_mxn))}</span>
+                    </div>
+                  ))}
+                  {dailyCommissions.length > 0 && (
+                    <div className="flex justify-between text-sm font-bold mt-1 pt-1 border-t">
+                      <span>Total comisiones</span>
+                      <span>{fmt(totalDailyCommissions)}</span>
+                    </div>
+                  )}
+                </div>
+
+                <Separator />
+
+                {/* Expenses */}
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-1">Gastos Pagados Hoy</p>
+                  {dailyExpenses.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">Sin gastos pagados hoy</p>
+                  ) : dailyExpenses.map((e: any, i: number) => (
+                    <div key={i} className="flex justify-between text-sm">
+                      <span>{(e as any).expense_concepts?.name ?? "—"}</span>
+                      <span className="font-medium">{fmt(Number(e.paid_amount_mxn))}</span>
+                    </div>
+                  ))}
+                  {dailyExpenses.length > 0 && (
+                    <div className="flex justify-between text-sm font-bold mt-1 pt-1 border-t">
+                      <span>Total gastos</span>
+                      <span>{fmt(totalDailyExpenses)}</span>
+                    </div>
+                  )}
+                </div>
               </CardContent>
             </Card>
           )}

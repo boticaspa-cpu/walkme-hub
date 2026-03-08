@@ -54,7 +54,7 @@ export default function Configuracion() {
   const { data: users = [] } = useQuery({
     queryKey: ["config-users"],
     queryFn: async () => {
-      const { data: profiles, error } = await supabase.from("profiles").select("id, full_name, approval_status").order("full_name");
+      const { data: profiles, error } = await supabase.from("profiles").select("id, full_name, approval_status, commission_rate").order("full_name");
       if (error) throw error;
       const { data: roles } = await supabase.from("user_roles").select("user_id, role");
       return (profiles ?? []).map((p: any) => ({
@@ -173,6 +173,21 @@ export default function Configuracion() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const updateCommissionRateMutation = useMutation({
+    mutationFn: async ({ userId, rate }: { userId: string; rate: number }) => {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ commission_rate: rate } as any)
+        .eq("id", userId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["config-users"] });
+      toast.success("Tasa de comisión actualizada");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const closeTemplateDialog = () => { setTemplateDialogOpen(false); setEditingTemplateId(null); setTemplateForm(emptyTemplate); };
   const openCreateTemplate = () => { setTemplateForm(emptyTemplate); setEditingTemplateId(null); setTemplateDialogOpen(true); };
   const openEditTemplate = (t: any) => {
@@ -201,7 +216,7 @@ export default function Configuracion() {
             const sc = statusConfig[u.approval_status] ?? statusConfig.pending;
             const isCurrentUser = u.id === user?.id;
             return (
-              <div key={u.id} className="flex items-center justify-between rounded-lg border p-3">
+              <div key={u.id} className="flex flex-col sm:flex-row sm:items-center justify-between rounded-lg border p-3 gap-3">
                 <div className="flex items-center gap-3">
                   <Avatar className="h-9 w-9">
                     <AvatarFallback className="bg-primary/10 text-primary text-sm">{u.full_name?.charAt(0) ?? "?"}</AvatarFallback>
@@ -211,7 +226,26 @@ export default function Configuracion() {
                     <Badge variant={sc.variant} className="text-[10px] mt-0.5">{sc.label}</Badge>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  {/* Commission rate */}
+                  <div className="flex items-center gap-1">
+                    <Input
+                      type="number"
+                      step="1"
+                      min="0"
+                      max="100"
+                      className="h-8 w-[70px] text-xs text-right"
+                      defaultValue={Math.round((u.commission_rate ?? 0.10) * 100)}
+                      onBlur={(e) => {
+                        const val = parseFloat(e.target.value) / 100;
+                        if (!isNaN(val) && val !== u.commission_rate) {
+                          updateCommissionRateMutation.mutate({ userId: u.id, rate: val });
+                        }
+                      }}
+                    />
+                    <span className="text-xs text-muted-foreground">%</span>
+                  </div>
+
                   {/* Role selector */}
                   <Select
                     value={u.role}

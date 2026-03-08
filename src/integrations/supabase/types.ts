@@ -663,6 +663,7 @@ export type Database = {
       profiles: {
         Row: {
           approval_status: string
+          commission_rate: number
           created_at: string
           full_name: string
           id: string
@@ -670,6 +671,7 @@ export type Database = {
         }
         Insert: {
           approval_status?: string
+          commission_rate?: number
           created_at?: string
           full_name?: string
           id: string
@@ -677,6 +679,7 @@ export type Database = {
         }
         Update: {
           approval_status?: string
+          commission_rate?: number
           created_at?: string
           full_name?: string
           id?: string
