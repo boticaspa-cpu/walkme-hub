@@ -204,7 +204,7 @@ export default function ReservationCheckout({ reservation, open, onOpenChange, o
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-md max-h-[100dvh] sm:max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Confirmar y Cobrar</DialogTitle>
           <DialogDescription>Reserva {reservation.folio || ""}</DialogDescription>
