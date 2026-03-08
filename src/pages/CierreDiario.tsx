@@ -295,7 +295,7 @@ export default function CierreDiario() {
 
       {/* === OPEN DIALOG === */}
       <Dialog open={openDlg} onOpenChange={setOpenDlg}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Abrir Caja</DialogTitle>
             <DialogDescription>Ingresa el fondo inicial para hoy.</DialogDescription>
