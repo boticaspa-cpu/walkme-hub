@@ -893,6 +893,28 @@ export default function Reservas() {
                 </div>
               </div>
 
+              {/* New reservation fields */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Hotel</Label>
+                  <Input value={form.hotel_name} onChange={(e) => setForm((p) => ({ ...p, hotel_name: e.target.value }))} placeholder="Nombre del hotel" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Email del pasajero</Label>
+                  <Input type="email" value={form.pax_email} onChange={(e) => setForm((p) => ({ ...p, pax_email: e.target.value }))} placeholder="correo@ejemplo.com" />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Notas de pickup</Label>
+                  <Input value={form.pickup_notes} onChange={(e) => setForm((p) => ({ ...p, pickup_notes: e.target.value }))} placeholder="Lobby, puerta 3…" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Código confirmación operador</Label>
+                  <Input value={form.operator_confirmation_code} onChange={(e) => setForm((p) => ({ ...p, operator_confirmation_code: e.target.value }))} placeholder="XC-78432" />
+                </div>
+              </div>
+
               <div className="space-y-1.5">
                 <Label>Modalidad</Label>
                 <Select value={form.modality} onValueChange={(v) => setForm((p) => ({ ...p, modality: v }))}>
