@@ -23,7 +23,7 @@ export function buildWhatsAppMessage(r: ReservationData, lang: "es" | "en" = "es
       `📍 Pickup zone: ${r.zone || "—"}`,
       `🚐 Modality: ${r.modality === "shared" ? "Shared" : "Private"}`,
       `👤 Client: ${r.clients?.name ?? "—"}`,
-      `👥 Adults: ${r.pax_adults} | Children: ${r.pax_children}`,
+      `👥 Adults: ${r.pax_adults} | Children (Menores): ${r.pax_children}`,
       `💰 Total: $${r.total_mxn.toLocaleString("en-US", { minimumFractionDigits: 2 })} MXN`,
     ];
 
