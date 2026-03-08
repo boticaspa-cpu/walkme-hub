@@ -1,0 +1,1 @@
+ALTER TABLE public.profiles ADD COLUMN commission_rate numeric NOT NULL DEFAULT 0.10;
