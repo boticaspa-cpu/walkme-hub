@@ -698,8 +698,11 @@ export default function Reservas() {
                   <Input type="number" min={0} step="0.01" value={form.total_mxn} onChange={(e) => setForm((p) => ({ ...p, total_mxn: parseFloat(e.target.value) || 0 }))} />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Descuento</Label>
-                  <Input type="number" min={0} step="0.01" value={form.discount_mxn || ""} onChange={(e) => setForm((p) => ({ ...p, discount_mxn: parseFloat(e.target.value) || 0 }))} placeholder="0.00" />
+                  <DiscountInput
+                    subtotal={form.total_mxn}
+                    discountMxn={form.discount_mxn || 0}
+                    onChange={(v) => setForm((p) => ({ ...p, discount_mxn: v }))}
+                  />
                 </div>
               </div>
               {form.discount_mxn > 0 && (
