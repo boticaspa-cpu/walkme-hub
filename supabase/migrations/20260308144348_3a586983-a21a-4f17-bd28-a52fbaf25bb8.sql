@@ -1,0 +1,1 @@
+ALTER TABLE public.operators ADD COLUMN fee_collection_mode text NOT NULL DEFAULT 'agency';
