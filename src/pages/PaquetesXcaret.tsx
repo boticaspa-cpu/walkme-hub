@@ -139,11 +139,11 @@ export default function PaquetesXcaret() {
   /* ── mutations ── */
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const sumPublic = selectedTourIds.reduce((acc, tid) => {
+      const sumAdultMxn = selectedTourIds.reduce((acc, tid) => {
         const t = tours.find((x) => x.id === tid);
-        return acc + (t?.public_price_adult_usd ?? 0);
+        return acc + (t ? tourToMxnAdult(t) : 0);
       }, 0);
-      const prices = calcXcaretPrices(sumPublic);
+      const prices = calcXcaretPrices(sumAdultMxn);
 
       if (editingId) {
         // update
