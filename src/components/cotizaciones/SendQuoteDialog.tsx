@@ -22,6 +22,7 @@ export default function SendQuoteDialog({ open, onOpenChange, quote }: Props) {
   const [contactForm, setContactForm] = useState({ name: "", phone: "", email: "" });
   const [needsContact, setNeedsContact] = useState(false);
   const [showQR, setShowQR] = useState(false);
+  const [lang, setLang] = useState<"es" | "en">("es");
 
   // Fetch client if quote has client_id
   const { data: client } = useQuery({
