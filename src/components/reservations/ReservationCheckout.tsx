@@ -244,7 +244,7 @@ export default function ReservationCheckout({ reservation, open, onOpenChange, o
       qc.invalidateQueries({ queryKey: ["cash-movements"] });
       qc.invalidateQueries({ queryKey: ["cash-session-sales"] });
       qc.invalidateQueries({ queryKey: ["pending-reservations"] });
-      toast.success("Reserva confirmada y cobrada");
+      toast.success("Reserva cobrada — pendiente confirmación del operador");
       onOpenChange(false);
       onSuccess?.();
     },
