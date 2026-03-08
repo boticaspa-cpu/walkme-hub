@@ -49,6 +49,7 @@ export default function Comisiones() {
                   <TableHead>Fecha</TableHead>
                   <TableHead className="hidden sm:table-cell">Venta Total</TableHead>
                   <TableHead className="hidden md:table-cell">Tasa</TableHead>
+                  <TableHead className="hidden md:table-cell">Fee Tarjeta</TableHead>
                   <TableHead className="text-right">Comisión</TableHead>
                 </TableRow>
               </TableHeader>
