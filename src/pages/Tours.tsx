@@ -552,11 +552,27 @@ export default function Tours() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
-    const remaining = 4 - imageFiles.length;
+    const remaining = 4 - imagePreviews.length;
     const toAdd = files.slice(0, remaining);
     setImageFiles(prev => [...prev, ...toAdd]);
     setImagePreviews(prev => [...prev, ...toAdd.map(f => URL.createObjectURL(f))]);
     if (e.target) e.target.value = "";
+  };
+
+  const [imageUrlInput, setImageUrlInput] = useState("");
+  const handleAddImageUrl = () => {
+    const url = imageUrlInput.trim();
+    if (!url) return;
+    if (!/^https?:\/\/.+/i.test(url)) {
+      toast.error("URL no válida — debe empezar con http:// o https://");
+      return;
+    }
+    if (imagePreviews.length >= 4) {
+      toast.error("Máximo 4 imágenes");
+      return;
+    }
+    setImagePreviews(prev => [...prev, url]);
+    setImageUrlInput("");
   };
 
   const removeImage = (index: number) => {
