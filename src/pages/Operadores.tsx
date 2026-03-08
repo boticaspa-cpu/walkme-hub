@@ -33,6 +33,7 @@ interface OperatorForm {
   exchange_rate: string;
   base_currency: string;
   payment_rules: string;
+  fee_collection_mode: string;
 }
 
 const emptyForm: OperatorForm = {
