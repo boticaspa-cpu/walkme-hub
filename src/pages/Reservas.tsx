@@ -422,6 +422,8 @@ export default function Reservas() {
           discount_mxn: items.length === 1 ? (shared.discount_mxn || 0) : Math.round(discountPerItem * 100) / 100,
           notes: shared.notes || null,
           created_by: user?.id,
+          hotel_name: shared.hotel_name,
+          pax_email: shared.pax_email,
         } as any));
         const { error } = await supabase.from("reservations").insert(inserts);
         if (error) throw error;
