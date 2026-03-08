@@ -23,6 +23,7 @@ import Comisiones from "./pages/Comisiones";
 import Reportes from "./pages/Reportes";
 import Configuracion from "./pages/Configuracion";
 import Gastos from "./pages/Gastos";
+import PaquetesXcaret from "./pages/PaquetesXcaret";
 
 import NotFound from "./pages/NotFound";
 
