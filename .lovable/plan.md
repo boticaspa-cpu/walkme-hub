@@ -1,49 +1,40 @@
 
 
-# Plan: Filtro por fecha en POS, Reservas y Cotizaciones
+# Plan: Fix missing trigger + create Marina Mena's profile
 
-Agregar un componente reutilizable de filtro por rango de fechas (fecha inicio / fecha fin) usando Popover + Calendar (DatePicker pattern de shadcn). Se aplicara en las 3 paginas como filtro client-side sobre los datos ya cargados.
+## Root Cause
+The `handle_new_user()` function exists but there is **no trigger** on `auth.users` that calls it. New signups never get a profile or role created.
 
-## Componente compartido
+## Changes
 
-**Nuevo archivo**: `src/components/shared/DateRangeFilter.tsx`
-- Dos botones tipo DatePicker (Desde / Hasta) con Popover + Calendar
-- Boton "Limpiar" para resetear
-- Props: `dateFrom`, `dateTo`, `onDateFromChange`, `onDateToChange`
-- Layout horizontal compacto, responsive (se apila en mobile)
+### 1. DB Migration — Create the trigger + backfill Marina Mena
 
-## Cambios por pagina
+```sql
+-- Create the trigger on auth.users
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW
+  EXECUTE FUNCTION public.handle_new_user();
 
-### POS (`src/pages/POS.tsx`)
-- Agregar estados `dateFrom` y `dateTo`
-- Colocar `<DateRangeFilter>` junto al campo de busqueda existente
-- En el filtro `filtered`, comparar `r.reservation_date` contra el rango
+-- Backfill the existing user who was missed
+INSERT INTO public.profiles (id, full_name, approval_status)
+VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'Marina Mena', 'pending')
+ON CONFLICT (id) DO NOTHING;
 
-### Reservas (`src/pages/Reservas.tsx`)
-- Agregar estados `dateFrom` y `dateTo`
-- Colocar `<DateRangeFilter>` junto al Input de busqueda en el CardHeader
-- En el `filtered` (linea 530), agregar condicion de rango sobre `r.reservation_date`
-
-### Cotizaciones (`src/pages/Cotizaciones.tsx`)
-- Agregar estados `dateFrom` y `dateTo`
-- Colocar `<DateRangeFilter>` junto al Input de busqueda
-- En el `filtered` (linea 337), agregar condicion de rango sobre `q.created_at` (las cotizaciones no tienen `reservation_date`, se filtra por fecha de creacion)
-
-## Logica del filtro (misma en las 3 paginas)
-
-```typescript
-// dentro del .filter()
-if (dateFrom) {
-  const d = new Date(row.reservation_date); // o created_at
-  if (d < dateFrom) return false;
-}
-if (dateTo) {
-  const d = new Date(row.reservation_date);
-  if (d > dateTo) return false;
-}
+INSERT INTO public.user_roles (user_id, role)
+VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'seller')
+ON CONFLICT (user_id, role) DO NOTHING;
 ```
 
-## Archivos
-- **Nuevo**: `src/components/shared/DateRangeFilter.tsx`
-- **Modificado**: `src/pages/POS.tsx`, `src/pages/Reservas.tsx`, `src/pages/Cotizaciones.tsx`
+### 2. No code changes needed
+The `AuthContext` and `Configuracion` page already handle the approval flow. Once Marina's profile exists with `pending` status, she'll appear in the user list on Configuracion and you can approve her from there.
+
+## Result
+- Marina Mena will appear in Configuracion with status "Pendiente"
+- You approve her and she can log in
+- Future signups will automatically get profile + seller role via the trigger
+
+| File | Change |
+|---|---|
+| SQL Migration | Attach trigger to auth.users + backfill Marina Mena |
 

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Plus, Search, FileText, Send, Pencil, Trash2, CheckCircle, ExternalLink, MoreVertical } from "lucide-react";
+import DateRangeFilter from "@/components/shared/DateRangeFilter";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -61,6 +62,8 @@ export default function Cotizaciones() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [search, setSearch] = useState("");
+  const [dateFrom, setDateFrom] = useState<Date | undefined>();
+  const [dateTo, setDateTo] = useState<Date | undefined>();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
@@ -335,6 +338,12 @@ export default function Cotizaciones() {
   const fmt = (n: number) => n.toLocaleString("es-MX", { style: "currency", currency: "MXN" });
 
   const filtered = quotes.filter((q: any) => {
+    if (dateFrom && new Date(q.created_at) < dateFrom) return false;
+    if (dateTo) {
+      const end = new Date(dateTo);
+      end.setHours(23, 59, 59, 999);
+      if (new Date(q.created_at) > end) return false;
+    }
     if (!search) return true;
     const s = search.toLowerCase();
     return (q.folio ?? "").toLowerCase().includes(s) || (q.clients?.name ?? q.client_name ?? "").toLowerCase().includes(s);
@@ -352,9 +361,12 @@ export default function Cotizaciones() {
 
       <Card>
         <CardHeader className="pb-3">
-          <div className="relative max-w-sm">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input placeholder="Buscar cotización..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
+          <div className="flex flex-col sm:flex-row gap-2">
+            <div className="relative max-w-sm">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input placeholder="Buscar cotización..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
+            </div>
+            <DateRangeFilter dateFrom={dateFrom} dateTo={dateTo} onDateFromChange={setDateFrom} onDateToChange={setDateTo} />
           </div>
         </CardHeader>
         <CardContent className="p-0 overflow-x-auto">
