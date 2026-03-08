@@ -1060,6 +1060,47 @@ export default function Reservas() {
           </div>
         </div>
       )}
+
+      {/* ── Mini-dialog Folio Operador ── */}
+      <Dialog open={!!folioDialogRes} onOpenChange={(open) => { if (!open) { setFolioDialogRes(null); setFolioInput(""); setCancFolioInput(""); } }}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Folio del Operador</DialogTitle>
+            <DialogDescription>
+              Captura el folio que te dio el operador para confirmar la reserva {folioDialogRes?.folio ?? ""}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3 py-2">
+            <div className="space-y-1.5">
+              <Label>Folio del operador</Label>
+              <Input placeholder="Ej: XC-78432" value={folioInput} onChange={(e) => setFolioInput(e.target.value)} />
+              <p className="text-xs text-muted-foreground">Al guardar, la reserva se marcará como confirmada.</p>
+            </div>
+            {(folioDialogRes?.status === "cancelled" || cancFolioInput) && (
+              <div className="space-y-1.5">
+                <Label>Folio de cancelación</Label>
+                <Input placeholder="Ej: XC-CANC-123" value={cancFolioInput} onChange={(e) => setCancFolioInput(e.target.value)} />
+                <p className="text-xs text-muted-foreground">Al guardar, la reserva se marcará como cancelada.</p>
+              </div>
+            )}
+            {folioDialogRes?.status !== "cancelled" && !cancFolioInput && (
+              <button
+                type="button"
+                className="text-xs text-destructive hover:underline text-left"
+                onClick={() => setCancFolioInput("")}
+              >
+                + Agregar folio de cancelación
+              </button>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setFolioDialogRes(null); setFolioInput(""); setCancFolioInput(""); }}>Cancelar</Button>
+            <Button onClick={() => saveFolioMutation.mutate()} disabled={saveFolioMutation.isPending || (!folioInput.trim() && !cancFolioInput.trim())}>
+              {saveFolioMutation.isPending ? "Guardando…" : "Guardar Folio"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
