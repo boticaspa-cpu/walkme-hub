@@ -526,7 +526,22 @@ export default function Cotizaciones() {
                 </div>
               ))}
               {items.length > 0 && (
-                <p className="text-sm font-semibold text-right">Total: {fmt(total)}</p>
+                <div className="space-y-2 pt-1">
+                  <p className="text-sm text-right text-muted-foreground">Subtotal: {fmt(subtotal)}</p>
+                  <div className="flex items-center justify-end gap-2">
+                    <Label className="text-sm text-muted-foreground">Descuento MXN</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      className="w-32 h-8 text-right"
+                      value={form.discount_mxn || ""}
+                      onChange={(e) => setForm(p => ({ ...p, discount_mxn: parseFloat(e.target.value) || 0 }))}
+                      placeholder="0.00"
+                    />
+                  </div>
+                  <p className="text-sm font-semibold text-right">Total: {fmt(total)}</p>
+                </div>
               )}
             </div>
 
