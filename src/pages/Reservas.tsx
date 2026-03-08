@@ -427,7 +427,28 @@ export default function Reservas() {
   const enrichWithPrices = (r: any) => {
     if (!r.tour_id) return r;
     const prices = computeTourPrice(r.tour_id, r.zone, r.nationality, allVariants as any, tours as any);
-    return { ...r, unit_price_mxn: prices.adultPrice, unit_price_child_mxn: prices.childPrice };
+    const tour = tours.find((t: any) => t.id === r.tour_id);
+    return {
+      ...r,
+      unit_price_mxn: prices.adultPrice,
+      unit_price_child_mxn: prices.childPrice,
+      _tax_adult_usd: tour?.tax_adult_usd ?? 0,
+      _tax_child_usd: tour?.tax_child_usd ?? 0,
+      _mandatory_fees_usd: tour?.mandatory_fees_usd ?? 0,
+      _exchange_rate: tour?.exchange_rate_tour ?? 1,
+    };
+  };
+
+  const hasTourFees = (r: any) => {
+    return (r._tax_adult_usd > 0 || r._tax_child_usd > 0 || r._mandatory_fees_usd > 0);
+  };
+
+  const computeOnSiteFees = (r: any) => {
+    if (!r) return null;
+    const feeAdult = (r._tax_adult_usd ?? 0) + (r._mandatory_fees_usd ?? 0);
+    const feeChild = (r._tax_child_usd ?? 0) + (r._mandatory_fees_usd ?? 0);
+    if (feeAdult <= 0 && feeChild <= 0) return null;
+    return { amountPerAdult: feeAdult, amountPerChild: feeChild, currency: "USD" };
   };
 
   const handleVoucherWithCheck = (r: any) => {
