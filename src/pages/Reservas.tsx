@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -129,6 +130,7 @@ export default function Reservas() {
   const voucherRef = useRef<HTMLDivElement>(null);
   const [checkoutReservation, setCheckoutReservation] = useState<any>(null);
   const [highlightId, setHighlightId] = useState<string | null>(null);
+  const [taxIncluded, setTaxIncluded] = useState(true);
 
   // mini-dialog nuevo cliente
   const [clientDialogOpen, setClientDialogOpen] = useState(false);
@@ -176,7 +178,7 @@ export default function Reservas() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("tours")
-        .select("id, title, price_mxn, suggested_price_mxn, public_price_adult_usd, public_price_child_usd, exchange_rate_tour, tax_adult_usd, tax_child_usd")
+        .select("id, title, price_mxn, suggested_price_mxn, public_price_adult_usd, public_price_child_usd, exchange_rate_tour, tax_adult_usd, tax_child_usd, mandatory_fees_usd")
         .eq("active", true)
         .order("title");
       if (error) throw error;
@@ -425,7 +427,28 @@ export default function Reservas() {
   const enrichWithPrices = (r: any) => {
     if (!r.tour_id) return r;
     const prices = computeTourPrice(r.tour_id, r.zone, r.nationality, allVariants as any, tours as any);
-    return { ...r, unit_price_mxn: prices.adultPrice, unit_price_child_mxn: prices.childPrice };
+    const tour = tours.find((t: any) => t.id === r.tour_id);
+    return {
+      ...r,
+      unit_price_mxn: prices.adultPrice,
+      unit_price_child_mxn: prices.childPrice,
+      _tax_adult_usd: tour?.tax_adult_usd ?? 0,
+      _tax_child_usd: tour?.tax_child_usd ?? 0,
+      _mandatory_fees_usd: tour?.mandatory_fees_usd ?? 0,
+      _exchange_rate: tour?.exchange_rate_tour ?? 1,
+    };
+  };
+
+  const hasTourFees = (r: any) => {
+    return (r._tax_adult_usd > 0 || r._tax_child_usd > 0 || r._mandatory_fees_usd > 0);
+  };
+
+  const computeOnSiteFees = (r: any) => {
+    if (!r) return null;
+    const feeAdult = (r._tax_adult_usd ?? 0) + (r._mandatory_fees_usd ?? 0);
+    const feeChild = (r._tax_child_usd ?? 0) + (r._mandatory_fees_usd ?? 0);
+    if (feeAdult <= 0 && feeChild <= 0) return null;
+    return { amountPerAdult: feeAdult, amountPerChild: feeChild, currency: "USD" };
   };
 
   const handleVoucherWithCheck = (r: any) => {
@@ -433,6 +456,7 @@ export default function Reservas() {
       toast.warning("Proveedor PREPAGO pendiente — debes pagarlo antes del tour para emitir voucher.");
       return;
     }
+    setTaxIncluded(true);
     setVoucherReservation(enrichWithPrices(r));
   };
 
@@ -464,7 +488,9 @@ export default function Reservas() {
       toast.warning("Proveedor PREPAGO pendiente — debes pagarlo antes del tour para enviar confirmación.");
       return;
     }
-    const msg = buildWhatsAppMessage(r, "es");
+    const enriched = enrichWithPrices(r);
+    const onSiteFees = !taxIncluded ? computeOnSiteFees(enriched) : null;
+    const msg = buildWhatsAppMessage(enriched, "es", onSiteFees ?? undefined);
     openWhatsApp(r.clients?.phone, msg);
   };
 
@@ -937,11 +963,40 @@ export default function Reservas() {
             <DialogTitle>Voucher — {voucherReservation?.folio ?? ""}</DialogTitle>
             <DialogDescription>Previsualiza e imprime el voucher de la reserva.</DialogDescription>
           </DialogHeader>
-          {voucherReservation && (
-            <div ref={voucherRef}>
-              <VoucherPrintView reservation={voucherReservation} />
+
+          {/* Tax toggle — only show if tour has fees */}
+          {voucherReservation && hasTourFees(voucherReservation) && (
+            <div className="flex items-center justify-between rounded-lg border border-border bg-muted/50 p-3">
+              <div className="space-y-0.5">
+                <Label className="text-sm font-medium">¿Impuestos incluidos?</Label>
+                <p className="text-xs text-muted-foreground">
+                  {taxIncluded
+                    ? "Los impuestos están incluidos en el total."
+                    : "El cliente los paga al abordar en efectivo (USD)."}
+                </p>
+              </div>
+              <Switch checked={taxIncluded} onCheckedChange={setTaxIncluded} />
             </div>
           )}
+
+          {voucherReservation && (() => {
+            const onSiteFees = !taxIncluded ? computeOnSiteFees(voucherReservation) : null;
+            const displayReservation = !taxIncluded && onSiteFees
+              ? {
+                  ...voucherReservation,
+                  total_mxn: Math.max(0,
+                    voucherReservation.total_mxn
+                    - (onSiteFees.amountPerAdult * voucherReservation.pax_adults * (voucherReservation._exchange_rate || 1))
+                    - (onSiteFees.amountPerChild * voucherReservation.pax_children * (voucherReservation._exchange_rate || 1))
+                  ),
+                }
+              : voucherReservation;
+            return (
+              <div ref={voucherRef}>
+                <VoucherPrintView reservation={displayReservation} onSiteFees={onSiteFees ?? undefined} />
+              </div>
+            );
+          })()}
           <DialogFooter>
             <Button variant="outline" onClick={() => setVoucherReservation(null)}>Cerrar</Button>
             <Button onClick={() => handlePrint(voucherReservation)}>

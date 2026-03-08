@@ -3,6 +3,12 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import walkMeLogo from "@/assets/walkme-logo.png";
 
+interface OnSiteFees {
+  amountPerAdult: number;
+  amountPerChild: number;
+  currency: string;
+}
+
 interface VoucherProps {
   reservation: {
     id: string;
@@ -23,6 +29,7 @@ interface VoucherProps {
     clients?: { name: string; phone: string; email: string | null } | null;
   };
   lang?: "es" | "en";
+  onSiteFees?: OnSiteFees;
 }
 
 const DEFAULT_POLICY_ES = `Cualquier cambio o cancelación deberá realizarse con al menos 48 horas de anticipación. Cancelaciones con menos de 48 horas de anticipación o no shows no son reembolsables. WalkMe Tours se reserva el derecho de modificar horarios o itinerarios por condiciones climáticas o de seguridad. Menores de edad deben ir acompañados de un adulto responsable.`;
@@ -80,7 +87,7 @@ const t = {
   },
 };
 
-export default function VoucherPrintView({ reservation, lang: initialLang = "es" }: VoucherProps) {
+export default function VoucherPrintView({ reservation, lang: initialLang = "es", onSiteFees }: VoucherProps) {
   const [lang, setLang] = useState<"es" | "en">(initialLang);
   const l = t[lang];
 
@@ -240,6 +247,20 @@ export default function VoucherPrintView({ reservation, lang: initialLang = "es"
           </span>
         </div>
       </div>
+
+      {/* On-site fees warning */}
+      {onSiteFees && (onSiteFees.amountPerAdult > 0 || onSiteFees.amountPerChild > 0) && (
+        <div className="mb-4 border-2 border-red-500 rounded p-3 bg-red-50">
+          <p className="text-sm font-bold text-red-700 mb-1">
+            {lang === "es" ? "⚠️ IMPORTANTE" : "⚠️ IMPORTANT"}
+          </p>
+          <p className="text-xs text-red-700">
+            {lang === "es"
+              ? `Impuesto de $${onSiteFees.amountPerAdult.toFixed(2)} ${onSiteFees.currency} por adulto${onSiteFees.amountPerChild > 0 ? ` / $${onSiteFees.amountPerChild.toFixed(2)} ${onSiteFees.currency} por menor` : ""} — se paga al abordar en efectivo.`
+              : `Fee of $${onSiteFees.amountPerAdult.toFixed(2)} ${onSiteFees.currency} per adult${onSiteFees.amountPerChild > 0 ? ` / $${onSiteFees.amountPerChild.toFixed(2)} ${onSiteFees.currency} per child` : ""} — payable at boarding in cash.`}
+          </p>
+        </div>
+      )}
 
       {/* Notes */}
       {r.notes && (

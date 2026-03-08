@@ -12,7 +12,13 @@ interface ReservationData {
   clients?: { name: string; phone: string; email: string | null } | null;
 }
 
-export function buildWhatsAppMessage(r: ReservationData, lang: "es" | "en" = "es"): string {
+interface OnSiteFees {
+  amountPerAdult: number;
+  amountPerChild: number;
+  currency: string;
+}
+
+export function buildWhatsAppMessage(r: ReservationData, lang: "es" | "en" = "es", onSiteFees?: OnSiteFees): string {
   if (lang === "en") {
     const lines = [
       `🎫 *WalkMe Tours — Reservation Confirmation*`,
@@ -38,6 +44,10 @@ export function buildWhatsAppMessage(r: ReservationData, lang: "es" | "en" = "es
 
     if (r.notes) {
       lines.push(``, `📝 Notes: ${r.notes}`);
+    }
+
+    if (onSiteFees && (onSiteFees.amountPerAdult > 0 || onSiteFees.amountPerChild > 0)) {
+      lines.push(``, `💵 *Fee of $${onSiteFees.amountPerAdult.toFixed(2)} ${onSiteFees.currency} per adult${onSiteFees.amountPerChild > 0 ? ` / $${onSiteFees.amountPerChild.toFixed(2)} ${onSiteFees.currency} per child` : ""} — payable at boarding in cash*`);
     }
 
     lines.push(``, `Thank you for choosing WalkMe Tours! 🌴`);
@@ -69,6 +79,10 @@ export function buildWhatsAppMessage(r: ReservationData, lang: "es" | "en" = "es
 
   if (r.notes) {
     lines.push(``, `📝 Notas: ${r.notes}`);
+  }
+
+  if (onSiteFees && (onSiteFees.amountPerAdult > 0 || onSiteFees.amountPerChild > 0)) {
+    lines.push(``, `💵 *Impuesto de $${onSiteFees.amountPerAdult.toFixed(2)} ${onSiteFees.currency} por adulto${onSiteFees.amountPerChild > 0 ? ` / $${onSiteFees.amountPerChild.toFixed(2)} ${onSiteFees.currency} por menor` : ""} — se paga al abordar en efectivo*`);
   }
 
   lines.push(``, `¡Gracias por elegir WalkMe Tours! 🌴`);
