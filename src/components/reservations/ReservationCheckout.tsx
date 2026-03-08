@@ -108,7 +108,7 @@ export default function ReservationCheckout({ reservation, open, onOpenChange, o
 
   const baseTotalMxn = recalculatedTotal ?? reservation?.total_mxn ?? 0;
   const cardFeeAmount = paymentMethod === "card" ? Math.round(baseTotalMxn * cardFeePercent) / 100 : 0;
-  const totalMxn = baseTotalMxn + cardFeeAmount;
+  const totalMxn = baseTotalMxn; // Cliente NO paga recargo — fee es costo interno
   const needsCashSession = paymentMethod === "cash";
 
   const checkoutMutation = useMutation({
