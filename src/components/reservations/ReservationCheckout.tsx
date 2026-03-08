@@ -157,8 +157,8 @@ export default function ReservationCheckout({ reservation, open, onOpenChange, o
         await (supabase as any).from("cash_movements").insert({
           session_id: activeSession.id,
           type: movType,
-          amount_mxn: totalMxn,
-          amount_fx: currency !== "MXN" ? totalMxn / er : null,
+          amount_mxn: baseTotalMxn,
+          amount_fx: currency !== "MXN" ? baseTotalMxn / er : null,
           currency_fx: currency !== "MXN" ? currency : null,
           reference: `Reserva ${reservation.folio || reservation.id.slice(0, 8)}`,
           created_by: user?.id,
