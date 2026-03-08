@@ -721,21 +721,24 @@ export default function Tours() {
       if (text.trim().startsWith("<!") || text.trim().startsWith("<html")) {
         throw new Error("El Sheet no es público o la pestaña no existe. Verifica el nombre exacto.");
       }
-      const rows = parseCSV(text);
+      // Determine alias keys for header detection based on mode
+      const aliasMap = mode === "generales" ? GENERAL_ALIASES : mode === "paquetes" ? PKG_ALIASES : VARIANT_ALIASES;
+      const aliasKeys = collectAliasKeys(aliasMap);
+      const rows = parseCSV(text, aliasKeys);
       if (rows.length === 0) throw new Error("La pestaña está vacía o no tiene el formato esperado.");
 
       if (mode === "generales") {
         const row = rows[0];
         setForm((prev) => ({
           ...prev,
-          title: getCol(row, "titulo", "tour_name", "nombre", "title") || prev.title,
-          short_description: getCol(row, "descripcion", "short_description", "descripcion_corta") || prev.short_description,
-          itinerary: getCol(row, "itinerario", "itinerary") || prev.itinerary,
-          includes: getCol(row, "incluye", "includes") || prev.includes,
-          excludes: getCol(row, "no_incluye", "excludes", "no incluye") || prev.excludes,
-          meeting_point: getCol(row, "punto_de_encuentro", "meeting_point", "punto encuentro") || prev.meeting_point,
-          what_to_bring: getCol(row, "que_llevar", "what_to_bring", "que llevar") || prev.what_to_bring,
-          recommendations: getCol(row, "recomendaciones", "recommendations") || prev.recommendations,
+          title: getCol(row, ...GENERAL_ALIASES.title) || prev.title,
+          short_description: getCol(row, ...GENERAL_ALIASES.description) || prev.short_description,
+          itinerary: getCol(row, ...GENERAL_ALIASES.itinerary) || prev.itinerary,
+          includes: getCol(row, ...GENERAL_ALIASES.includes) || prev.includes,
+          excludes: getCol(row, ...GENERAL_ALIASES.excludes) || prev.excludes,
+          meeting_point: getCol(row, ...GENERAL_ALIASES.meeting_point) || prev.meeting_point,
+          what_to_bring: getCol(row, ...GENERAL_ALIASES.what_to_bring) || prev.what_to_bring,
+          recommendations: getCol(row, ...GENERAL_ALIASES.recommendations) || prev.recommendations,
         }));
         toast.success("Campos generales importados del Sheet");
 
@@ -745,51 +748,67 @@ export default function Tours() {
         const taxChild = parseFloat(form.tax_child_usd) || 0;
         const mapped: PackageForm[] = rows
           .map((row) => {
-            const name = getCol(row, "nombre", "name");
+            const name = getCol(row, ...PKG_ALIASES.name);
             if (!name) return null;
-            const pubAdult = parseFloat(getCol(row, "precio_adulto_usd", "public_price_adult_usd", "precio adulto usd", "precio_pub_adulto_usd")) || 0;
-            const pubChild = parseFloat(getCol(row, "precio_nino_usd", "precio_nino", "public_price_child_usd", "precio nino usd", "precio_pub_nino_usd")) || 0;
-            const svcRaw = getCol(row, "tipo", "service_type", "tipo_servicio");
+            const pubAdult = parseNum(getCol(row, ...PKG_ALIASES.pub_adult_usd));
+            const pubChild = parseNum(getCol(row, ...PKG_ALIASES.pub_child_usd));
+            const svcRaw = getCol(row, ...PKG_ALIASES.service_type);
             const svcType = svcRaw.toLowerCase().includes("entrada") ? "entry_only" : "with_transport";
+            const costAdultRaw = getCol(row, ...PKG_ALIASES.cost_adult);
+            const costChildRaw = getCol(row, ...PKG_ALIASES.cost_child);
+            const taxAdultRaw = getCol(row, ...PKG_ALIASES.tax_adult);
+            const taxChildRaw = getCol(row, ...PKG_ALIASES.tax_child);
             return {
               ...emptyPackage,
               name,
               service_type: svcType,
               public_price_adult_usd: String(pubAdult),
               public_price_child_usd: String(pubChild),
-              cost_adult_usd: getCol(row, "costo_adulto", "cost_adult_usd", "costo adulto"),
-              cost_child_usd: getCol(row, "costo_nino", "cost_child_usd", "costo nino"),
-              mandatory_fees_usd: getCol(row, "fees", "mandatory_fees_usd", "fees_usd"),
-              includes: getCol(row, "incluye", "includes"),
-              excludes: getCol(row, "no_incluye", "excludes"),
+              cost_adult_usd: costAdultRaw ? String(parseNum(costAdultRaw)) : "",
+              cost_child_usd: costChildRaw ? String(parseNum(costChildRaw)) : "",
+              tax_adult_usd: taxAdultRaw ? String(parseNum(taxAdultRaw)) : "",
+              tax_child_usd: taxChildRaw ? String(parseNum(taxChildRaw)) : "",
+              mandatory_fees_usd: getCol(row, ...PKG_ALIASES.fees) ? String(parseNum(getCol(row, ...PKG_ALIASES.fees))) : "",
+              includes: getCol(row, ...PKG_ALIASES.includes),
+              excludes: getCol(row, ...PKG_ALIASES.excludes),
               price_adult_mxn: ((pubAdult + taxAdult) * tc).toFixed(2),
               price_child_mxn: ((pubChild + taxChild) * tc).toFixed(2),
             } as PackageForm;
           })
           .filter(Boolean) as PackageForm[];
-        if (!mapped.length) throw new Error("No se encontraron paquetes. Verifica que haya una columna 'nombre'.");
+        if (!mapped.length) {
+          // Build helpful error message
+          const detected: string[] = [];
+          const missing: string[] = [];
+          const sampleRow = rows[0];
+          if (sampleRow) {
+            if (getCol(sampleRow, ...PKG_ALIASES.name)) detected.push("nombre"); else missing.push("nombre");
+            if (getCol(sampleRow, ...PKG_ALIASES.pub_adult_usd)) detected.push("precio adulto"); else missing.push("precio adulto");
+          }
+          throw new Error(`No se encontraron paquetes.${missing.length ? ` Columnas no detectadas: ${missing.join(", ")}.` : ""}${detected.length ? ` Detectadas: ${detected.join(", ")}.` : ""} Verifica los encabezados.`);
+        }
         setPackages((prev) => [...prev, ...mapped]);
         toast.success(`${mapped.length} paquete(s) importado(s) del Sheet`);
 
       } else if (mode === "matriz") {
         const mapped: VariantForm[] = rows
           .map((row) => {
-            const salePrice = getCol(row, "precio_venta", "sale_price", "precio venta");
+            const salePrice = getCol(row, ...VARIANT_ALIASES.sale_price);
             if (!salePrice) return null;
-            const pkgRaw = getCol(row, "paquete", "package_name");
+            const pkgRaw = getCol(row, ...VARIANT_ALIASES.package);
             return {
               ...emptyVariant,
               package_name: pkgRaw && pkgRaw !== "" ? pkgRaw : GENERAL_PACKAGE,
-              zone: getCol(row, "zona", "zone") || "Cancun",
-              pax_type: getCol(row, "tipo_pax", "pax_type", "tipo pax") || "Adulto",
-              nationality: getCol(row, "nacionalidad", "nationality") || "Extranjero",
-              sale_price: salePrice,
-              net_cost: getCol(row, "costo_neto", "net_cost", "costo neto"),
-              tax_fee: getCol(row, "tax", "fee", "tax_fee", "tax/fee"),
+              zone: getCol(row, ...VARIANT_ALIASES.zone) || "Cancun",
+              pax_type: getCol(row, ...VARIANT_ALIASES.pax_type) || "Adulto",
+              nationality: getCol(row, ...VARIANT_ALIASES.nationality) || "Extranjero",
+              sale_price: String(parseNum(salePrice)),
+              net_cost: getCol(row, ...VARIANT_ALIASES.net_cost) ? String(parseNum(getCol(row, ...VARIANT_ALIASES.net_cost))) : "",
+              tax_fee: getCol(row, ...VARIANT_ALIASES.tax_fee) ? String(parseNum(getCol(row, ...VARIANT_ALIASES.tax_fee))) : "",
             } as VariantForm;
           })
           .filter(Boolean) as VariantForm[];
-        if (!mapped.length) throw new Error("No se encontraron variantes. Verifica que haya una columna 'precio_venta'.");
+        if (!mapped.length) throw new Error("No se encontraron variantes. Verifica que haya una columna de precio de venta.");
         setVariants((prev) => [...prev, ...mapped]);
         toast.success(`${mapped.length} variante(s) importada(s) del Sheet`);
       }
