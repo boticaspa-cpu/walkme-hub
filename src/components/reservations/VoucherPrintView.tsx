@@ -248,6 +248,20 @@ export default function VoucherPrintView({ reservation, lang: initialLang = "es"
         </div>
       </div>
 
+      {/* On-site fees warning */}
+      {onSiteFees && (onSiteFees.amountPerAdult > 0 || onSiteFees.amountPerChild > 0) && (
+        <div className="mb-4 border-2 border-red-500 rounded p-3 bg-red-50">
+          <p className="text-sm font-bold text-red-700 mb-1">
+            {lang === "es" ? "⚠️ IMPORTANTE" : "⚠️ IMPORTANT"}
+          </p>
+          <p className="text-xs text-red-700">
+            {lang === "es"
+              ? `Impuesto de $${onSiteFees.amountPerAdult.toFixed(2)} ${onSiteFees.currency} por adulto${onSiteFees.amountPerChild > 0 ? ` / $${onSiteFees.amountPerChild.toFixed(2)} ${onSiteFees.currency} por menor` : ""} — se paga al abordar en efectivo.`
+              : `Fee of $${onSiteFees.amountPerAdult.toFixed(2)} ${onSiteFees.currency} per adult${onSiteFees.amountPerChild > 0 ? ` / $${onSiteFees.amountPerChild.toFixed(2)} ${onSiteFees.currency} per child` : ""} — payable at boarding in cash.`}
+          </p>
+        </div>
+      )}
+
       {/* Notes */}
       {r.notes && (
         <div className="mb-4">

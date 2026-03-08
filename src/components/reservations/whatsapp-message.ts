@@ -81,6 +81,10 @@ export function buildWhatsAppMessage(r: ReservationData, lang: "es" | "en" = "es
     lines.push(``, `📝 Notas: ${r.notes}`);
   }
 
+  if (onSiteFees && (onSiteFees.amountPerAdult > 0 || onSiteFees.amountPerChild > 0)) {
+    lines.push(``, `💵 *Impuesto de $${onSiteFees.amountPerAdult.toFixed(2)} ${onSiteFees.currency} por adulto${onSiteFees.amountPerChild > 0 ? ` / $${onSiteFees.amountPerChild.toFixed(2)} ${onSiteFees.currency} por menor` : ""} — se paga al abordar en efectivo*`);
+  }
+
   lines.push(``, `¡Gracias por elegir WalkMe Tours! 🌴`);
   return lines.join("\n");
 }
