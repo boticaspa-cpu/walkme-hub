@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.parse-operator-pricelist]
 verify_jwt = false
+
+[functions.generate-voucher-pdf]
+verify_jwt = false
