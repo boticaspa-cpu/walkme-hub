@@ -48,6 +48,7 @@ export default function SendQuoteDialog({ open, onOpenChange, quote }: Props) {
     if (open) {
       setNeedsContact(!quote?.client_id);
       setContactForm({ name: "", phone: "", email: "" });
+      setShowQR(false);
     }
   }, [open, quote]);
 
