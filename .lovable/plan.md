@@ -1,27 +1,40 @@
 
 
-# Plan: Eliminar usuario Marina Mena
+# Plan: Fix missing trigger + create Marina Mena's profile
 
-Eliminar el perfil, rol y cuenta de autenticación de Marina Mena (ID: `d1c13d2e-a503-4d8c-a38d-f211f65547da`).
+## Root Cause
+The `handle_new_user()` function exists but there is **no trigger** on `auth.users` that calls it. New signups never get a profile or role created.
 
-## Cambios
+## Changes
 
-### 1. Edge Function temporal `delete-user`
-Crear una función backend que use la API de administración para eliminar el usuario del sistema de autenticación. Las tablas `profiles` y `user_roles` tienen `ON DELETE CASCADE` desde `auth.users`, así que se limpian automáticamente.
+### 1. DB Migration — Create the trigger + backfill Marina Mena
 
-**Archivo nuevo**: `supabase/functions/delete-user/index.ts`
-- Recibe `user_id` en el body
-- Usa `supabase.auth.admin.deleteUser(user_id)` con el service role key
-- Retorna confirmación
+```sql
+-- Create the trigger on auth.users
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW
+  EXECUTE FUNCTION public.handle_new_user();
 
-### 2. Invocar la función para eliminar a Marina Mena
-- `user_id`: `d1c13d2e-a503-4d8c-a38d-f211f65547da`
+-- Backfill the existing user who was missed
+INSERT INTO public.profiles (id, full_name, approval_status)
+VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'Marina Mena', 'pending')
+ON CONFLICT (id) DO NOTHING;
 
-### 3. Eliminar la edge function después de usarla
+INSERT INTO public.user_roles (user_id, role)
+VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'seller')
+ON CONFLICT (user_id, role) DO NOTHING;
+```
 
-| Paso | Acción |
+### 2. No code changes needed
+The `AuthContext` and `Configuracion` page already handle the approval flow. Once Marina's profile exists with `pending` status, she'll appear in the user list on Configuracion and you can approve her from there.
+
+## Result
+- Marina Mena will appear in Configuracion with status "Pendiente"
+- You approve her and she can log in
+- Future signups will automatically get profile + seller role via the trigger
+
+| File | Change |
 |---|---|
-| Crear función | `supabase/functions/delete-user/index.ts` |
-| Invocar | DELETE Marina Mena |
-| Limpiar | Eliminar la función temporal |
+| SQL Migration | Attach trigger to auth.users + backfill Marina Mena |
 
