@@ -88,7 +88,26 @@ export default function SendQuoteDialog({ open, onOpenChange, quote }: Props) {
     d ? new Date(d + "T12:00:00").toLocaleDateString("es-MX", { day: "2-digit", month: "short" }) : "";
 
   const buildMessage = () => {
-    const clientName = client?.name || contactForm.name || "Cliente";
+    const clientName = client?.name || contactForm.name || (lang === "en" ? "Client" : "Cliente");
+    if (lang === "en") {
+      const lines = [
+        `Hi ${clientName}! 👋`,
+        ``,
+        `Here's your quote from *WalkMe Tours* (${quote?.folio ?? ""}):`,
+        ``,
+      ];
+      items.forEach((it: any) => {
+        const sub = it.qty_adults * it.unit_price_mxn + it.qty_children * it.unit_price_child_mxn;
+        const fecha = fmtDate(it.tour_date);
+        const pax = `${it.qty_adults} adult${it.qty_adults !== 1 ? "s" : ""}${it.qty_children ? `, ${it.qty_children} child${it.qty_children !== 1 ? "ren" : ""}` : ""}`;
+        lines.push(`🏝️ *${it.tours?.title ?? "Tour"}*${fecha ? ` — ${fecha}` : ""}`);
+        lines.push(`   ${pax} — ${fmt(sub)} MXN`);
+      });
+      lines.push(``, `💰 *Total: ${fmt(quote?.total_mxn ?? 0)} MXN*`);
+      lines.push(``, `📄 Full quote: ${pdfUrl}`);
+      lines.push(``, `Feel free to reach out with any questions! 😊`);
+      return lines.join("\n");
+    }
     const lines = [
       `Hola ${clientName}! 👋`,
       ``,
