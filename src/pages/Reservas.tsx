@@ -539,6 +539,8 @@ export default function Reservas() {
       end.setHours(23, 59, 59, 999);
       if (new Date(r.reservation_date) > end) return false;
     }
+    if (filterStatus !== "all" && (r.confirmation_status || "scheduled") !== filterStatus) return false;
+    if (filterPayment !== "all" && (r.payment_status || "unpaid") !== filterPayment) return false;
     if (!search) return true;
     const q = search.toLowerCase();
     const folio = (r.folio ?? "").toLowerCase();
