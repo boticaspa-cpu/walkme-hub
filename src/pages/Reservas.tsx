@@ -639,6 +639,14 @@ export default function Reservas() {
         />
       )}
 
+      {/* ── Send Confirmation Dialog ── */}
+      <SendConfirmationDialog
+        open={!!sendConfirmReservation}
+        onOpenChange={(open) => { if (!open) setSendConfirmReservation(null); }}
+        reservation={sendConfirmReservation}
+        onSiteFees={sendConfirmReservation ? computeOnSiteFees(sendConfirmReservation) : null}
+      />
+
       {/* ── Dialog Crear / Editar Reserva ── */}
       <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) closeDialog(); }}>
         <DialogContent className="sm:max-w-2xl max-h-[100dvh] sm:max-h-[90dvh] overflow-y-auto">
