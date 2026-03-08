@@ -341,7 +341,7 @@ export default function PaquetesXcaret() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => deleteMutation.mutate(pkg.id)}
+                        onClick={() => setDeletingId(pkg.id)}
                       >
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
