@@ -328,7 +328,7 @@ export default function Configuracion() {
 
       {/* Template Dialog */}
       <Dialog open={templateDialogOpen} onOpenChange={(open) => { if (!open) closeTemplateDialog(); }}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>{editingTemplateId ? "Editar Plantilla" : "Nueva Plantilla"}</DialogTitle>
             <DialogDescription>Configura el nombre, contenido y evento de activación.</DialogDescription>
