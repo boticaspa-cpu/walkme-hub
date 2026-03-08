@@ -467,8 +467,7 @@ export default function Reservas() {
 
   const handlePrint = (r: any) => {
     if (isPrepagoBlocked(r)) {
-      toast.warning("Proveedor PREPAGO pendiente — debes pagarlo antes del tour.");
-      return;
+      toast.warning("Recuerda: el pago al proveedor (prepago) está pendiente.");
     }
     setVoucherReservation(enrichWithPrices(r));
     setTimeout(() => {
