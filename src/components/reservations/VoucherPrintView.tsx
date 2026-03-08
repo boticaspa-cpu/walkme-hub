@@ -319,6 +319,7 @@ export default function VoucherPrintView({ reservation, lang: initialLang = "es"
                 </div>
               )}
             </div>
+          )}
         </div>
       </div>
 
