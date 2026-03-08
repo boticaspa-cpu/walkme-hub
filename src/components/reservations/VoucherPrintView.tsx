@@ -203,6 +203,12 @@ export default function VoucherPrintView({ reservation, lang: initialLang = "es"
               <p className="text-sm font-bold font-mono" style={{ color: "#2d5a27" }}>{r.operator_folio}</p>
             </div>
           )}
+          {r.operator_confirmation_code && (
+            <div>
+              <span className="text-[10px] uppercase tracking-wider text-gray-400">{l.confirmationCode}</span>
+              <p className="text-sm font-bold font-mono" style={{ color: "#2d5a27" }}>{r.operator_confirmation_code}</p>
+            </div>
+          )}
           {r.cancellation_folio && (
             <div>
               <span className="text-[10px] uppercase tracking-wider text-gray-400">{l.cancellationFolio}</span>
