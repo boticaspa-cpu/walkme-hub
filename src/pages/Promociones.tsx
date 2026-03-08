@@ -4,7 +4,10 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { Plus, Trash2, Tag, FileText, CalendarCheck, Pencil } from "lucide-react";
+import { Plus, Trash2, Tag, FileText, CalendarCheck, Pencil, MoreHorizontal } from "lucide-react";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import DiscountInput from "@/components/shared/DiscountInput";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
