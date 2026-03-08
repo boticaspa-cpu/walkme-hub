@@ -1,40 +1,35 @@
 
 
-# Plan: Fix missing trigger + create Marina Mena's profile
+# Plan: Registrar usuario seller de prueba
 
-## Root Cause
-The `handle_new_user()` function exists but there is **no trigger** on `auth.users` that calls it. New signups never get a profile or role created.
+## Problema previo
+La base de datos **no tiene triggers** (confirmado en el contexto). El trigger `on_auth_user_created` que llama a `handle_new_user()` nunca fue creado, lo que significa que nuevos signups no obtienen perfil ni rol automáticamente.
 
-## Changes
+## Pasos
 
-### 1. DB Migration — Create the trigger + backfill Marina Mena
-
+### 1. Migración SQL — Crear el trigger faltante
 ```sql
--- Create the trigger on auth.users
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW
   EXECUTE FUNCTION public.handle_new_user();
-
--- Backfill the existing user who was missed
-INSERT INTO public.profiles (id, full_name, approval_status)
-VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'Marina Mena', 'pending')
-ON CONFLICT (id) DO NOTHING;
-
-INSERT INTO public.user_roles (user_id, role)
-VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'seller')
-ON CONFLICT (user_id, role) DO NOTHING;
 ```
 
-### 2. No code changes needed
-The `AuthContext` and `Configuracion` page already handle the approval flow. Once Marina's profile exists with `pending` status, she'll appear in the user list on Configuracion and you can approve her from there.
+### 2. Tú registras al seller desde la app
+- Abre `/login?tab=signup` en el preview
+- Crea una cuenta con nombre "Seller Test" y un email/contraseña de prueba
+- El trigger creará automáticamente el perfil con `approval_status = 'pending'` y rol `seller`
 
-## Result
-- Marina Mena will appear in Configuracion with status "Pendiente"
-- You approve her and she can log in
-- Future signups will automatically get profile + seller role via the trigger
+### 3. Aprobar al seller desde Configuración
+- Inicia sesión como admin
+- Ve a `/configuracion`
+- Aprueba al usuario "Seller Test"
 
-| File | Change |
+### 4. Listo para testear
+El seller puede iniciar sesión y hacer el flujo completo: abrir caja → cobrar reserva con tarjeta → verificar comisión en `/comisiones`
+
+| Cambio | Detalle |
 |---|---|
-| SQL Migration | Attach trigger to auth.users + backfill Marina Mena |
+| SQL Migration | Crear trigger `on_auth_user_created` en `auth.users` |
+| Código | Sin cambios |
 
