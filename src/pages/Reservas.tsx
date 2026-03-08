@@ -488,7 +488,9 @@ export default function Reservas() {
       toast.warning("Proveedor PREPAGO pendiente — debes pagarlo antes del tour para enviar confirmación.");
       return;
     }
-    const msg = buildWhatsAppMessage(r, "es");
+    const enriched = enrichWithPrices(r);
+    const onSiteFees = !taxIncluded ? computeOnSiteFees(enriched) : null;
+    const msg = buildWhatsAppMessage(enriched, "es", onSiteFees ?? undefined);
     openWhatsApp(r.clients?.phone, msg);
   };
 
