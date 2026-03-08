@@ -262,6 +262,7 @@ export default function ReservationCheckout({ reservation, open, onOpenChange, o
               sale_id: sale.id,
               rate,
               amount_mxn: commissionAmount,
+              card_fee_mxn: cardFeeAmount,
             });
           }
         }

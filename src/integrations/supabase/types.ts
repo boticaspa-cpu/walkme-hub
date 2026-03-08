@@ -209,6 +209,7 @@ export type Database = {
       commissions: {
         Row: {
           amount_mxn: number
+          card_fee_mxn: number
           created_at: string
           id: string
           rate: number
@@ -217,6 +218,7 @@ export type Database = {
         }
         Insert: {
           amount_mxn?: number
+          card_fee_mxn?: number
           created_at?: string
           id?: string
           rate?: number
@@ -225,6 +227,7 @@ export type Database = {
         }
         Update: {
           amount_mxn?: number
+          card_fee_mxn?: number
           created_at?: string
           id?: string
           rate?: number

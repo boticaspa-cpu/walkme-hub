@@ -49,18 +49,22 @@ export default function Comisiones() {
                   <TableHead>Fecha</TableHead>
                   <TableHead className="hidden sm:table-cell">Venta Total</TableHead>
                   <TableHead className="hidden md:table-cell">Tasa</TableHead>
+                  <TableHead className="hidden md:table-cell">Fee Tarjeta</TableHead>
                   <TableHead className="text-right">Comisión</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {commissions.length === 0 ? (
-                  <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">Sin comisiones registradas</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">Sin comisiones registradas</TableCell></TableRow>
                 ) : commissions.map((c: any) => (
                   <TableRow key={c.id}>
                     <TableCell className="text-sm">{c.sales?.sold_at ? new Date(c.sales.sold_at).toLocaleDateString("es-MX") : "—"}</TableCell>
                     <TableCell className="hidden sm:table-cell text-sm">{c.sales ? fmt(Number(c.sales.total_mxn)) : "—"}</TableCell>
                     <TableCell className="hidden md:table-cell">
                       <Badge variant="outline" className="text-xs">{(Number(c.rate) * 100).toFixed(0)}%</Badge>
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
+                      {Number(c.card_fee_mxn) > 0 ? fmt(Number(c.card_fee_mxn)) : "—"}
                     </TableCell>
                     <TableCell className="text-right font-semibold text-primary">{fmt(Number(c.amount_mxn))}</TableCell>
                   </TableRow>

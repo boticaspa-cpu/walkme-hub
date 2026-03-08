@@ -1,37 +1,40 @@
 
 
-# Add `card_fee_mxn` column to commissions table
+# Plan: Fix missing trigger + create Marina Mena's profile
 
-## Change
-Add a `card_fee_mxn numeric NOT NULL DEFAULT 0` column to `commissions` to record the card fee deducted from profit for each commission.
+## Root Cause
+The `handle_new_user()` function exists but there is **no trigger** on `auth.users` that calls it. New signups never get a profile or role created.
 
-## SQL Migration
+## Changes
+
+### 1. DB Migration — Create the trigger + backfill Marina Mena
+
 ```sql
-ALTER TABLE public.commissions
-  ADD COLUMN IF NOT EXISTS card_fee_mxn numeric NOT NULL DEFAULT 0;
+-- Create the trigger on auth.users
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW
+  EXECUTE FUNCTION public.handle_new_user();
+
+-- Backfill the existing user who was missed
+INSERT INTO public.profiles (id, full_name, approval_status)
+VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'Marina Mena', 'pending')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO public.user_roles (user_id, role)
+VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'seller')
+ON CONFLICT (user_id, role) DO NOTHING;
 ```
 
-## Code Change
-In `src/components/reservations/ReservationCheckout.tsx` line 260-265, add `card_fee_mxn: cardFeeAmount` to the commission insert:
-```typescript
-await (supabase as any).from("commissions").insert({
-  seller_id: user.id,
-  sale_id: sale.id,
-  rate,
-  amount_mxn: commissionAmount,
-  card_fee_mxn: cardFeeAmount,
-});
-```
+### 2. No code changes needed
+The `AuthContext` and `Configuracion` page already handle the approval flow. Once Marina's profile exists with `pending` status, she'll appear in the user list on Configuracion and you can approve her from there.
 
-## Comisiones page
-In `src/pages/Comisiones.tsx`, add a column showing the card fee when > 0.
+## Result
+- Marina Mena will appear in Configuracion with status "Pendiente"
+- You approve her and she can log in
+- Future signups will automatically get profile + seller role via the trigger
 
-## Files
 | File | Change |
 |---|---|
-| SQL Migration | Add `card_fee_mxn` column |
-| `src/components/reservations/ReservationCheckout.tsx` | Persist `cardFeeAmount` in commission insert |
-| `src/pages/Comisiones.tsx` | Show card fee column |
-
-Zero impact on existing data (default 0). No RLS changes needed.
+| SQL Migration | Attach trigger to auth.users + backfill Marina Mena |
 
