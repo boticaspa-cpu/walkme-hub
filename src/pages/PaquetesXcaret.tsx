@@ -251,11 +251,11 @@ export default function PaquetesXcaret() {
 
   /* ── live calculator ── */
   const liveCalc = useMemo(() => {
-    const sumPublic = selectedTourIds.reduce((acc, tid) => {
+    const sumMxn = selectedTourIds.reduce((acc, tid) => {
       const t = tours.find((x) => x.id === tid);
-      return acc + (t?.public_price_adult_usd ?? 0);
+      return acc + (t ? tourToMxnAdult(t) : 0);
     }, 0);
-    return { sumPublic, ...calcXcaretPrices(sumPublic) };
+    return { sumMxn, ...calcXcaretPrices(sumMxn) };
   }, [selectedTourIds, tours]);
 
   const tourNameMap = useMemo(() => {
