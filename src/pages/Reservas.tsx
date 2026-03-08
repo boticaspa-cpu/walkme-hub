@@ -80,6 +80,10 @@ const emptyForm = {
   discount_mxn: 0,
   notes: "",
   status: "scheduled",
+  hotel_name: "",
+  pickup_notes: "",
+  pax_email: "",
+  operator_confirmation_code: "",
 };
 
 /* ── multi-tour create types ── */
@@ -113,6 +117,8 @@ const emptyShared = {
   nationality: "",
   notes: "",
   discount_mxn: 0,
+  hotel_name: "",
+  pax_email: "",
 };
 
 export default function Reservas() {
@@ -390,6 +396,10 @@ export default function Reservas() {
           discount_mxn: form.discount_mxn || 0,
           notes: form.notes || null,
           status: form.status,
+          hotel_name: form.hotel_name,
+          pickup_notes: form.pickup_notes,
+          pax_email: form.pax_email,
+          operator_confirmation_code: form.operator_confirmation_code,
         } as any;
         const { error } = await supabase.from("reservations").update(payload).eq("id", editingId);
         if (error) throw error;
@@ -412,6 +422,8 @@ export default function Reservas() {
           discount_mxn: items.length === 1 ? (shared.discount_mxn || 0) : Math.round(discountPerItem * 100) / 100,
           notes: shared.notes || null,
           created_by: user?.id,
+          hotel_name: shared.hotel_name,
+          pax_email: shared.pax_email,
         } as any));
         const { error } = await supabase.from("reservations").insert(inserts);
         if (error) throw error;
@@ -551,6 +563,10 @@ export default function Reservas() {
       discount_mxn: (r as any).discount_mxn ?? 0,
       notes: r.notes ?? "",
       status: r.status,
+      hotel_name: r.hotel_name ?? "",
+      pickup_notes: r.pickup_notes ?? "",
+      pax_email: r.pax_email ?? "",
+      operator_confirmation_code: r.operator_confirmation_code ?? "",
     });
     setEditingId(r.id);
     setDialogOpen(true);
@@ -877,6 +893,28 @@ export default function Reservas() {
                 </div>
               </div>
 
+              {/* New reservation fields */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Hotel</Label>
+                  <Input value={form.hotel_name} onChange={(e) => setForm((p) => ({ ...p, hotel_name: e.target.value }))} placeholder="Nombre del hotel" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Email del pasajero</Label>
+                  <Input type="email" value={form.pax_email} onChange={(e) => setForm((p) => ({ ...p, pax_email: e.target.value }))} placeholder="correo@ejemplo.com" />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Notas de pickup</Label>
+                  <Input value={form.pickup_notes} onChange={(e) => setForm((p) => ({ ...p, pickup_notes: e.target.value }))} placeholder="Lobby, puerta 3…" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Código confirmación operador</Label>
+                  <Input value={form.operator_confirmation_code} onChange={(e) => setForm((p) => ({ ...p, operator_confirmation_code: e.target.value }))} placeholder="XC-78432" />
+                </div>
+              </div>
+
               <div className="space-y-1.5">
                 <Label>Modalidad</Label>
                 <Select value={form.modality} onValueChange={(v) => setForm((p) => ({ ...p, modality: v }))}>
@@ -976,6 +1014,17 @@ export default function Reservas() {
                       <SelectTrigger><SelectValue placeholder="Nacionalidad" /></SelectTrigger>
                       <SelectContent>{NATIONALITIES.map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}</SelectContent>
                     </Select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label>Hotel</Label>
+                    <Input value={shared.hotel_name} onChange={(e) => setShared((p) => ({ ...p, hotel_name: e.target.value }))} placeholder="Nombre del hotel" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Email del pasajero</Label>
+                    <Input type="email" value={shared.pax_email} onChange={(e) => setShared((p) => ({ ...p, pax_email: e.target.value }))} placeholder="correo@ejemplo.com" />
                   </div>
                 </div>
 

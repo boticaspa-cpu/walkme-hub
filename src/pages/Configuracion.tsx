@@ -52,6 +52,7 @@ export default function Configuracion() {
   const [rateUsd, setRateUsd] = useState("");
   const [rateEur, setRateEur] = useState("");
   const [rateCad, setRateCad] = useState("");
+  const [cardFee, setCardFee] = useState("");
 
   // Users query
   const { data: users = [] } = useQuery({
@@ -74,7 +75,7 @@ export default function Configuracion() {
       const { data, error } = await supabase
         .from("settings" as any)
         .select("key, value")
-        .in("key", ["exchange_rate_usd", "exchange_rate_eur", "exchange_rate_cad"]);
+        .in("key", ["exchange_rate_usd", "exchange_rate_eur", "exchange_rate_cad", "card_fee_percent"]);
       if (error) throw error;
       return (data as any[]) ?? [];
     },
@@ -87,6 +88,7 @@ export default function Configuracion() {
       setRateUsd(get("exchange_rate_usd"));
       setRateEur(get("exchange_rate_eur"));
       setRateCad(get("exchange_rate_cad"));
+      setCardFee(get("card_fee_percent"));
     }
   }, [settings]);
 
@@ -96,6 +98,7 @@ export default function Configuracion() {
         { key: "exchange_rate_usd", value: rateUsd },
         { key: "exchange_rate_eur", value: rateEur },
         { key: "exchange_rate_cad", value: rateCad },
+        { key: "card_fee_percent", value: cardFee },
       ];
       for (const u of updates) {
         const { error } = await supabase
@@ -317,7 +320,7 @@ export default function Configuracion() {
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-xs text-muted-foreground">Define los tipos de cambio que se usan para calcular los precios sugeridos de los tours.</p>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="space-y-1.5">
               <Label className="text-xs">USD → MXN</Label>
               <Input type="number" step="0.01" value={rateUsd} onChange={(e) => setRateUsd(e.target.value)} />
@@ -329,6 +332,11 @@ export default function Configuracion() {
             <div className="space-y-1.5">
               <Label className="text-xs">CAD → MXN</Label>
               <Input type="number" step="0.01" value={rateCad} onChange={(e) => setRateCad(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Comisión tarjeta %</Label>
+              <Input type="number" step="0.1" min="0" max="100" value={cardFee} onChange={(e) => setCardFee(e.target.value)} />
+              <p className="text-[10px] text-muted-foreground">Se suma al total del cliente</p>
             </div>
           </div>
           <Button size="sm" onClick={() => saveRatesMutation.mutate()} disabled={saveRatesMutation.isPending}>
