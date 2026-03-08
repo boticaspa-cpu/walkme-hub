@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useAuth } from "@/contexts/AuthContext";
 import { Badge } from "@/components/ui/badge";
+import { Link } from "react-router-dom";
 
 export function Topbar() {
   const { role } = useAuth();
@@ -11,7 +12,9 @@ export function Topbar() {
   return (
     <header className="flex h-14 items-center gap-3 border-b border-border bg-card px-4">
       <SidebarTrigger className="hidden sm:flex" />
-      <span className="sm:hidden text-sm font-semibold text-foreground">Walkme Tours</span>
+      <Link to="/dashboard" className="sm:hidden">
+        <img src="/walkme-logo.png" alt="Walkme Tours" className="h-8" />
+      </Link>
 
       <div className="relative hidden sm:flex flex-1 max-w-md">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
