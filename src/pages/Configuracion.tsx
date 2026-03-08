@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Plus, UserPlus, Pencil, DollarSign, Check, Ban, ShieldCheck, ShieldAlert } from "lucide-react";
+import { Plus, UserPlus, Pencil, DollarSign, Check, Ban, ShieldCheck, ShieldAlert, Copy, CheckCheck } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
@@ -44,6 +44,9 @@ export default function Configuracion() {
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
   const [templateForm, setTemplateForm] = useState(emptyTemplate);
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+
+  const inviteUrl = typeof window !== "undefined" ? `${window.location.origin}/login?tab=signup` : "";
 
   // Exchange rates state
   const [rateUsd, setRateUsd] = useState("");
@@ -394,30 +397,38 @@ export default function Configuracion() {
       </Dialog>
 
       {/* Invite Seller Dialog */}
-      <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
+      <Dialog open={inviteDialogOpen} onOpenChange={(open) => { setInviteDialogOpen(open); if (!open) setLinkCopied(false); }}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Invitar Vendedor</DialogTitle>
             <DialogDescription>
-              Para dar de alta un vendedor, indícale que se registre en la página de inicio de sesión.
+              Comparte este enlace para que el vendedor se registre directamente.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-2">
-            <div className="rounded-lg bg-muted p-3 space-y-2">
-              <p className="text-sm font-medium flex items-center gap-1.5"><ShieldAlert className="h-4 w-4 text-amber-500" /> Proceso:</p>
-              <ol className="text-sm text-muted-foreground list-decimal list-inside space-y-1">
-                <li>El vendedor crea su cuenta en <strong>Registrarse</strong></li>
-                <li>Su cuenta queda como <strong>Pendiente</strong></li>
-                <li>Tú la apruebas aquí en Configuración</li>
-              </ol>
+            <div className="flex gap-2">
+              <Input readOnly value={inviteUrl} className="text-xs" onClick={(e) => (e.target as HTMLInputElement).select()} />
+              <Button
+                size="icon"
+                variant="outline"
+                className="shrink-0"
+                onClick={() => {
+                  navigator.clipboard.writeText(inviteUrl);
+                  setLinkCopied(true);
+                  toast.success("Enlace copiado");
+                  setTimeout(() => setLinkCopied(false), 2000);
+                }}
+              >
+                {linkCopied ? <CheckCheck className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+              </Button>
             </div>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <ShieldCheck className="h-4 w-4 text-green-600" />
-              Ningún vendedor puede acceder sin tu aprobación.
+              El vendedor quedará pendiente hasta que lo apruebes.
             </div>
           </div>
           <DialogFooter>
-            <Button onClick={() => setInviteDialogOpen(false)}>Entendido</Button>
+            <Button onClick={() => setInviteDialogOpen(false)}>Cerrar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

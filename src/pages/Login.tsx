@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 export default function Login() {
   const { login, signup, isAuthenticated, pendingStatus } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const defaultTab = searchParams.get("tab") === "signup" ? "signup" : "login";
   const { toast } = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -73,7 +75,7 @@ export default function Login() {
           <p className="text-sm font-accent text-muted-foreground tracking-wide">Just freedom</p>
         </CardHeader>
         <CardContent className="pt-4">
-          <Tabs defaultValue="login">
+          <Tabs defaultValue={defaultTab}>
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="login">Iniciar sesión</TabsTrigger>
               <TabsTrigger value="signup">Registrarse</TabsTrigger>
