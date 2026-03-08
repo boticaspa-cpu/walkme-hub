@@ -32,15 +32,15 @@ import { cn } from "@/lib/utils";
 
 const primaryItems = [
   { title: "Inicio", url: "/dashboard", icon: LayoutDashboard },
-  { title: "POS", url: "/pos", icon: ShoppingCart },
+  { title: "Tours", url: "/tours", icon: Map },
   { title: "Reservas", url: "/reservas", icon: FolderOpen },
   { title: "Cotizar", url: "/cotizaciones", icon: FileText },
 ];
 
 const adminMore = [
+  { title: "POS", url: "/pos", icon: ShoppingCart },
   { title: "Leads", url: "/leads", icon: Users },
   { title: "Clientes", url: "/clientes", icon: Contact },
-  { title: "Tours", url: "/tours", icon: Map },
   { title: "Operadores", url: "/operadores", icon: Building2 },
   { title: "Categorías", url: "/categorias", icon: Tags },
   { title: "Destinos", url: "/destinos", icon: MapPin },
@@ -54,9 +54,9 @@ const adminMore = [
 ];
 
 const sellerMore = [
+  { title: "POS", url: "/pos", icon: ShoppingCart },
   { title: "Leads", url: "/leads", icon: Users },
   { title: "Clientes", url: "/clientes", icon: Contact },
-  { title: "Tours", url: "/tours", icon: Map },
   { title: "Paquetes Xcaret", url: "/paquetes-xcaret", icon: BadgePercent },
   { title: "Promociones", url: "/promociones", icon: Tags },
   { title: "Calendario", url: "/calendario", icon: CalendarDays },
