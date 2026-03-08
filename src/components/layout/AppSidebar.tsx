@@ -17,6 +17,7 @@ import {
   Receipt,
   LogOut,
   ChevronDown,
+  Bot,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import walkmeLogo from "@/assets/walkme-logo.png";
@@ -57,6 +58,7 @@ const adminNav = [
   { title: "Cierre Diario", url: "/cierre-diario", icon: ClipboardCheck },
   { title: "Reportes", url: "/reportes", icon: BarChart3 },
   { title: "Gastos", url: "/gastos", icon: Receipt },
+  { title: "Asesor IA", url: "/asesor-ventas", icon: Bot },
   { title: "Configuración", url: "/configuracion", icon: Settings },
 ];
 
@@ -71,6 +73,7 @@ const sellerNav = [
   { title: "POS", url: "/pos", icon: ShoppingCart },
   { title: "Cierre Diario", url: "/cierre-diario", icon: ClipboardCheck },
   { title: "Mis Comisiones", url: "/comisiones", icon: BadgeDollarSign },
+  { title: "Asesor IA", url: "/asesor-ventas", icon: Bot },
 ];
 
 export function AppSidebar() {

@@ -23,6 +23,7 @@ import Comisiones from "./pages/Comisiones";
 import Reportes from "./pages/Reportes";
 import Configuracion from "./pages/Configuracion";
 import Gastos from "./pages/Gastos";
+import AsesorVentas from "./pages/AsesorVentas";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -55,6 +56,7 @@ const App = () => (
               <Route path="/reportes" element={<Reportes />} />
               <Route path="/configuracion" element={<Configuracion />} />
               <Route path="/gastos" element={<Gastos />} />
+              <Route path="/asesor-ventas" element={<AsesorVentas />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
