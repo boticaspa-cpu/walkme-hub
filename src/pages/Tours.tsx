@@ -526,7 +526,7 @@ export default function Tours() {
         const GENERAL = "__GENERAL__";
         setVariants(data.map((v: any) => ({
           id: v.id,
-          package_name: (!v.package_name || v.package_name === "") ? GENERAL : v.package_name,
+          package_name: v.package_name || "",
           zone: v.zone,
           pax_type: v.pax_type || "Adulto",
           nationality: v.nationality || "Extranjero",
