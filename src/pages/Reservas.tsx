@@ -279,6 +279,8 @@ export default function Reservas() {
         if (error) throw error;
       } else {
         // Create mode: insert one row per tour item
+        const itemsSubtotal = items.reduce((a, i) => a + i.total_mxn, 0);
+        const discountPerItem = items.length > 0 ? (shared.discount_mxn || 0) / items.length : 0;
         const inserts = items.map((item) => ({
           tour_id: item.tour_id || null,
           client_id: shared.client_id || null,
@@ -290,10 +292,11 @@ export default function Reservas() {
           pax_children: item.pax_children,
           zone: shared.zone,
           nationality: shared.nationality,
-          total_mxn: item.total_mxn,
+          total_mxn: Math.max(0, item.total_mxn - discountPerItem),
+          discount_mxn: items.length === 1 ? (shared.discount_mxn || 0) : Math.round(discountPerItem * 100) / 100,
           notes: shared.notes || null,
           created_by: user?.id,
-        }));
+        } as any));
         const { error } = await supabase.from("reservations").insert(inserts);
         if (error) throw error;
       }
