@@ -18,6 +18,10 @@ import {
 } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 /* ── types ── */
 interface PromoPackage {
@@ -76,6 +80,7 @@ export default function PaquetesXcaret() {
   const qc = useQueryClient();
 
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -336,7 +341,7 @@ export default function PaquetesXcaret() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => deleteMutation.mutate(pkg.id)}
+                        onClick={() => setDeletingId(pkg.id)}
                       >
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
@@ -442,6 +447,30 @@ export default function PaquetesXcaret() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete confirmation */}
+      <AlertDialog open={!!deletingId} onOpenChange={(open) => !open && setDeletingId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar paquete?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción no se puede deshacer. El paquete será eliminado permanentemente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (deletingId) deleteMutation.mutate(deletingId);
+                setDeletingId(null);
+              }}
+            >
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
