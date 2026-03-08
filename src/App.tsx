@@ -23,6 +23,7 @@ import Comisiones from "./pages/Comisiones";
 import Reportes from "./pages/Reportes";
 import Configuracion from "./pages/Configuracion";
 import Gastos from "./pages/Gastos";
+import AsesorVentas from "./pages/AsesorVentas";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
