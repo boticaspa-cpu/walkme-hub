@@ -159,7 +159,7 @@ export default function Cotizaciones() {
     // 4. Tour base price
     const tour = tours.find((t: any) => t.id === tourId);
     if (!tour) return 0;
-    return paxType === "Niño" ? (tour as any).suggested_price_mxn ?? 0 : (tour as any).price_mxn ?? 0;
+    return paxType === "Menor" ? (tour as any).suggested_price_mxn ?? 0 : (tour as any).price_mxn ?? 0;
   };
 
   const saveMutation = useMutation({
