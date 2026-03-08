@@ -260,7 +260,9 @@ export default function PaquetesXcaret() {
       const t = tours.find((x) => x.id === tid);
       return acc + (t ? tourToMxnAdult(t) : 0);
     }, 0);
-    return { sumMxn, ...calcXcaretPrices(sumMxn) };
+    const discount = sumMxn * 0.20;
+    const total = sumMxn - discount;
+    return { sumMxn, discount, total, ...calcXcaretPrices(sumMxn) };
   }, [selectedTourIds, tours]);
 
   const tourNameMap = useMemo(() => {
@@ -269,6 +271,14 @@ export default function PaquetesXcaret() {
     return m;
   }, [tours]);
 
+  /* helper: compute subtotal for a saved package from its tour_ids */
+  function pkgSubtotal(pkg: PromoPackage) {
+    return (pkg.tour_ids ?? []).reduce((acc, tid) => {
+      const t = tours.find((x) => x.id === tid);
+      return acc + (t ? tourToMxnAdult(t) : 0);
+    }, 0);
+  }
+
   return (
     <div className="space-y-6 p-4 sm:p-6">
       {/* Header */}
@@ -276,7 +286,7 @@ export default function PaquetesXcaret() {
         <div>
           <h1 className="text-2xl font-bold text-foreground">Paquetes Xcaret</h1>
           <p className="text-sm text-muted-foreground">
-            Combina 2+ tours y aplica la regla del contrato Xcaret (80 / 75 / 70 / 75 %)
+            Combina 2+ tours y aplica el descuento de paquete Xcaret (–20%)
           </p>
         </div>
         <Button onClick={openCreate}>
@@ -302,16 +312,18 @@ export default function PaquetesXcaret() {
                 <TableRow>
                   <TableHead>Paquete</TableHead>
                   <TableHead className="hidden sm:table-cell">Tours</TableHead>
-                  <TableHead className="text-right">Pub. Adulto</TableHead>
-                  <TableHead className="text-right hidden sm:table-cell">Pub. Menor</TableHead>
-                  <TableHead className="text-right hidden md:table-cell">Pref. Adulto</TableHead>
-                  <TableHead className="text-right hidden md:table-cell">Pref. Menor</TableHead>
+                  <TableHead className="text-right hidden sm:table-cell">Subtotal</TableHead>
+                  <TableHead className="text-right hidden sm:table-cell">Dcto. paquete</TableHead>
+                  <TableHead className="text-right">Total Adulto</TableHead>
                   <TableHead className="text-center">Activo</TableHead>
                    <TableHead />
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {packages.map((pkg) => (
+                {packages.map((pkg) => {
+                  const sub = pkgSubtotal(pkg);
+                  const disc = sub * 0.20;
+                  return (
                   <TableRow
                     key={pkg.id}
                     className="cursor-pointer"
@@ -327,10 +339,9 @@ export default function PaquetesXcaret() {
                         ))}
                       </div>
                     </TableCell>
-                    <TableCell className="text-right">{fmt(pkg.public_price_adult_usd)}</TableCell>
-                    <TableCell className="text-right hidden sm:table-cell">{fmt(pkg.public_price_child_usd)}</TableCell>
-                    <TableCell className="text-right hidden md:table-cell">{fmt(pkg.preferential_adult_usd)}</TableCell>
-                    <TableCell className="text-right hidden md:table-cell">{fmt(pkg.preferential_child_usd)}</TableCell>
+                    <TableCell className="text-right hidden sm:table-cell text-muted-foreground">{fmt(sub)}</TableCell>
+                    <TableCell className="text-right hidden sm:table-cell text-green-600">–{fmt(disc)}</TableCell>
+                    <TableCell className="text-right font-semibold">{fmt(pkg.public_price_adult_usd)}</TableCell>
                     <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
                       <Switch
                         checked={pkg.active}
@@ -347,7 +358,8 @@ export default function PaquetesXcaret() {
                       </Button>
                     </TableCell>
                   </TableRow>
-                ))}
+                  );
+                })}
               </TableBody>
             </Table>
           </CardContent>
@@ -407,27 +419,41 @@ export default function PaquetesXcaret() {
               </div>
             </div>
 
-            {/* Live calculator */}
+            {/* Live calculator – Xcaret-style breakdown */}
             {selectedTourIds.length >= 2 && (
               <Card className="bg-muted/40">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm">Cálculo automático (regla Xcaret)</CardTitle>
+                  <CardTitle className="text-sm">Desglose del paquete</CardTitle>
                 </CardHeader>
-                <CardContent className="text-sm space-y-1">
-                  <p>
-                    Suma precios públicos adulto (MXN): <strong>{fmt(liveCalc.sumMxn)}</strong>
-                  </p>
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 pt-1">
-                    <span className="text-muted-foreground">Público Adulto (×0.80):</span>
-                    <span className="font-semibold">{fmt(liveCalc.publicAdult)}</span>
-                    <span className="text-muted-foreground">Público Menor (×0.75):</span>
-                    <span className="font-semibold">{fmt(liveCalc.publicChild)}</span>
-                    <span className="text-muted-foreground">Pref. Adulto (×0.70):</span>
-                    <span className="font-semibold">{fmt(liveCalc.prefAdult)}</span>
-                    <span className="text-muted-foreground">Pref. Menor (×0.75):</span>
-                    <span className="font-semibold">{fmt(liveCalc.prefChild)}</span>
-                    <span className="text-muted-foreground">Comisión:</span>
-                    <span className="font-semibold">30%</span>
+                <CardContent className="text-sm space-y-3">
+                  {/* Individual tour prices */}
+                  <div className="space-y-1.5">
+                    {selectedTourIds.map((tid) => {
+                      const t = tours.find((x) => x.id === tid);
+                      if (!t) return null;
+                      return (
+                        <div key={tid} className="flex justify-between">
+                          <span className="text-muted-foreground truncate mr-2">{t.title}</span>
+                          <span>{fmt(tourToMxnAdult(t))}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="border-t border-border pt-2 space-y-1.5">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Subtotal</span>
+                      <span>{fmt(liveCalc.sumMxn)}</span>
+                    </div>
+                    <div className="flex justify-between text-green-600">
+                      <span>Dcto. paquete combinable (–20%)</span>
+                      <span>–{fmt(liveCalc.discount)}</span>
+                    </div>
+                  </div>
+
+                  <div className="border-t border-border pt-2 flex justify-between font-bold text-base">
+                    <span>Total Adulto</span>
+                    <span>{fmt(liveCalc.total)}</span>
                   </div>
                 </CardContent>
               </Card>
