@@ -1338,25 +1338,32 @@ export default function Tours() {
               </>
             )}
 
-            {/* Tax fields (both modes) */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label>Impuesto al Abordar — Adulto USD</Label>
-                <Input type="number" value={form.tax_adult_usd} onChange={(e) => setForm({ ...form, tax_adult_usd: e.target.value })} placeholder="0" />
+            {/* Tax toggle + conditional fields */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label>¿Impuestos se pagan al abordar?</Label>
+                  <p className="text-xs text-muted-foreground">Activado = el cliente paga impuestos en efectivo al abordar</p>
+                </div>
+                <Switch checked={showTaxFields} onCheckedChange={(checked) => {
+                  setShowTaxFields(checked);
+                  if (!checked) {
+                    setForm({ ...form, tax_adult_usd: "", tax_child_usd: "" });
+                  }
+                }} />
               </div>
-              <div className="space-y-1.5">
-                <Label>Impuesto al Abordar — Niño USD</Label>
-                <Input type="number" value={form.tax_child_usd} onChange={(e) => setForm({ ...form, tax_child_usd: e.target.value })} placeholder="0" />
-              </div>
-            </div>
-
-            {/* Alerta OJO */}
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2">
-              <span className="text-amber-600 text-lg leading-none">⚠️</span>
-              <div>
-                <p className="text-sm font-semibold text-amber-800">Impuestos al abordar</p>
-                <p className="text-xs text-amber-700">Si el operador cobra impuestos al abordar, se configurará automáticamente desde la ficha del operador.</p>
-              </div>
+              {showTaxFields && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label>Impuesto Adulto USD</Label>
+                    <Input type="number" value={form.tax_adult_usd} onChange={(e) => setForm({ ...form, tax_adult_usd: e.target.value })} placeholder="0" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Impuesto Niño USD</Label>
+                    <Input type="number" value={form.tax_child_usd} onChange={(e) => setForm({ ...form, tax_child_usd: e.target.value })} placeholder="0" />
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Edad menor */}
