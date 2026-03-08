@@ -5,6 +5,7 @@ import { Topbar } from "./Topbar";
 import { useAuth } from "@/contexts/AuthContext";
 import { Loader2 } from "lucide-react";
 import { FloatingChatWidget } from "@/components/chat/FloatingChatWidget";
+import { CashSessionGuard } from "@/components/cash/CashSessionGuard";
 
 export function AppLayout() {
   const { isAuthenticated, loading } = useAuth();
