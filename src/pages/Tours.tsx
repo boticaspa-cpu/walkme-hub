@@ -523,7 +523,7 @@ export default function Tours() {
         .eq("tour_id", tour.id)
         .eq("active", true);
       if (data && data.length > 0) {
-        const GENERAL = "__GENERAL__";
+        
         setVariants(data.map((v: any) => ({
           id: v.id,
           package_name: v.package_name || "",
