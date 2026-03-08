@@ -332,6 +332,22 @@ export default function Operadores() {
             </div>
 
             <div className="space-y-1.5">
+              <Label>Cobro de Impuestos</Label>
+              <Select value={form.fee_collection_mode} onValueChange={(v) => setForm({ ...form, fee_collection_mode: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="agency">Los cobramos nosotros</SelectItem>
+                  <SelectItem value="on_site">Se pagan al abordar</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                {form.fee_collection_mode === "on_site"
+                  ? "El cliente paga impuestos en efectivo al abordar."
+                  : "Los impuestos se incluyen en el precio que cobramos."}
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
               <Label>Tags (separados por coma)</Label>
               <Input
                 placeholder="Bilingüe, Premium, Eco-friendly"
