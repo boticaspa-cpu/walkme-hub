@@ -24,6 +24,7 @@ import Reportes from "./pages/Reportes";
 import Configuracion from "./pages/Configuracion";
 import Gastos from "./pages/Gastos";
 import PaquetesXcaret from "./pages/PaquetesXcaret";
+import Promociones from "./pages/Promociones";
 
 import NotFound from "./pages/NotFound";
 
