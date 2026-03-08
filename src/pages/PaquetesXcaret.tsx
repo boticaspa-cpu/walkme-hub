@@ -327,28 +327,20 @@ export default function PaquetesXcaret() {
                     <TableCell className="text-right hidden md:table-cell">{fmt(pkg.preferential_adult_usd)}</TableCell>
                     <TableCell className="text-right hidden md:table-cell">{fmt(pkg.preferential_child_usd)}</TableCell>
                     <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
-                      {isAdmin ? (
-                        <Switch
-                          checked={pkg.active}
-                          onCheckedChange={(v) => toggleMutation.mutate({ id: pkg.id, active: v })}
-                        />
-                      ) : pkg.active ? (
-                        <ToggleRight className="h-4 w-4 text-primary mx-auto" />
-                      ) : (
-                        <ToggleLeft className="h-4 w-4 text-muted-foreground mx-auto" />
-                      )}
+                      <Switch
+                        checked={pkg.active}
+                        onCheckedChange={(v) => toggleMutation.mutate({ id: pkg.id, active: v })}
+                      />
                     </TableCell>
-                    {isAdmin && (
-                      <TableCell onClick={(e) => e.stopPropagation()}>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => deleteMutation.mutate(pkg.id)}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </TableCell>
-                    )}
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => deleteMutation.mutate(pkg.id)}
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
