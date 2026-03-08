@@ -87,7 +87,7 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="offcanvas" className="hidden sm:flex">
       <SidebarHeader className="p-4">
-        <div className="flex items-center gap-2">
+        <Link to="/dashboard" className="flex items-center gap-2">
           <img src={walkmeLogo} alt="Walkme Tours" className="h-9 w-9 rounded-lg object-cover" />
           <div className="flex flex-col">
            <span className="text-sm font-accent text-sidebar-primary tracking-wide">
@@ -95,7 +95,7 @@ export function AppSidebar() {
             </span>
             <span className="text-xs text-sidebar-foreground/60">Dashboard</span>
           </div>
-        </div>
+        </Link>
       </SidebarHeader>
 
       <SidebarSeparator />
