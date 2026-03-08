@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Plus, Search, FileText, Send, Pencil, Trash2, CheckCircle, ExternalLink, MoreVertical } from "lucide-react";
+import DateRangeFilter from "@/components/shared/DateRangeFilter";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
