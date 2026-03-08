@@ -1,55 +1,40 @@
 
 
-# Corrección FASE 2 — Fee de tarjeta como costo interno
+# Plan: Fix missing trigger + create Marina Mena's profile
 
-## Problema actual
-El fee de tarjeta se suma al `totalMxn` cobrado al cliente. Incorrecto: el precio ya incluye el margen de tarjeta absorbido por la agencia.
+## Root Cause
+The `handle_new_user()` function exists but there is **no trigger** on `auth.users` that calls it. New signups never get a profile or role created.
 
-## Regla correcta
-- Cliente paga siempre `baseTotalMxn` (sin recargo)
-- El fee de tarjeta es un costo operativo interno
-- Solo impacta el cálculo de utilidad → comisión del vendedor
-- `profit = sale - netCost - taxFee - cardFee`
+## Changes
 
-## Cambios en `src/components/reservations/ReservationCheckout.tsx`
+### 1. DB Migration — Create the trigger + backfill Marina Mena
 
-### Lógica (líneas 109-112)
-```
-// ANTES:
-cardFeeAmount = paymentMethod === "card" ? Math.round(baseTotalMxn * cardFeePercent) / 100 : 0;
-totalMxn = baseTotalMxn + cardFeeAmount;
+```sql
+-- Create the trigger on auth.users
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW
+  EXECUTE FUNCTION public.handle_new_user();
 
-// DESPUÉS:
-cardFeeAmount = paymentMethod === "card" ? Math.round(baseTotalMxn * cardFeePercent) / 100 : 0;
-totalMxn = baseTotalMxn;  // cliente NO paga recargo
-```
+-- Backfill the existing user who was missed
+INSERT INTO public.profiles (id, full_name, approval_status)
+VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'Marina Mena', 'pending')
+ON CONFLICT (id) DO NOTHING;
 
-### Sale insert (línea 136)
-`total_mxn: baseTotalMxn` (ya no `totalMxn` con fee)
-
-### Cash movement (línea 160)
-`amount_mxn: baseTotalMxn` (el movimiento refleja lo cobrado al cliente)
-
-### Comisión (línea 257)
-```
-// ANTES:
-profit = max(0, baseTotalMxn - totalNetCost - totalTaxFee)
-
-// DESPUÉS:
-profit = max(0, baseTotalMxn - totalNetCost - totalTaxFee - cardFeeAmount)
+INSERT INTO public.user_roles (user_id, role)
+VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'seller')
+ON CONFLICT (user_id, role) DO NOTHING;
 ```
 
-### UI (líneas 337-358)
-Eliminar el bloque de desglose de fee. Solo mostrar el total simple siempre. Opcionalmente, si `paymentMethod === "card"`, mostrar una nota discreta: "Incluye absorción de comisión tarjeta ({cardFeePercent}%)".
+### 2. No code changes needed
+The `AuthContext` and `Configuracion` page already handle the approval flow. Once Marina's profile exists with `pending` status, she'll appear in the user list on Configuracion and you can approve her from there.
 
-## Cómo queda el cálculo
+## Result
+- Marina Mena will appear in Configuracion with status "Pendiente"
+- You approve her and she can log in
+- Future signups will automatically get profile + seller role via the trigger
 
-| Método | Total cobrado | Fee interno | Utilidad comisionable |
-|---|---|---|---|
-| Cash | baseTotalMxn | 0 | sale - netCost - taxFee |
-| Card | baseTotalMxn | baseTotalMxn × N% | sale - netCost - taxFee - cardFee |
-| Transfer | baseTotalMxn | 0 | sale - netCost - taxFee |
-
-## Archivos
-Solo `src/components/reservations/ReservationCheckout.tsx`. Cero SQL. Cero otros archivos.
+| File | Change |
+|---|---|
+| SQL Migration | Attach trigger to auth.users + backfill Marina Mena |
 

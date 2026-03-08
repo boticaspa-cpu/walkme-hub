@@ -108,7 +108,7 @@ export default function ReservationCheckout({ reservation, open, onOpenChange, o
 
   const baseTotalMxn = recalculatedTotal ?? reservation?.total_mxn ?? 0;
   const cardFeeAmount = paymentMethod === "card" ? Math.round(baseTotalMxn * cardFeePercent) / 100 : 0;
-  const totalMxn = baseTotalMxn + cardFeeAmount;
+  const totalMxn = baseTotalMxn; // Cliente NO paga recargo — fee es costo interno
   const needsCashSession = paymentMethod === "cash";
 
   const checkoutMutation = useMutation({
@@ -133,7 +133,7 @@ export default function ReservationCheckout({ reservation, open, onOpenChange, o
         exchange_rate: er,
         subtotal_mxn: baseTotalMxn,
         discount_mxn: 0,
-        total_mxn: totalMxn,
+        total_mxn: baseTotalMxn,
         sold_by: user?.id,
         cash_session_id: activeSession?.id || null,
       }).select("id").single();
@@ -157,8 +157,8 @@ export default function ReservationCheckout({ reservation, open, onOpenChange, o
         await (supabase as any).from("cash_movements").insert({
           session_id: activeSession.id,
           type: movType,
-          amount_mxn: totalMxn,
-          amount_fx: currency !== "MXN" ? totalMxn / er : null,
+          amount_mxn: baseTotalMxn,
+          amount_fx: currency !== "MXN" ? baseTotalMxn / er : null,
           currency_fx: currency !== "MXN" ? currency : null,
           reference: `Reserva ${reservation.folio || reservation.id.slice(0, 8)}`,
           created_by: user?.id,
@@ -254,7 +254,7 @@ export default function ReservationCheckout({ reservation, open, onOpenChange, o
             totalNetCost = (adultCost * (reservation.pax_adults || 1)) + (childCost * (reservation.pax_children || 0));
             totalTaxFee = (adultTax * (reservation.pax_adults || 1)) + (childTax * (reservation.pax_children || 0));
           }
-          const profit = Math.max(0, baseTotalMxn - totalNetCost - totalTaxFee);
+          const profit = Math.max(0, baseTotalMxn - totalNetCost - totalTaxFee - cardFeeAmount);
           const commissionAmount = profit * rate;
           if (commissionAmount > 0) {
             await (supabase as any).from("commissions").insert({
@@ -334,27 +334,14 @@ export default function ReservationCheckout({ reservation, open, onOpenChange, o
               </>
             )}
             <Separator />
-            {/* Card fee breakdown */}
-            {cardFeeAmount > 0 ? (
-              <>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Subtotal tour</span>
-                  <span>{fmt(baseTotalMxn)}</span>
-                </div>
-                <div className="flex justify-between text-sm text-amber-600">
-                  <span>Comisión tarjeta ({cardFeePercent}%)</span>
-                  <span>+{fmt(cardFeeAmount)}</span>
-                </div>
-                <div className="flex justify-between text-base font-bold">
-                  <span>Total a cobrar</span>
-                  <span>{fmt(totalMxn)}</span>
-                </div>
-              </>
-            ) : (
-              <div className="flex justify-between text-base font-bold">
-                <span>Total</span>
-                <span>{fmt(totalMxn)}</span>
-              </div>
+            <div className="flex justify-between text-base font-bold">
+              <span>Total</span>
+              <span>{fmt(baseTotalMxn)}</span>
+            </div>
+            {paymentMethod === "card" && cardFeePercent > 0 && (
+              <p className="text-xs text-muted-foreground">
+                Incluye absorción de comisión tarjeta ({cardFeePercent}%)
+              </p>
             )}
           </div>
 
