@@ -37,7 +37,8 @@ const movementLabels: Record<string, string> = {
 };
 
 export default function CierreDiario() {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
+  const isAdmin = role === "admin";
   const navigate = useNavigate();
   const qc = useQueryClient();
   const {

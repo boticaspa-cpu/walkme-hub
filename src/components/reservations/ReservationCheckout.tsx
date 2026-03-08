@@ -158,12 +158,10 @@ export default function ReservationCheckout({ reservation, open, onOpenChange, o
           let payableMonth: string | null = null;
 
           if (rule === "prepago") {
-            // Due 1 day before service
             const d = new Date(serviceDate + "T00:00:00");
             d.setDate(d.getDate() - 1);
             dueDate = d.toISOString().split("T")[0];
           } else {
-            // mensual: last day of service month
             const d = new Date(serviceDate + "T00:00:00");
             const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0);
             dueDate = lastDay.toISOString().split("T")[0];
@@ -183,6 +181,24 @@ export default function ReservationCheckout({ reservation, open, onOpenChange, o
             amount_fx: amountFx,
             currency_fx: operator.base_currency !== "MXN" ? operator.base_currency : null,
             status: "pending",
+          });
+        }
+      }
+
+      // 6. Auto-generate seller commission
+      if (user?.id) {
+        const { data: sellerProfile } = await (supabase as any)
+          .from("profiles")
+          .select("commission_rate")
+          .eq("id", user.id)
+          .single();
+        const rate = sellerProfile?.commission_rate ?? 0.10;
+        if (rate > 0) {
+          await (supabase as any).from("commissions").insert({
+            seller_id: user.id,
+            sale_id: sale.id,
+            rate,
+            amount_mxn: totalMxn * rate,
           });
         }
       }

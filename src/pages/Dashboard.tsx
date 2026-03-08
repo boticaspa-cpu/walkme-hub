@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
   DollarSign, CalendarCheck, Users, TrendingUp, Map, FileText, ArrowRight,
+  Wallet, Percent, Receipt,
 } from "lucide-react";
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,6 +17,13 @@ export default function Dashboard() {
   const { role } = useAuth();
   const isAdmin = role === "admin";
   const todayStr = new Date().toISOString().split("T")[0];
+  const monthStart = todayStr.slice(0, 7) + "-01";
+  const monthEnd = (() => {
+    const d = new Date();
+    const last = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+    return last.toISOString().split("T")[0];
+  })();
+  const currentMonth = todayStr.slice(0, 7);
 
   const { data: salesToday = [] } = useQuery({
     queryKey: ["dashboard-sales-today", todayStr],
@@ -74,6 +82,48 @@ export default function Dashboard() {
     },
   });
 
+  // Admin-only financial KPIs
+  const { data: pendingPayables = 0 } = useQuery({
+    queryKey: ["dashboard-payables", currentMonth],
+    enabled: isAdmin,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("operator_payables")
+        .select("amount_mxn")
+        .eq("status", "pending")
+        .gte("due_date", monthStart)
+        .lte("due_date", monthEnd);
+      if (error) throw error;
+      return (data ?? []).reduce((a: number, r: any) => a + Number(r.amount_mxn), 0);
+    },
+  });
+
+  const { data: monthCommissions = 0 } = useQuery({
+    queryKey: ["dashboard-commissions", currentMonth],
+    enabled: isAdmin,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("commissions")
+        .select("amount_mxn")
+        .gte("created_at", `${monthStart}T00:00:00`)
+        .lte("created_at", `${monthEnd}T23:59:59`);
+      if (error) throw error;
+      return (data ?? []).reduce((a: number, r: any) => a + Number(r.amount_mxn), 0);
+    },
+  });
+
+  const { data: expenseSummary = { paid: 0, planned: 0 } } = useQuery({
+    queryKey: ["dashboard-expenses", currentMonth],
+    enabled: isAdmin,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("expense_items")
+        .select("status, paid_amount_mxn, estimated_amount_mxn")
+        .eq("period_month", currentMonth);
+      if (error) throw error;
+      const paid = (data ?? []).filter((e: any) => e.status === "paid").reduce((a: number, e: any) => a + Number(e.paid_amount_mxn || 0), 0);
+      const planned = (data ?? []).reduce((a: number, e: any) => a + Number(e.estimated_amount_mxn || 0), 0);
+      return { paid, planned };
+    },
+  });
+
   const totalSalesToday = salesToday.reduce((a, s: any) => a + Number(s.total_mxn), 0);
   const resConfirmed = reservationsToday.filter((r: any) => r.status === "scheduled").length;
 
@@ -90,6 +140,54 @@ export default function Dashboard() {
         <KpiCard title="Leads Activos" value={activeLeads.length} subtitle="sin cerrar" icon={Users} />
         <KpiCard title="Ventas Hoy" value={salesToday.length} subtitle="transacciones" icon={TrendingUp} />
       </div>
+
+      {/* Admin-only financial KPIs */}
+      {isAdmin && (
+        <div className="grid gap-4 sm:grid-cols-3">
+          <Card>
+            <CardContent className="py-4">
+              <div className="flex items-center gap-3">
+                <div className="rounded-lg bg-destructive/10 p-2">
+                  <Wallet className="h-5 w-5 text-destructive" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Pagos Prov. Pendientes</p>
+                  <p className="text-lg font-bold">{fmt(pendingPayables)}</p>
+                  <p className="text-[10px] text-muted-foreground">Este mes</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="py-4">
+              <div className="flex items-center gap-3">
+                <div className="rounded-lg bg-primary/10 p-2">
+                  <Percent className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Comisiones del Mes</p>
+                  <p className="text-lg font-bold">{fmt(monthCommissions)}</p>
+                  <p className="text-[10px] text-muted-foreground">Generadas</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="py-4">
+              <div className="flex items-center gap-3">
+                <div className="rounded-lg bg-amber-500/10 p-2">
+                  <Receipt className="h-5 w-5 text-amber-600" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Gastos del Mes</p>
+                  <p className="text-lg font-bold">{fmt(expenseSummary.paid)}</p>
+                  <p className="text-[10px] text-muted-foreground">de {fmt(expenseSummary.planned)} planeado</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Link to="/cotizaciones"><Card className="cursor-pointer border-dashed hover:border-primary hover:bg-primary/5 transition-colors"><CardContent className="flex items-center gap-3 p-4"><FileText className="h-5 w-5 text-primary" /><span className="font-medium text-sm">Nueva Cotización</span></CardContent></Card></Link>
