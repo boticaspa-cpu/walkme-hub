@@ -285,8 +285,13 @@ export default function Promociones() {
                           {promo.description && (
                             <div className="text-xs text-muted-foreground line-clamp-1">{promo.description}</div>
                           )}
-                          <div className="sm:hidden text-xs text-muted-foreground mt-1">
-                            {tourNames.length} tour(s)
+                          <div className="sm:hidden text-xs text-muted-foreground mt-1 space-y-0.5">
+                            <span>{tourNames.length} tour(s)</span>
+                            <div className="flex gap-2">
+                              <span>{fmt(promo.subtotal_mxn)}</span>
+                              <span className="text-destructive">-{fmt(promo.discount_mxn)}</span>
+                              <span className="font-semibold text-foreground">={fmt(promo.total_mxn)}</span>
+                            </div>
                           </div>
                         </TableCell>
                         <TableCell className="hidden sm:table-cell">
@@ -299,14 +304,14 @@ export default function Promociones() {
                             )}
                           </div>
                         </TableCell>
-                        <TableCell className="text-right text-sm">{fmt(promo.subtotal_mxn)}</TableCell>
-                        <TableCell className="text-right text-sm text-destructive">
+                        <TableCell className="text-right text-sm hidden sm:table-cell">{fmt(promo.subtotal_mxn)}</TableCell>
+                        <TableCell className="text-right text-sm text-destructive hidden sm:table-cell">
                           -{fmt(promo.discount_mxn)}
                           <div className="text-xs text-muted-foreground">
                             {promo.discount_mode === "percent" ? `${promo.discount_value}%` : "Fijo"}
                           </div>
                         </TableCell>
-                        <TableCell className="text-right font-semibold">{fmt(promo.total_mxn)}</TableCell>
+                        <TableCell className="text-right font-semibold hidden sm:table-cell">{fmt(promo.total_mxn)}</TableCell>
                         <TableCell className="hidden sm:table-cell">
                           {isAdmin ? (
                             <Switch
@@ -320,21 +325,12 @@ export default function Promociones() {
                           )}
                         </TableCell>
                         <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-1">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-7 text-xs"
-                              onClick={() => navigate(`/cotizaciones?promotion_id=${promo.id}`)}
-                            >
+                          {/* Desktop */}
+                          <div className="hidden sm:flex items-center justify-end gap-1">
+                            <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => navigate(`/cotizaciones?promotion_id=${promo.id}`)}>
                               <FileText className="mr-1 h-3 w-3" />Cotizar
                             </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-7 text-xs"
-                              onClick={() => navigate(`/reservas?promotion_id=${promo.id}`)}
-                            >
+                            <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => navigate(`/reservas?promotion_id=${promo.id}`)}>
                               <CalendarCheck className="mr-1 h-3 w-3" />Reservar
                             </Button>
                             {isAdmin && (
@@ -347,6 +343,34 @@ export default function Promociones() {
                                 </Button>
                               </>
                             )}
+                          </div>
+                          {/* Mobile */}
+                          <div className="sm:hidden">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => navigate(`/cotizaciones?promotion_id=${promo.id}`)}>
+                                  <FileText className="mr-2 h-4 w-4" />Cotizar
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => navigate(`/reservas?promotion_id=${promo.id}`)}>
+                                  <CalendarCheck className="mr-2 h-4 w-4" />Reservar
+                                </DropdownMenuItem>
+                                {isAdmin && (
+                                  <>
+                                    <DropdownMenuItem onClick={() => openEdit(promo)}>
+                                      <Pencil className="mr-2 h-4 w-4" />Editar
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem className="text-destructive" onClick={() => setDeletingId(promo.id)}>
+                                      <Trash2 className="mr-2 h-4 w-4" />Eliminar
+                                    </DropdownMenuItem>
+                                  </>
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </div>
                         </TableCell>
                       </TableRow>
