@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Plus, UserPlus, Pencil, DollarSign, Check, Ban, ShieldCheck, ShieldAlert } from "lucide-react";
+import { Plus, UserPlus, Pencil, DollarSign, Check, Ban, ShieldCheck, ShieldAlert, Copy, CheckCheck } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
