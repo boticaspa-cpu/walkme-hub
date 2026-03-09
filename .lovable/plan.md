@@ -1,16 +1,40 @@
 
 
-# Fix: CashSessionGuard blocking its own escape route
+# Plan: Fix missing trigger + create Marina Mena's profile
 
-## Problem
-`CashSessionGuard` shows a blocking modal when there's an open session from a previous day. The modal navigates to `/cierre-diario`, but the guard also renders on that page, creating an infinite loop where the user can never reach the close controls.
+## Root Cause
+The `handle_new_user()` function exists but there is **no trigger** on `auth.users` that calls it. New signups never get a profile or role created.
 
-## Fix
-In `CashSessionGuard`, check the current route. If the user is already on `/cierre-diario`, don't show the blocking modal — let them access the page to perform the close.
+## Changes
 
-### File: `src/components/cash/CashSessionGuard.tsx`
-- Import `useLocation` from `react-router-dom`
-- Before showing the old-session modal, check `if (location.pathname === "/cierre-diario") return null`
+### 1. DB Migration — Create the trigger + backfill Marina Mena
 
-This is a 3-line change that unblocks the user immediately.
+```sql
+-- Create the trigger on auth.users
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW
+  EXECUTE FUNCTION public.handle_new_user();
+
+-- Backfill the existing user who was missed
+INSERT INTO public.profiles (id, full_name, approval_status)
+VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'Marina Mena', 'pending')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO public.user_roles (user_id, role)
+VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'seller')
+ON CONFLICT (user_id, role) DO NOTHING;
+```
+
+### 2. No code changes needed
+The `AuthContext` and `Configuracion` page already handle the approval flow. Once Marina's profile exists with `pending` status, she'll appear in the user list on Configuracion and you can approve her from there.
+
+## Result
+- Marina Mena will appear in Configuracion with status "Pendiente"
+- You approve her and she can log in
+- Future signups will automatically get profile + seller role via the trigger
+
+| File | Change |
+|---|---|
+| SQL Migration | Attach trigger to auth.users + backfill Marina Mena |
 

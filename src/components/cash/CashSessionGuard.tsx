@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useCashSession } from "@/hooks/useCashSession";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -12,11 +12,13 @@ import { es } from "date-fns/locale";
 
 export function CashSessionGuard() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { activeSession, isSessionOpen, isLoadingSession, defaultRegister, openSession } = useCashSession();
   const [floatAmount, setFloatAmount] = useState("0");
   const [isOpening, setIsOpening] = useState(false);
 
   if (isLoadingSession) return null;
+  if (location.pathname === "/cierre-diario") return null;
 
   const today = startOfDay(new Date());
 
