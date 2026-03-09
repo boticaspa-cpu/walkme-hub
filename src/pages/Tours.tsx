@@ -313,6 +313,13 @@ export default function Tours() {
   const [pendingRows, setPendingRows] = useState<Record<string, string>[]>([]);
   const [pendingAliasMap, setPendingAliasMap] = useState<Record<string, string[]>>({});
   const [pendingImportMode, setPendingImportMode] = useState<"generales" | "paquetes" | "matriz" | null>(null);
+  // Sheet preview intermediate state
+  const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
+  const [previewData, setPreviewData] = useState<{
+    headers: string[]; sampleRows: Record<string, string>[]; allRows: Record<string, string>[];
+    matchedCount: number; totalFields: number; matchedFields: string[];
+    tabRequested: string; aliasMap: Record<string, string[]>; mode: "generales" | "paquetes" | "matriz";
+  } | null>(null);
   const docInputRef = useRef<HTMLInputElement>(null);
   const [saving, setSaving] = useState(false);
   const [packages, setPackages] = useState<PackageForm[]>([]);
