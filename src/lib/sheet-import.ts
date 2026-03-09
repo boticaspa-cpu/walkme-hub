@@ -225,15 +225,13 @@ function lcsLength(a: string, b: string): number {
   return max;
 }
 
-/** Score how well a header matches a field alias (0 = no match, higher = better) */
+/** Score how well a header matches a field alias (0 = no match, higher = better).
+ *  Only exact and contains matches — NO fuzzy LCS to avoid false positives. */
 function matchScore(headerNorm: string, aliasNorm: string): number {
   if (headerNorm === aliasNorm) return 1000; // exact
   if (headerNorm.includes(aliasNorm) || aliasNorm.includes(headerNorm)) {
     return 500 + Math.min(headerNorm.length, aliasNorm.length);
   }
-  const lcs = lcsLength(headerNorm, aliasNorm);
-  const minLen = Math.min(headerNorm.length, aliasNorm.length);
-  if (minLen > 3 && lcs / minLen >= 0.6) return lcs * 10;
   return 0;
 }
 
