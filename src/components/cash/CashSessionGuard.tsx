@@ -18,6 +18,7 @@ export function CashSessionGuard() {
   const [isOpening, setIsOpening] = useState(false);
 
   if (isLoadingSession) return null;
+  if (location.pathname === "/cierre-diario") return null;
 
   const today = startOfDay(new Date());
 
