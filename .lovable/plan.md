@@ -1,65 +1,79 @@
 
-# Plan: Completar Validaciones Pendientes BLOQUE 1
+# Plan: Limpieza de Datos Operativos - Base de Datos
 
-## Contexto
-Retomar QA desde interrupciones previas. Ya confirmado: card payment, fees internos, comisiones admin view, payment status updates.
+## Análisis y Preparación
 
-## Validaciones Pendientes
+Voy a preparar la limpieza de datos operativos manteniendo intacto el catálogo maestro, configuración y usuarios.
 
-### 1. COMISIONES - SELLER VIEW
-**Objetivo**: Verificar RLS funciona para sellers (solo ven propias comisiones)
-**Proceso**:
-- Login como seller existente
-- Navegar a `/comisiones`  
-- Verificar que columna "Vendedor" no aparece
-- Confirmar que solo muestra comisiones propias vs admin view
-- SQL audit: `SELECT seller_id FROM commissions WHERE visible_to_seller`
-
-### 2. MULTI-TOUR REAL TEST
-**Objetivo**: Probar persistencia de campos nuevos con datos reales
-**Proceso**:
-- Crear reserva multi-tour desde `/reservas`
-- Llenar explícitamente:
-  - hotel_name: "Hotel Test QA"
-  - pickup_notes: "Lobby principal 8:30am"  
-  - pax_email: "test@walkme.com"
-  - operator_confirmation_code: "OP-123456"
-- Guardar y verificar en DB:
-```sql
-SELECT folio, hotel_name, pickup_notes, pax_email, operator_confirmation_code
-FROM reservations 
-WHERE created_at > NOW() - INTERVAL '10 minutes'
-AND (hotel_name != '' OR pickup_notes != '' OR pax_email != '' OR operator_confirmation_code != '');
+### A. Tablas a Borrar (Datos Operativos)
+```
+✅ BORRAR:
+- sales
+- sale_items  
+- commissions
+- quotes
+- quote_items
+- reservations
+- reservation_items
+- clients
+- leads
 ```
 
-### 3. OUTPUTS VALIDATION
-**Objetivo**: Confirmar que voucher/PDF/WhatsApp muestran campos nuevos
-**Para reserva con campos llenos**:
-- Voucher HTML: verificar campos aparecen correctamente
-- PDF generation: sin errores 500, campos visibles
-- WhatsApp message: formato correcto incluye nuevos campos
-- Browser network logs para detectar errores
+### B. Tablas a PRESERVAR (Catálogo y Configuración)
+```
+❌ NO BORRAR:
+- tours (catálogo maestro)
+- operators (operadores)
+- categories (categorías)
+- destinations (destinos)
+- tour_price_variants (precios del catálogo)
+- tour_packages (paquetes del catálogo)
+- promo_packages (promociones)
+- promo_package_tours (relaciones promo-tours)
+- promotion_tours (relaciones promoción-tours)
+- promotions (promociones)
+- settings (configuración)
+- profiles (perfiles de usuarios)
+- user_roles (roles de usuarios)
+- cash_sessions (sesiones de caja)
+- cash_movements (movimientos de caja)
+- daily_closings (cierres diarios)
+- cash_registers (cajas registradoras)
+- expense_concepts (conceptos de gastos)
+- expense_items (gastos)
+- operator_payables (pagos a operadores)
+- message_templates (plantillas de mensajes)
+```
 
-### 4. CAJA FLOW
-**Objetivo**: Validar flujo completo apertura → cobro → cierre
-**Proceso**:
-- Estado actual cash session
-- Si cerrada: abrir caja con float test
-- Si abierta: proceder con cobro
-- Cerrar caja y verificar no hay errores
-- Confirmar esperado vs contado calculation
+### C. Orden de Borrado por Foreign Keys
 
-## Metodología
-- **Empírico**: Testear comportamiento real, no asumir
-- **Datos reales**: Usar reservas/cuentas existentes donde posible  
-- **SQL validation**: Confirmar cada paso con queries
-- **Browser tools**: Para UI testing y error detection
+Basado en las relaciones de dependencia:
 
-## Entregables
-- Checklist [✅/⚠️/❌] para cada validación pendiente
-- Bugs reales encontrados (funcional vs datos vacíos vs QA incompleto)
-- Assessment final de qué está operacional
-- SQL queries exactas usadas para validación
+1. **sale_items** (depende de sales)
+2. **commissions** (depende de sales)
+3. **sales** (puede depender de clients, reservations)
+4. **quote_items** (depende de quotes)
+5. **reservation_items** (depende de reservations)
+6. **quotes** (puede depender de clients, reservations)
+7. **reservations** (puede depender de clients)
+8. **leads** (puede depende de clients)
+9. **clients** (última, otros pueden depender de ella)
 
-## Tiempo Estimado
-15-20 minutos de testing focused en validaciones específicas pendientes.
+### D. Preview de Datos Actuales
+
+Primero consultaré el estado actual con SELECT COUNT(*) para cada tabla.
+
+### E. SQL de Borrado Final
+
+Se preparará el script completo respetando el orden de dependencias.
+
+### F. Confirmaciones de Seguridad
+
+- ✅ Catálogo de tours intacto
+- ✅ Operadores preservados
+- ✅ Configuración mantenida
+- ✅ Usuarios y roles intactos
+- ✅ Sistema de caja preservado
+- ✅ Solo datos operacionales/transaccionales borrados
+
+El plan garantiza que solo se eliminen datos de prueba/operación manteniendo toda la estructura de catálogo y configuración funcional.
