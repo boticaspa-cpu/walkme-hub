@@ -1561,6 +1561,19 @@ export default function Tours() {
         onImport={handleSheetImport}
       />
 
+      {/* Sheet preview dialog */}
+      <SheetPreviewDialog
+        open={previewDialogOpen}
+        onOpenChange={(v) => { if (!v) { setPreviewDialogOpen(false); setPreviewData(null); } }}
+        tabRequested={previewData?.tabRequested ?? ""}
+        headers={previewData?.headers ?? []}
+        sampleRows={previewData?.sampleRows ?? []}
+        matchedCount={previewData?.matchedCount ?? 0}
+        totalFields={previewData?.totalFields ?? 0}
+        matchedFields={previewData?.matchedFields ?? []}
+        onConfirm={handlePreviewConfirm}
+      />
+
       {/* Column mapping dialog */}
       <ColumnMappingDialog
         open={mappingDialogOpen}
@@ -1568,6 +1581,7 @@ export default function Tours() {
         mappings={pendingMappings}
         aliasMap={pendingAliasMap}
         onConfirm={handleMappingConfirm}
+        sampleRow={pendingRows[0]}
       />
     </div>
   );
