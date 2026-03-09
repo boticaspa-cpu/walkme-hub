@@ -85,6 +85,7 @@ export default function ColumnMappingDialog({ open, onOpenChange, mappings: init
             <TableHeader>
               <TableRow>
                 <TableHead>Columna del Sheet</TableHead>
+                {sampleRow && <TableHead className="max-w-[120px]">Valor ejemplo</TableHead>}
                 <TableHead>Campo asignado</TableHead>
                 <TableHead className="w-24">Estado</TableHead>
               </TableRow>
