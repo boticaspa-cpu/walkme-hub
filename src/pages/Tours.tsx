@@ -757,35 +757,49 @@ export default function Tours() {
       }
       const aliasMap = mode === "generales" ? GENERAL_ALIASES : mode === "paquetes" ? PKG_ALIASES : VARIANT_ALIASES;
       const aliasKeys = collectAliasKeys(aliasMap);
-      const rows = parseCSV(text, aliasKeys);
-      if (rows.length === 0) throw new Error("La pestaña está vacía o no tiene el formato esperado.");
+      const { headers, sampleRows, allRows } = parseCSVPreview(text, 3, aliasKeys);
+      if (allRows.length === 0) throw new Error("La pestaña está vacía o no tiene el formato esperado.");
 
-      // Get headers from first row keys
-      const headers = Object.keys(rows[0]);
-      const mappings = autoMapColumns(headers, aliasMap);
+      const validation = validateTabContent(headers, aliasMap);
 
-      // Check if any columns need user attention
-      const hasSuggested = mappings.some(m => m.status === "suggested");
-      const hasUnmapped = mappings.some(m => m.status === "unmapped" && normKey(m.header).length > 0);
-
-      if (hasSuggested || hasUnmapped) {
-        // Show mapping dialog
-        setPendingMappings(mappings);
-        setPendingRows(rows);
-        setPendingAliasMap(aliasMap);
-        setPendingImportMode(mode);
-        setMappingDialogOpen(true);
-        setSheetImportMode(null);
-      } else {
-        // All columns auto-mapped, process directly
-        processImport(mode, rows, mappings, aliasMap);
-        setSheetImportMode(null);
-      }
+      // Show preview dialog ALWAYS before proceeding
+      setPreviewData({
+        headers, sampleRows, allRows,
+        matchedCount: validation.matchedCount,
+        totalFields: validation.totalFields,
+        matchedFields: validation.matchedFields,
+        tabRequested: tabName,
+        aliasMap, mode,
+      });
+      setPreviewDialogOpen(true);
+      setSheetImportMode(null);
     } catch (err: any) {
       toast.error(err.message || "Error al importar Sheet");
     } finally {
       setSheetImporting(false);
     }
+  };
+
+  /** Called when user confirms the preview and wants to proceed to mapping */
+  const handlePreviewConfirm = () => {
+    if (!previewData) return;
+    const { headers, allRows, aliasMap, mode } = previewData;
+    setPreviewDialogOpen(false);
+
+    const mappings = autoMapColumns(headers, aliasMap);
+    const hasSuggested = mappings.some(m => m.status === "suggested");
+    const hasUnmapped = mappings.some(m => m.status === "unmapped" && normKey(m.header).length > 0);
+
+    if (hasSuggested || hasUnmapped) {
+      setPendingMappings(mappings);
+      setPendingRows(allRows);
+      setPendingAliasMap(aliasMap);
+      setPendingImportMode(mode);
+      setMappingDialogOpen(true);
+    } else {
+      processImport(mode, allRows, mappings, aliasMap);
+    }
+    setPreviewData(null);
   };
 
   const handleMappingConfirm = (finalMappings: ColumnMapping[]) => {
