@@ -124,16 +124,8 @@ export function getCol(row: Record<string, string>, ...keys: string[]): string {
   for (const [k, v] of Object.entries(row)) normalized[normKey(k)] = v;
   for (const key of keys) {
     const nk = normKey(key);
-    // Exact match
+    // Strict exact match only — no fuzzy fallback to avoid cross-column contamination
     if (normalized[nk] !== undefined && normalized[nk] !== "") return normalized[nk];
-  }
-  // Fuzzy: check if any normalized header CONTAINS any of the alias keys
-  for (const key of keys) {
-    const nk = normKey(key);
-    if (nk.length < 4) continue; // skip very short keys to avoid false positives
-    for (const [hk, hv] of Object.entries(normalized)) {
-      if (hv && hk.includes(nk)) return hv;
-    }
   }
   return "";
 }
