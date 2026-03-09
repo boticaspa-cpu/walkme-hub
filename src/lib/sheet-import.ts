@@ -322,3 +322,43 @@ export function fieldLabel(fieldKey: string, aliasMap: Record<string, string[]>)
   const aliases = aliasMap[fieldKey];
   return aliases?.[0] ?? fieldKey;
 }
+
+/** Validate that fetched CSV actually contains recognizable columns for the chosen alias set.
+ *  Returns match stats to help detect wrong-tab scenarios. */
+export function validateTabContent(
+  headers: string[],
+  aliasMap: Record<string, string[]>
+): { valid: boolean; matchedCount: number; totalFields: number; matchedFields: string[] } {
+  const totalFields = Object.keys(aliasMap).length;
+  const matchedFields: string[] = [];
+
+  for (const [fieldKey, aliases] of Object.entries(aliasMap)) {
+    const aliasNorms = aliases.map(normKey);
+    const found = headers.some(h => {
+      const hn = normKey(h);
+      return aliasNorms.some(an => hn === an || (an.length >= 4 && (hn.includes(an) || an.includes(hn))));
+    });
+    if (found) matchedFields.push(fieldKey);
+  }
+
+  return {
+    valid: matchedFields.length > 0,
+    matchedCount: matchedFields.length,
+    totalFields,
+    matchedFields,
+  };
+}
+
+/** Parse CSV text and return headers + first N sample rows (for preview) */
+export function parseCSVPreview(text: string, maxRows = 3, knownAliasKeys?: string[]): {
+  headers: string[];
+  sampleRows: Record<string, string>[];
+  allRows: Record<string, string>[];
+} {
+  const aliasKeys = knownAliasKeys;
+  const allRows = parseCSV(text, aliasKeys);
+  if (allRows.length === 0) return { headers: [], sampleRows: [], allRows };
+  const headers = Object.keys(allRows[0]);
+  const sampleRows = allRows.slice(0, maxRows);
+  return { headers, sampleRows, allRows };
+}

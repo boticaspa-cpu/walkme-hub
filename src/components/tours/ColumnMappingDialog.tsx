@@ -100,6 +100,11 @@ export default function ColumnMappingDialog({ open, onOpenChange, mappings: init
                     <TableCell className="font-mono text-xs max-w-[200px] truncate" title={m.header}>
                       {m.header}
                     </TableCell>
+                    {sampleRow && (
+                      <TableCell className="text-xs max-w-[120px] truncate text-muted-foreground" title={sampleRow[m.header]}>
+                        {sampleRow[m.header] || "—"}
+                      </TableCell>
+                    )}
                     <TableCell>
                       <Select value={m.fieldKey ?? IGNORE_VALUE} onValueChange={(v) => handleChange(idx, v)}>
                         <SelectTrigger className="h-8 text-xs">
