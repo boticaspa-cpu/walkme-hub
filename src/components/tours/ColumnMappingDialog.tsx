@@ -21,6 +21,8 @@ interface Props {
   mappings: ColumnMapping[];
   aliasMap: Record<string, string[]>;
   onConfirm: (finalMappings: ColumnMapping[]) => void;
+  /** First row of data for preview */
+  sampleRow?: Record<string, string>;
 }
 
 export default function ColumnMappingDialog({ open, onOpenChange, mappings: initialMappings, aliasMap, onConfirm }: Props) {
