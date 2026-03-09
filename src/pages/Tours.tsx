@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { parseCSV, getCol, parseNum, collectAliasKeys, PKG_ALIASES, VARIANT_ALIASES, GENERAL_ALIASES, autoMapColumns, normKey, type ColumnMapping } from "@/lib/sheet-import";
+import { parseCSV, parseCSVPreview, getCol, parseNum, collectAliasKeys, PKG_ALIASES, VARIANT_ALIASES, GENERAL_ALIASES, autoMapColumns, normKey, validateTabContent, type ColumnMapping } from "@/lib/sheet-import";
 import ColumnMappingDialog from "@/components/tours/ColumnMappingDialog";
 import { useNavigate } from "react-router-dom";
 import { Search, Filter, MapPin, Clock, Plus, Pencil, Upload, DollarSign, Table2 } from "lucide-react";
