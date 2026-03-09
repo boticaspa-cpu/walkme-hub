@@ -12,6 +12,7 @@ import { es } from "date-fns/locale";
 
 export function CashSessionGuard() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { activeSession, isSessionOpen, isLoadingSession, defaultRegister, openSession } = useCashSession();
   const [floatAmount, setFloatAmount] = useState("0");
   const [isOpening, setIsOpening] = useState(false);
