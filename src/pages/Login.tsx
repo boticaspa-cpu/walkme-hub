@@ -129,7 +129,7 @@ export default function Login() {
                     <Button type="button" size="sm" variant="ghost" onClick={() => setShowForgot(false)}>Cancelar</Button>
                   </div>
                 </form>
-              )
+              )}
             </TabsContent>
 
             <TabsContent value="signup">
