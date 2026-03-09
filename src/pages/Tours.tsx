@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from "react";
-import { parseCSV, getCol, parseNum, collectAliasKeys, PKG_ALIASES, VARIANT_ALIASES, GENERAL_ALIASES, autoMapColumns, normKey, type ColumnMapping } from "@/lib/sheet-import";
+import { parseCSV, parseCSVPreview, getCol, parseNum, collectAliasKeys, PKG_ALIASES, VARIANT_ALIASES, GENERAL_ALIASES, autoMapColumns, normKey, validateTabContent, type ColumnMapping } from "@/lib/sheet-import";
 import ColumnMappingDialog from "@/components/tours/ColumnMappingDialog";
 import { useNavigate } from "react-router-dom";
 import { Search, Filter, MapPin, Clock, Plus, Pencil, Upload, DollarSign, Table2 } from "lucide-react";
 import SheetImportDialog from "@/components/tours/SheetImportDialog";
+import SheetPreviewDialog from "@/components/tours/SheetPreviewDialog";
 import PackageEditor, { PackageForm, emptyPackage } from "@/components/tours/PackageEditor";
 import PriceVariantEditor, { VariantForm, emptyVariant, GENERAL_PACKAGE } from "@/components/tours/PriceVariantEditor";
 import { Button } from "@/components/ui/button";
@@ -312,6 +313,13 @@ export default function Tours() {
   const [pendingRows, setPendingRows] = useState<Record<string, string>[]>([]);
   const [pendingAliasMap, setPendingAliasMap] = useState<Record<string, string[]>>({});
   const [pendingImportMode, setPendingImportMode] = useState<"generales" | "paquetes" | "matriz" | null>(null);
+  // Sheet preview intermediate state
+  const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
+  const [previewData, setPreviewData] = useState<{
+    headers: string[]; sampleRows: Record<string, string>[]; allRows: Record<string, string>[];
+    matchedCount: number; totalFields: number; matchedFields: string[];
+    tabRequested: string; aliasMap: Record<string, string[]>; mode: "generales" | "paquetes" | "matriz";
+  } | null>(null);
   const docInputRef = useRef<HTMLInputElement>(null);
   const [saving, setSaving] = useState(false);
   const [packages, setPackages] = useState<PackageForm[]>([]);
@@ -749,35 +757,49 @@ export default function Tours() {
       }
       const aliasMap = mode === "generales" ? GENERAL_ALIASES : mode === "paquetes" ? PKG_ALIASES : VARIANT_ALIASES;
       const aliasKeys = collectAliasKeys(aliasMap);
-      const rows = parseCSV(text, aliasKeys);
-      if (rows.length === 0) throw new Error("La pestaña está vacía o no tiene el formato esperado.");
+      const { headers, sampleRows, allRows } = parseCSVPreview(text, 3, aliasKeys);
+      if (allRows.length === 0) throw new Error("La pestaña está vacía o no tiene el formato esperado.");
 
-      // Get headers from first row keys
-      const headers = Object.keys(rows[0]);
-      const mappings = autoMapColumns(headers, aliasMap);
+      const validation = validateTabContent(headers, aliasMap);
 
-      // Check if any columns need user attention
-      const hasSuggested = mappings.some(m => m.status === "suggested");
-      const hasUnmapped = mappings.some(m => m.status === "unmapped" && normKey(m.header).length > 0);
-
-      if (hasSuggested || hasUnmapped) {
-        // Show mapping dialog
-        setPendingMappings(mappings);
-        setPendingRows(rows);
-        setPendingAliasMap(aliasMap);
-        setPendingImportMode(mode);
-        setMappingDialogOpen(true);
-        setSheetImportMode(null);
-      } else {
-        // All columns auto-mapped, process directly
-        processImport(mode, rows, mappings, aliasMap);
-        setSheetImportMode(null);
-      }
+      // Show preview dialog ALWAYS before proceeding
+      setPreviewData({
+        headers, sampleRows, allRows,
+        matchedCount: validation.matchedCount,
+        totalFields: validation.totalFields,
+        matchedFields: validation.matchedFields,
+        tabRequested: tabName,
+        aliasMap, mode,
+      });
+      setPreviewDialogOpen(true);
+      setSheetImportMode(null);
     } catch (err: any) {
       toast.error(err.message || "Error al importar Sheet");
     } finally {
       setSheetImporting(false);
     }
+  };
+
+  /** Called when user confirms the preview and wants to proceed to mapping */
+  const handlePreviewConfirm = () => {
+    if (!previewData) return;
+    const { headers, allRows, aliasMap, mode } = previewData;
+    setPreviewDialogOpen(false);
+
+    const mappings = autoMapColumns(headers, aliasMap);
+    const hasSuggested = mappings.some(m => m.status === "suggested");
+    const hasUnmapped = mappings.some(m => m.status === "unmapped" && normKey(m.header).length > 0);
+
+    if (hasSuggested || hasUnmapped) {
+      setPendingMappings(mappings);
+      setPendingRows(allRows);
+      setPendingAliasMap(aliasMap);
+      setPendingImportMode(mode);
+      setMappingDialogOpen(true);
+    } else {
+      processImport(mode, allRows, mappings, aliasMap);
+    }
+    setPreviewData(null);
   };
 
   const handleMappingConfirm = (finalMappings: ColumnMapping[]) => {
@@ -1539,6 +1561,19 @@ export default function Tours() {
         onImport={handleSheetImport}
       />
 
+      {/* Sheet preview dialog */}
+      <SheetPreviewDialog
+        open={previewDialogOpen}
+        onOpenChange={(v) => { if (!v) { setPreviewDialogOpen(false); setPreviewData(null); } }}
+        tabRequested={previewData?.tabRequested ?? ""}
+        headers={previewData?.headers ?? []}
+        sampleRows={previewData?.sampleRows ?? []}
+        matchedCount={previewData?.matchedCount ?? 0}
+        totalFields={previewData?.totalFields ?? 0}
+        matchedFields={previewData?.matchedFields ?? []}
+        onConfirm={handlePreviewConfirm}
+      />
+
       {/* Column mapping dialog */}
       <ColumnMappingDialog
         open={mappingDialogOpen}
@@ -1546,6 +1581,7 @@ export default function Tours() {
         mappings={pendingMappings}
         aliasMap={pendingAliasMap}
         onConfirm={handleMappingConfirm}
+        sampleRow={pendingRows[0]}
       />
     </div>
   );

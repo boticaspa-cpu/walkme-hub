@@ -124,16 +124,8 @@ export function getCol(row: Record<string, string>, ...keys: string[]): string {
   for (const [k, v] of Object.entries(row)) normalized[normKey(k)] = v;
   for (const key of keys) {
     const nk = normKey(key);
-    // Exact match
+    // Strict exact match only — no fuzzy fallback to avoid cross-column contamination
     if (normalized[nk] !== undefined && normalized[nk] !== "") return normalized[nk];
-  }
-  // Fuzzy: check if any normalized header CONTAINS any of the alias keys
-  for (const key of keys) {
-    const nk = normKey(key);
-    if (nk.length < 4) continue; // skip very short keys to avoid false positives
-    for (const [hk, hv] of Object.entries(normalized)) {
-      if (hv && hk.includes(nk)) return hv;
-    }
   }
   return "";
 }
@@ -225,15 +217,13 @@ function lcsLength(a: string, b: string): number {
   return max;
 }
 
-/** Score how well a header matches a field alias (0 = no match, higher = better) */
+/** Score how well a header matches a field alias (0 = no match, higher = better).
+ *  Only exact and contains matches — NO fuzzy LCS to avoid false positives. */
 function matchScore(headerNorm: string, aliasNorm: string): number {
   if (headerNorm === aliasNorm) return 1000; // exact
   if (headerNorm.includes(aliasNorm) || aliasNorm.includes(headerNorm)) {
     return 500 + Math.min(headerNorm.length, aliasNorm.length);
   }
-  const lcs = lcsLength(headerNorm, aliasNorm);
-  const minLen = Math.min(headerNorm.length, aliasNorm.length);
-  if (minLen > 3 && lcs / minLen >= 0.6) return lcs * 10;
   return 0;
 }
 
@@ -331,4 +321,44 @@ export function suggestFields(
 export function fieldLabel(fieldKey: string, aliasMap: Record<string, string[]>): string {
   const aliases = aliasMap[fieldKey];
   return aliases?.[0] ?? fieldKey;
+}
+
+/** Validate that fetched CSV actually contains recognizable columns for the chosen alias set.
+ *  Returns match stats to help detect wrong-tab scenarios. */
+export function validateTabContent(
+  headers: string[],
+  aliasMap: Record<string, string[]>
+): { valid: boolean; matchedCount: number; totalFields: number; matchedFields: string[] } {
+  const totalFields = Object.keys(aliasMap).length;
+  const matchedFields: string[] = [];
+
+  for (const [fieldKey, aliases] of Object.entries(aliasMap)) {
+    const aliasNorms = aliases.map(normKey);
+    const found = headers.some(h => {
+      const hn = normKey(h);
+      return aliasNorms.some(an => hn === an || (an.length >= 4 && (hn.includes(an) || an.includes(hn))));
+    });
+    if (found) matchedFields.push(fieldKey);
+  }
+
+  return {
+    valid: matchedFields.length > 0,
+    matchedCount: matchedFields.length,
+    totalFields,
+    matchedFields,
+  };
+}
+
+/** Parse CSV text and return headers + first N sample rows (for preview) */
+export function parseCSVPreview(text: string, maxRows = 3, knownAliasKeys?: string[]): {
+  headers: string[];
+  sampleRows: Record<string, string>[];
+  allRows: Record<string, string>[];
+} {
+  const aliasKeys = knownAliasKeys;
+  const allRows = parseCSV(text, aliasKeys);
+  if (allRows.length === 0) return { headers: [], sampleRows: [], allRows };
+  const headers = Object.keys(allRows[0]);
+  const sampleRows = allRows.slice(0, maxRows);
+  return { headers, sampleRows, allRows };
 }
