@@ -11,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function Login() {
-  const { login, signup, isAuthenticated, pendingStatus } = useAuth();
+  const { login, signup, isAuthenticated, pendingStatus, resetPassword } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const defaultTab = searchParams.get("tab") === "signup" ? "signup" : "login";
@@ -20,6 +20,8 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showForgot, setShowForgot] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
 
   // Redirect when auth state changes (avoids depending on await login resolving)
   useEffect(() => {
@@ -95,7 +97,39 @@ export default function Login() {
                   {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Entrar
                 </Button>
+                <button type="button" className="text-sm text-muted-foreground hover:text-primary underline mt-1 self-start" onClick={() => setShowForgot(true)}>
+                  ¿Olvidaste tu contraseña?
+                </button>
               </form>
+
+              {showForgot && (
+                <form
+                  className="flex flex-col gap-3 mt-4 border-t pt-4"
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    setLoading(true);
+                    try {
+                      await resetPassword(forgotEmail);
+                      toast({ title: "Correo enviado", description: "Revisa tu bandeja de entrada para restablecer tu contraseña." });
+                      setShowForgot(false);
+                    } catch (err: any) {
+                      toast({ title: "Error", description: err.message, variant: "destructive" });
+                    } finally {
+                      setLoading(false);
+                    }
+                  }}
+                >
+                  <p className="text-sm text-muted-foreground">Ingresa tu correo y te enviaremos un enlace para restablecer tu contraseña.</p>
+                  <Input type="email" placeholder="tu@walkmetravel.com" value={forgotEmail} onChange={(e) => setForgotEmail(e.target.value)} required />
+                  <div className="flex gap-2">
+                    <Button type="submit" size="sm" disabled={loading}>
+                      {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      Enviar enlace
+                    </Button>
+                    <Button type="button" size="sm" variant="ghost" onClick={() => setShowForgot(false)}>Cancelar</Button>
+                  </div>
+                </form>
+              )}
             </TabsContent>
 
             <TabsContent value="signup">

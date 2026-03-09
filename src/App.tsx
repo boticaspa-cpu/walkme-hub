@@ -8,6 +8,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { AdminRoute } from "@/components/layout/AdminRoute";
 import Login from "./pages/Login";
 import CotizacionPDF from "./pages/CotizacionPDF";
+import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
 import Leads from "./pages/Leads";
 import Clientes from "./pages/Clientes";
@@ -40,6 +41,7 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/cotizaciones/:id/pdf" element={<CotizacionPDF />} />
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route element={<AppLayout />}>
