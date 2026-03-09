@@ -25,7 +25,7 @@ interface Props {
   sampleRow?: Record<string, string>;
 }
 
-export default function ColumnMappingDialog({ open, onOpenChange, mappings: initialMappings, aliasMap, onConfirm }: Props) {
+export default function ColumnMappingDialog({ open, onOpenChange, mappings: initialMappings, aliasMap, onConfirm, sampleRow }: Props) {
   const [mappings, setMappings] = useState<ColumnMapping[]>(initialMappings);
 
   // All available field keys
