@@ -1,31 +1,41 @@
 
-El usuario necesita verificar si la limpieza de datos se ejecutó después de un error interno. Voy a consultar el estado actual de todas las tablas mencionadas con COUNT(*) para determinar si la limpieza ocurrió o no.
+# Plan: Ejecutar Limpieza de Datos Operativos
 
-## Plan de Verificación
+## Estado Confirmado
+Base de datos contiene datos operacionales que deben eliminarse:
+- sales (3), sale_items (3), commissions (3)
+- quotes (3), quote_items (6) 
+- reservations (4), reservation_items (3)
+- clients (1), leads (0)
 
-### 1. Tablas que debían borrarse (operacionales)
-- sales
-- sale_items  
-- commissions
-- quotes
-- quote_items
-- reservations
-- reservation_items
-- clients
-- leads
+## Orden de Ejecución
+Respetando dependencias de foreign keys:
 
-### 2. Tablas que NO debían tocarse (catálogo/configuración)
-- tours
-- operators
-- categories
-- destinations
-- tour_price_variants
-- settings
-- profiles
-- user_roles
+### 1. Borrar tablas dependientes primero
+```sql
+DELETE FROM sale_items;
+DELETE FROM commissions;
+DELETE FROM quote_items;  
+DELETE FROM reservation_items;
+```
 
-### Metodología
-Ejecutar consulta SQL única con COUNT(*) para todas las tablas y comparar con el estado previo. Si las tablas operacionales tienen 0 registros, la limpieza se ejecutó. Si tienen registros, la limpieza falló antes de ejecutarse.
+### 2. Borrar tablas principales
+```sql
+DELETE FROM sales;
+DELETE FROM quotes;
+DELETE FROM reservations;
+DELETE FROM leads;
+DELETE FROM clients;
+```
 
-### Resultado Esperado
-Reporte inmediato del estado actual sin ejecutar ninguna acción adicional de borrado.
+## Validación Post-Limpieza
+Verificar que todas las tablas operacionales queden en 0:
+- COUNT(*) de cada tabla objetivo debe ser 0
+- Confirmar que catálogo (tours, operators, settings) permanece intacto
+
+## Seguridad
+- Solo datos transaccionales/operacionales
+- Preserva catálogo maestro, usuarios, configuración
+- No toca sistema de caja (cash_sessions, etc.)
+
+Ejecutaré cada DELETE y verificaré el resultado antes de proceder al siguiente.
