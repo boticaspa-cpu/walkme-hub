@@ -588,7 +588,14 @@ export default function Tours() {
   };
 
   const removeImage = (index: number) => {
-    setImageFiles(prev => prev.filter((_, i) => i !== index));
+    // imagePreviews = [...existingHttpUrls, ...blobUrlsForNewFiles]
+    // imageFiles only contains new File objects, so its index = preview index - httpUrlCount
+    const preview = imagePreviews[index];
+    if (!preview.startsWith("http")) {
+      const httpCount = imagePreviews.slice(0, index).filter(p => p.startsWith("http")).length;
+      const fileIndex = index - httpCount;
+      setImageFiles(prev => prev.filter((_, i) => i !== fileIndex));
+    }
     setImagePreviews(prev => prev.filter((_, i) => i !== index));
   };
 
