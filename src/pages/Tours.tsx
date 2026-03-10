@@ -502,6 +502,7 @@ export default function Tours() {
     });
     setShowTaxFields((tour.tax_adult_usd || 0) > 0 || (tour.tax_child_usd || 0) > 0);
     setImageFiles([]);
+    setImagePreviews(tour.image_urls ?? []);
 
     // Load packages for this tour
     (async () => {
