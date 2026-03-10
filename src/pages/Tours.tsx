@@ -955,7 +955,9 @@ export default function Tours() {
       active: true,
     }));
     if (rows.length === 0) return;
-    const { error } = await supabase.from("tour_price_variants").insert(rows);
+    const { error } = await supabase
+      .from("tour_price_variants")
+      .upsert(rows, { onConflict: "tour_id,operator_id,zone,pax_type,nationality,package_name" });
     if (error) throw error;
   };
 
