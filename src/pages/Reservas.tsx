@@ -32,7 +32,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 
-const ZONES = ["Cancún", "Playa del Carmen", "Riviera Maya", "Tulum"];
+const ZONES = ["Playa del Carmen", "Riviera Maya"];
 const NATIONALITIES = ["Nacional", "Extranjero"];
 
 /* ── status helpers ── */

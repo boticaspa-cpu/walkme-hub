@@ -39,7 +39,7 @@ const statusLabels: Record<string, string> = {
   draft: "Borrador", sent: "Enviada", accepted: "Aceptada", rejected: "Cancelada", expired: "Expirada",
 };
 
-const ZONES = ["Cancún", "Playa del Carmen", "Riviera Maya", "Tulum"];
+const ZONES = ["Playa del Carmen", "Riviera Maya"];
 const NATIONALITIES = ["Nacional", "Extranjero"];
 
 interface QuoteItem {

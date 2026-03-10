@@ -717,7 +717,7 @@ export default function Tours() {
         const mapped: VariantForm[] = data.variants.map((v: any) => ({
           ...emptyVariant,
           package_name: v.package_name || "",
-          zone: v.zone || "Cancun",
+          zone: v.zone || "Playa del Carmen",
           pax_type: v.pax_type || "Adulto",
           nationality: v.nationality || "Extranjero",
           sale_price: String(v.sale_price || ""),
@@ -901,7 +901,7 @@ export default function Tours() {
           return {
             ...emptyVariant,
             package_name: pkgRaw || "",
-            zone: getCol(row, ...VARIANT_ALIASES.zone) || "Cancun",
+            zone: getCol(row, ...VARIANT_ALIASES.zone) || "Playa del Carmen",
             pax_type: getCol(row, ...VARIANT_ALIASES.pax_type) || "Adulto",
             nationality: getCol(row, ...VARIANT_ALIASES.nationality) || "Extranjero",
             sale_price: String(parseNum(salePrice)),

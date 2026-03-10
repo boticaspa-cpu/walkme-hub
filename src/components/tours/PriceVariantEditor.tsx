@@ -20,7 +20,7 @@ export const GENERAL_PACKAGE = "__GENERAL__";
 
 export const emptyVariant: VariantForm = {
   package_name: "",
-  zone: "Cancun",
+  zone: "Playa del Carmen",
   pax_type: "Adulto",
   nationality: "Extranjero",
   sale_price: "",
@@ -28,7 +28,7 @@ export const emptyVariant: VariantForm = {
   tax_fee: "",
 };
 
-const ZONES = ["Cancun", "Playa", "Tulum", "Riviera Maya"];
+const ZONES = ["Playa del Carmen", "Riviera Maya"];
 const PAX_TYPES = ["Adulto", "Menor"];
 const NATIONALITIES = ["Nacional", "Extranjero"];
 
