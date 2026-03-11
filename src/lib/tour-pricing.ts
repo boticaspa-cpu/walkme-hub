@@ -92,37 +92,20 @@ export function computeTourPrice(
 
     // If MXN prices are filled, use them
     if ((tour.price_mxn ?? 0) > 0) {
-      return {
-        adultPrice: tour.price_mxn ?? 0,
-        childPrice: tour.suggested_price_mxn ?? 0,
-        taxAdultUsd: taxAdult,
-        taxChildUsd: taxChild,
-        source: "tour_base",
-      };
+      return { adultPrice: tour.price_mxn ?? 0, childPrice: tour.suggested_price_mxn ?? 0, taxAdultUsd: taxAdult, taxChildUsd: taxChild, source: "tour_base" };
     }
 
-    // Fallback: USD prices × exchange rate (tax is separate, paid in USD at the tour)
+    // Fallback: USD base prices × exchange rate (tax stays separate in USD)
     const usdAdult = tour.public_price_adult_usd ?? 0;
     const usdChild = tour.public_price_child_usd ?? 0;
     const tc = tour.exchange_rate_tour && tour.exchange_rate_tour > 0 ? tour.exchange_rate_tour : 1;
 
     if (usdAdult > 0) {
-      return {
-        adultPrice: Math.round(usdAdult * tc * 100) / 100,
-        childPrice: Math.round(usdChild * tc * 100) / 100,
-        taxAdultUsd: taxAdult,
-        taxChildUsd: taxChild,
-        source: "tour_usd",
-      };
+      return { adultPrice: Math.round(usdAdult * tc * 100) / 100, childPrice: Math.round(usdChild * tc * 100) / 100, taxAdultUsd: taxAdult, taxChildUsd: taxChild, source: "tour_usd" };
     }
 
-    return {
-      adultPrice: tour.price_mxn ?? 0,
-      childPrice: tour.suggested_price_mxn ?? 0,
-      taxAdultUsd: taxAdult,
-      taxChildUsd: taxChild,
-      source: "tour_base",
-    };
+    // Tour exists but no prices configured
+    return { adultPrice: 0, childPrice: 0, taxAdultUsd: taxAdult, taxChildUsd: taxChild, source: "tour_base" };
   }
 
   return { adultPrice: 0, childPrice: 0, taxAdultUsd: 0, taxChildUsd: 0, source: "tour_base" };
