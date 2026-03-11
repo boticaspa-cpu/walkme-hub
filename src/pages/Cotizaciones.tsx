@@ -101,7 +101,7 @@ export default function Cotizaciones() {
   const { data: tours = [] } = useQuery({
     queryKey: ["tours-active"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("tours").select("id, title, price_mxn, suggested_price_mxn").eq("active", true).order("title");
+      const { data, error } = await supabase.from("tours").select("id, title, price_mxn, suggested_price_mxn, tax_adult_usd, tax_child_usd").eq("active", true).order("title");
       if (error) throw error;
       return data;
     },
@@ -449,7 +449,12 @@ export default function Cotizaciones() {
 
   const subtotal = items.reduce((s, i) => s + i.qty_adults * i.unit_price_mxn + i.qty_children * i.unit_price_child_mxn, 0);
   const total = Math.max(0, subtotal - (form.discount_mxn || 0));
+  const totalTaxUsd = items.reduce((s, i) => {
+    const tour = tours.find((t: any) => t.id === i.tour_id) as any;
+    return s + i.qty_adults * (tour?.tax_adult_usd ?? 0) + i.qty_children * (tour?.tax_child_usd ?? 0);
+  }, 0);
   const fmt = (n: number) => n.toLocaleString("es-MX", { style: "currency", currency: "MXN" });
+  const fmtUsd = (n: number) => `$${n.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })} USD`;
 
   const filtered = quotes.filter((q: any) => {
     if (dateFrom && new Date(q.created_at) < dateFrom) return false;
@@ -665,6 +670,11 @@ export default function Cotizaciones() {
                     </div>
                   </div>
                   <p className="text-sm font-semibold text-right">Total: {fmt(total)}</p>
+                  {totalTaxUsd > 0 && (
+                    <p className="text-xs text-amber-700 font-medium text-right">
+                      + {fmtUsd(totalTaxUsd)} impuesto de parque (se paga en el tour)
+                    </p>
+                  )}
                 </div>
               )}
             </div>

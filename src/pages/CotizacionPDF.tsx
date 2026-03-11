@@ -28,7 +28,7 @@ export default function CotizacionPDF() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("quote_items")
-        .select("*, tours(title)")
+        .select("*, tours(title, tax_adult_usd, tax_child_usd)")
         .eq("quote_id", id!);
       if (error) throw error;
       return data;
@@ -37,11 +37,16 @@ export default function CotizacionPDF() {
   });
 
   const fmt = (n: number) => n.toLocaleString("es-MX", { style: "currency", currency: "MXN" });
+  const fmtUsd = (n: number) => `$${n.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })} USD`;
 
   if (isLoading) return <div className="flex items-center justify-center h-screen text-sm">Cargando…</div>;
   if (!quote) return <div className="flex items-center justify-center h-screen text-sm">Cotización no encontrada</div>;
 
   const client = quote.clients as any;
+  const totalTaxUsd = items.reduce((s: number, i: any) => {
+    const t = i.tours as any;
+    return s + (i.qty_adults ?? 0) * (t?.tax_adult_usd ?? 0) + (i.qty_children ?? 0) * (t?.tax_child_usd ?? 0);
+  }, 0);
 
   return (
     <div className="min-h-screen bg-gray-100 print:bg-white">
@@ -143,6 +148,11 @@ export default function CotizacionPDF() {
               {fmt(quote.total_mxn)}
             </span>
           </div>
+          {totalTaxUsd > 0 && (
+            <div className="text-sm text-amber-700 font-medium">
+              + {fmtUsd(totalTaxUsd)} impuesto de parque (se paga en el tour)
+            </div>
+          )}
         </div>
 
         {/* Notes */}

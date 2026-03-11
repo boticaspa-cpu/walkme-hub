@@ -412,12 +412,12 @@ export default function Tours() {
       updates.price_child_usd = netChild > 0 ? netChild.toFixed(2) : "";
     }
 
-    // Adulto MXN = (Público Adulto + Tax Adulto) × T.C. Tour
-    const adultoMxn = (pubAdult + taxAdult) * tcTour;
+    // Adulto MXN = Público Adulto × T.C. Tour (tax stays in USD, paid at tour)
+    const adultoMxn = pubAdult * tcTour;
     updates.price_mxn = adultoMxn > 0 ? adultoMxn.toFixed(2) : "0";
 
-    // Menor MXN = (Público Niño + Tax Niño) × T.C. Tour
-    const menorMxn = (pubChild + taxChild) * tcTour;
+    // Menor MXN = Público Niño × T.C. Tour
+    const menorMxn = pubChild * tcTour;
     updates.suggested_price_mxn = menorMxn > 0 ? menorMxn.toFixed(2) : "0";
 
     if (Object.keys(updates).length > 0) {
@@ -683,8 +683,8 @@ export default function Tours() {
             mandatory_fees_usd: String(p.mandatory_fees_usd || ""),
             includes: (p.includes || []).join(", "),
             excludes: (p.excludes || []).join(", "),
-            price_adult_mxn: ((pubAdult + taxAdult) * tc).toFixed(2),
-            price_child_mxn: ((pubChild + taxChild) * tc).toFixed(2),
+            price_adult_mxn: (pubAdult * tc).toFixed(2),
+            price_child_mxn: (pubChild * tc).toFixed(2),
           };
         });
         setPackages(prev => [...prev, ...mapped]);
@@ -888,8 +888,8 @@ export default function Tours() {
             mandatory_fees_usd: getCol(row, ...PKG_ALIASES.fees) ? String(parseNum(getCol(row, ...PKG_ALIASES.fees))) : "",
             includes: getCol(row, ...PKG_ALIASES.includes),
             excludes: getCol(row, ...PKG_ALIASES.excludes),
-            price_adult_mxn: ((pubAdult + taxAdult) * tc).toFixed(2),
-            price_child_mxn: ((pubChild + taxChild) * tc).toFixed(2),
+            price_adult_mxn: (pubAdult * tc).toFixed(2),
+            price_child_mxn: (pubChild * tc).toFixed(2),
           } as PackageForm;
         })
         .filter(Boolean) as PackageForm[];
