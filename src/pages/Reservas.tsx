@@ -668,18 +668,32 @@ export default function Reservas() {
     setTimeout(() => {
       const content = document.getElementById("voucher-content");
       if (!content) return;
-      const w = window.open("", "_blank", "width=800,height=600");
+      const w = window.open("", "_blank", "width=800,height=900");
       if (!w) return;
+
+      const styles = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
+        .map(el => el.outerHTML)
+        .join("\n");
+
       w.document.write(`<!DOCTYPE html><html><head><title>Voucher ${r.folio ?? ""}</title>
-        <style>body{font-family:Arial,sans-serif;padding:24px;margin:0}
-        table{border-collapse:collapse}th,td{padding:6px 12px}
-        .print\\:hidden{display:none!important}</style></head>
-        <body>${content.outerHTML}</body></html>`);
+        ${styles}
+        <style>
+          body { font-family: Arial, sans-serif; padding: 24px; margin: 0; background: white; }
+          .print\\:hidden { display: none !important; }
+          @media print {
+            body { padding: 0; }
+            .print\\:hidden { display: none !important; }
+          }
+        </style>
+      </head>
+      <body>${content.outerHTML}</body></html>`);
       w.document.close();
-      w.focus();
-      w.print();
+      setTimeout(() => {
+        w.focus();
+        w.print();
+      }, 500);
       setVoucherReservation(null);
-    }, 100);
+    }, 200);
   };
 
   const handleSendConfirmation = (r: any) => {
