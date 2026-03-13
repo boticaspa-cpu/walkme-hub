@@ -17,6 +17,7 @@ interface VoucherProps {
     operator_folio?: string | null;
     cancellation_folio?: string | null;
     operator_confirmation_code?: string;
+    operator_name?: string | null;
     reservation_date: string;
     reservation_time: string;
     pax_adults: number;
@@ -70,6 +71,8 @@ const t = {
     shared: "Compartido",
     private: "Privado",
     zone: "Zona",
+    nationality: "Tarifa",
+    operator: "Proveedor",
     hotel: "Hotel",
     pickupNotes: "Notas de pickup",
     thanks: "¡Gracias por elegir WalkMe Tours!",
@@ -106,6 +109,8 @@ const t = {
     shared: "Shared",
     private: "Private",
     zone: "Zone",
+    nationality: "Rate",
+    operator: "Supplier",
     hotel: "Hotel",
     pickupNotes: "Pickup notes",
     thanks: "Thank you for choosing WalkMe Tours!",
@@ -203,10 +208,16 @@ export default function VoucherPrintView({ reservation, lang: initialLang = "es"
               <p className="text-sm font-bold font-mono" style={{ color: "#2d5a27" }}>{r.operator_folio}</p>
             </div>
           )}
+          {r.operator_name && (
+            <div>
+              <span className="text-[10px] uppercase tracking-wider text-gray-400">{l.operator}</span>
+              <p className="text-sm font-bold" style={{ color: "#2d5a27" }}>{r.operator_name}</p>
+            </div>
+          )}
           {r.operator_confirmation_code && (
             <div>
               <span className="text-[10px] uppercase tracking-wider text-gray-400">{l.confirmationCode}</span>
-              <p className="text-sm font-bold font-mono" style={{ color: "#2d5a27" }}>{r.operator_confirmation_code}</p>
+              <p className="text-base font-bold font-mono px-2 py-0.5 rounded" style={{ color: "#2d5a27", backgroundColor: "#f0f7ef" }}>{r.operator_confirmation_code}</p>
             </div>
           )}
           {r.cancellation_folio && (
@@ -235,6 +246,7 @@ export default function VoucherPrintView({ reservation, lang: initialLang = "es"
               <th className="text-center py-2 px-4 text-xs font-semibold text-gray-500">{l.adults}</th>
               <th className="text-center py-2 px-4 text-xs font-semibold text-gray-500">{l.children}</th>
               <th className="text-right py-2 px-4 text-xs font-semibold text-gray-500">{l.zone}</th>
+              <th className="text-right py-2 px-4 text-xs font-semibold text-gray-500">{l.nationality}</th>
             </tr>
           </thead>
           <tbody>
@@ -249,6 +261,11 @@ export default function VoucherPrintView({ reservation, lang: initialLang = "es"
               <td className="text-right py-2 px-4">
                 <span className="inline-block px-2 py-0.5 rounded-full text-xs font-medium" style={{ backgroundColor: "#f0f7ef", color: "#2d5a27" }}>
                   {r.zone || "—"}
+                </span>
+              </td>
+              <td className="text-right py-2 px-4">
+                <span className="inline-block px-2 py-0.5 rounded-full text-xs font-medium" style={{ backgroundColor: "#f0f7ef", color: "#2d5a27" }}>
+                  {r.nationality || "—"}
                 </span>
               </td>
             </tr>
