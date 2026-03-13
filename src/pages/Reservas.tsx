@@ -772,7 +772,7 @@ export default function Reservas() {
                         <TableCell className="text-right">
                           {/* Desktop: botones individuales */}
                           <div className="hidden sm:flex justify-end gap-1">
-                            {cStatus === "scheduled" && pStatus !== "paid" && (
+                            {pStatus !== "paid" && cStatus !== "cancelled" && (
                               <Button variant="default" size="sm" className="h-7 text-xs" onClick={() => setCheckoutReservation(r)}>
                                 <DollarSign className="mr-1 h-3 w-3" />Cobrar
                               </Button>
@@ -794,7 +794,7 @@ export default function Reservas() {
                           </div>
                           {/* Mobile: menú desplegable */}
                           <div className="sm:hidden flex justify-end gap-1">
-                            {cStatus === "scheduled" && pStatus !== "paid" && (
+                            {pStatus !== "paid" && cStatus !== "cancelled" && (
                               <Button variant="default" size="sm" className="h-8 text-xs px-2" onClick={() => setCheckoutReservation(r)}>
                                 <DollarSign className="h-3.5 w-3.5" />
                               </Button>
