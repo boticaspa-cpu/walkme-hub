@@ -697,7 +697,7 @@ export default function Cotizaciones() {
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {Object.entries(statusLabels)
-                      .filter(([k]) => k !== "accepted")
+                      .filter(([k]) => k !== "accepted" && k !== "sent" && k !== "expired")
                       .map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
                     <SelectItem value="accepted">Pasar a Reserva</SelectItem>
                   </SelectContent>
