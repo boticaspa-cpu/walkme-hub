@@ -494,6 +494,17 @@ export default function Reservas() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await supabase.from("reservation_items").delete().eq("reservation_id", id);
+      await supabase.from("sales").delete().eq("reservation_id", id);
+      const { error } = await supabase.from("reservations").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["reservations"] }); toast.success("Reserva eliminada"); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   /* ── helpers ── */
   const closeDialog = () => {
     setDialogOpen(false);
@@ -791,6 +802,9 @@ export default function Reservas() {
                             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleVoucherWithCheck(r)}><FileText className="h-3.5 w-3.5" /></Button>
                             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handlePrint(r)}><Printer className="h-3.5 w-3.5" /></Button>
                             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleSendConfirmation(r)}><Send className="h-3.5 w-3.5" /></Button>
+                            {isAdmin && (
+                              <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => { if (window.confirm("¿Eliminar esta reserva? Se borrarán también los cobros y ventas asociadas.")) deleteMutation.mutate(r.id); }}><Trash2 className="h-3.5 w-3.5" /></Button>
+                            )}
                           </div>
                           {/* Mobile: menú desplegable */}
                           <div className="sm:hidden flex justify-end gap-1">
@@ -811,6 +825,9 @@ export default function Reservas() {
                                 <DropdownMenuItem onClick={() => handleSendConfirmation(r)}><Send className="mr-2 h-4 w-4" />Enviar</DropdownMenuItem>
                                 {cStatus === "confirmed" && pStatus === "paid" && (
                                   <DropdownMenuItem onClick={() => handleVoucherWithCheck(r)}><CheckCircle className="mr-2 h-4 w-4" />Ticket</DropdownMenuItem>
+                                )}
+                                {isAdmin && (
+                                  <DropdownMenuItem className="text-destructive" onClick={() => { if (window.confirm("¿Eliminar esta reserva? Se borrarán también los cobros y ventas asociadas.")) deleteMutation.mutate(r.id); }}><Trash2 className="mr-2 h-4 w-4" />Eliminar</DropdownMenuItem>
                                 )}
                               </DropdownMenuContent>
                             </DropdownMenu>

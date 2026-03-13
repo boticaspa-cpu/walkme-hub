@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { parseCSV, parseCSVPreview, getCol, parseNum, collectAliasKeys, PKG_ALIASES, VARIANT_ALIASES, GENERAL_ALIASES, autoMapColumns, normKey, validateTabContent, type ColumnMapping } from "@/lib/sheet-import";
 import ColumnMappingDialog from "@/components/tours/ColumnMappingDialog";
 import { useNavigate } from "react-router-dom";
-import { Search, Filter, MapPin, Clock, Plus, Pencil, Upload, DollarSign, Table2 } from "lucide-react";
+import { Search, Filter, MapPin, Clock, Plus, Pencil, Upload, DollarSign, Table2, Trash2 } from "lucide-react";
 import SheetImportDialog from "@/components/tours/SheetImportDialog";
 import SheetPreviewDialog from "@/components/tours/SheetPreviewDialog";
 import PackageEditor, { PackageForm, emptyPackage } from "@/components/tours/PackageEditor";
@@ -439,6 +439,18 @@ export default function Tours() {
     if (destinationFilter !== "all" && (t as any).destinations?.name !== destinationFilter) return false;
     if (search && !t.title.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
+  });
+
+  // ── Delete tour ──
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await supabase.from("tour_price_variants").delete().eq("tour_id", id);
+      await (supabase as any).from("tour_packages").delete().eq("tour_id", id);
+      const { error } = await supabase.from("tours").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["tours"] }); toast.success("Tour eliminado"); },
+    onError: (e: Error) => toast.error(e.message),
   });
 
   // ── Toggle active ──
@@ -1184,6 +1196,9 @@ export default function Tours() {
                         >
                           <Pencil className="h-3.5 w-3.5" />
                         </Button>
+                        {role === "admin" && (
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={(e) => { e.stopPropagation(); if (window.confirm("¿Eliminar este tour y todos sus paquetes/variantes?")) deleteMutation.mutate(tour.id); }}><Trash2 className="h-4 w-4" /></Button>
+                        )}
                       </>
                     )}
                   </div>

@@ -240,6 +240,16 @@ export default function Cotizaciones() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await supabase.from("quote_items").delete().eq("quote_id", id);
+      const { error } = await supabase.from("quotes").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["quotes"] }); toast.success("Cotización eliminada"); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const saveClientMutation = useMutation({
     mutationFn: async () => {
       const { data, error } = await supabase
@@ -523,6 +533,9 @@ export default function Cotizaciones() {
                         {(q as any).reservation_id && (
                           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => window.location.href = `/reservas?highlight=${(q as any).reservation_id}`}><ExternalLink className="h-3.5 w-3.5" /></Button>
                         )}
+                        {role === "admin" && (
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => { if (window.confirm("¿Eliminar esta cotización?")) deleteMutation.mutate(q.id); }}><Trash2 className="h-3.5 w-3.5" /></Button>
+                        )}
                       </div>
                       {/* Mobile */}
                       <div className="sm:hidden">
@@ -539,6 +552,9 @@ export default function Cotizaciones() {
                             )}
                             {(q as any).reservation_id && (
                               <DropdownMenuItem onClick={() => window.location.href = `/reservas?highlight=${(q as any).reservation_id}`}><ExternalLink className="mr-2 h-4 w-4" />Ver Reserva</DropdownMenuItem>
+                            )}
+                            {role === "admin" && (
+                              <DropdownMenuItem className="text-destructive" onClick={() => { if (window.confirm("¿Eliminar esta cotización?")) deleteMutation.mutate(q.id); }}><Trash2 className="mr-2 h-4 w-4" />Eliminar</DropdownMenuItem>
                             )}
                           </DropdownMenuContent>
                         </DropdownMenu>

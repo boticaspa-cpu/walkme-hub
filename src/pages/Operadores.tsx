@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { Plus, Search, Upload, Pencil, FileSpreadsheet } from "lucide-react";
+import { Plus, Search, Upload, Pencil, FileSpreadsheet, Trash2 } from "lucide-react";
 import PriceListImportDialog from "@/components/operators/PriceListImportDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -72,6 +72,15 @@ export default function Operadores() {
   const filtered = operators.filter((op) =>
     op.name.toLowerCase().includes(search.toLowerCase())
   );
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("operators").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["operators"] }); toast.success("Operador eliminado"); },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const toggleActive = useMutation({
     mutationFn: async ({ id, active }: { id: string; active: boolean }) => {
@@ -261,6 +270,9 @@ export default function Operadores() {
                           >
                             <FileSpreadsheet className="h-4 w-4" />
                           </Button>
+                          {role === "admin" && (
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => { if (window.confirm("¿Eliminar este operador?")) deleteMutation.mutate(op.id); }}><Trash2 className="h-3.5 w-3.5" /></Button>
+                          )}
                         </div>
                       </TableCell>
                     )}
