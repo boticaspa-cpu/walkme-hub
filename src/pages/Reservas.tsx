@@ -211,7 +211,7 @@ export default function Reservas() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("tour_price_variants")
-        .select("tour_id, zone, nationality, pax_type, sale_price")
+        .select("tour_id, zone, nationality, pax_type, sale_price, package_name")
         .eq("active", true);
       if (error) throw error;
       return data;
