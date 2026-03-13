@@ -161,7 +161,7 @@ export default function Reservas() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("reservations")
-        .select("*, tours(title, includes, meeting_point, short_description, operator_id), clients(name, phone, email)")
+        .select("*, tours(title, includes, meeting_point, short_description, operator_id, operators(name)), clients(name, phone, email)")
         .order("reservation_date", { ascending: false });
       if (error) throw error;
       return data;
@@ -598,16 +598,41 @@ export default function Reservas() {
 
   const enrichWithPrices = (r: any) => {
     if (!r.tour_id) return r;
-    const prices = computeTourPrice(r.tour_id, r.zone, r.nationality, allVariants as any, tours as any);
     const tour = tours.find((t: any) => t.id === r.tour_id);
+    const op = operators.find((o: any) => o.id === tour?.operator_id);
+
+    const lookupPrice = (paxType: string): number => {
+      const zone = r.zone;
+      const nationality = r.nationality;
+      const tourId = r.tour_id;
+
+      if (zone && nationality) {
+        const v = allVariants.find(
+          (v: any) => v.tour_id === tourId && v.zone === zone && v.nationality === nationality && v.pax_type === paxType && !v.package_name
+        );
+        if (v?.sale_price) return v.sale_price;
+      }
+
+      if (!tour) return 0;
+      const baseMxn = paxType === "Menor" ? (tour.suggested_price_mxn ?? 0) : (tour.price_mxn ?? 0);
+      if (baseMxn > 0) return baseMxn;
+
+      const baseUsd = paxType === "Menor" ? (tour.public_price_child_usd ?? 0) : (tour.public_price_adult_usd ?? 0);
+      const tc = tour.exchange_rate_tour && tour.exchange_rate_tour > 0 ? tour.exchange_rate_tour : 1;
+      if (baseUsd > 0) return Math.round(baseUsd * tc * 100) / 100;
+
+      return 0;
+    };
+
     return {
       ...r,
-      unit_price_mxn: prices.adultPrice,
-      unit_price_child_mxn: prices.childPrice,
+      unit_price_mxn: lookupPrice("Adulto"),
+      unit_price_child_mxn: lookupPrice("Menor"),
       _tax_adult_usd: tour?.tax_adult_usd ?? 0,
       _tax_child_usd: tour?.tax_child_usd ?? 0,
       _mandatory_fees_usd: tour?.mandatory_fees_usd ?? 0,
       _exchange_rate: tour?.exchange_rate_tour ?? 1,
+      operator_name: op?.name ?? null,
     };
   };
 
