@@ -2,10 +2,9 @@ import { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { MessageSquare, Mail, QrCode, Copy, Globe, Download, Share2 } from "lucide-react";
+import { MessageSquare, Mail, Copy, Globe, Download, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { buildWhatsAppMessage, openWhatsApp } from "./whatsapp-message";
-import QRCodeDisplay from "@/components/shared/QRCodeDisplay";
 import VoucherPrintView from "./VoucherPrintView";
 import { downloadImage, shareImage } from "@/lib/generate-share-image";
 
@@ -23,7 +22,6 @@ interface Props {
 }
 
 export default function SendConfirmationDialog({ open, onOpenChange, reservation, onSiteFees }: Props) {
-  const [showQR, setShowQR] = useState(false);
   const [lang, setLang] = useState<"es" | "en">("es");
   const [editableMessage, setEditableMessage] = useState("");
   const r = reservation;
@@ -54,7 +52,6 @@ export default function SendConfirmationDialog({ open, onOpenChange, reservation
   if (!r) return null;
 
   const fmt = (n: number) => `$${n.toLocaleString("es-MX", { minimumFractionDigits: 2 })}`;
-  const voucherUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-voucher-pdf?id=${r.id}&lang=${lang}`;
 
   const handleWhatsApp = () => {
     openWhatsApp(r.clients?.phone, editableMessage);
@@ -113,8 +110,7 @@ export default function SendConfirmationDialog({ open, onOpenChange, reservation
             </div>
           </div>
 
-          {!showQR && (
-            <>
+          <>
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
                   <Label className="text-xs text-muted-foreground">Vista previa del mensaje</Label>

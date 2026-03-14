@@ -6,9 +6,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { MessageSquare, Mail, Copy, QrCode, Globe, Download, Share2 } from "lucide-react";
+import { MessageSquare, Mail, Copy, Globe, Download, Share2 } from "lucide-react";
 import { toast } from "sonner";
-import QRCodeDisplay from "@/components/shared/QRCodeDisplay";
 import QuoteImageCard from "./QuoteImageCard";
 import { downloadImage, shareImage } from "@/lib/generate-share-image";
 
@@ -23,7 +22,6 @@ export default function SendQuoteDialog({ open, onOpenChange, quote }: Props) {
   const qc = useQueryClient();
   const [contactForm, setContactForm] = useState({ name: "", phone: "", email: "" });
   const [needsContact, setNeedsContact] = useState(false);
-  const [showQR, setShowQR] = useState(false);
   const [lang, setLang] = useState<"es" | "en">("es");
 
   // Fetch client if quote has client_id
@@ -51,7 +49,6 @@ export default function SendQuoteDialog({ open, onOpenChange, quote }: Props) {
     if (open) {
       setNeedsContact(!quote?.client_id);
       setContactForm({ name: "", phone: "", email: "" });
-      setShowQR(false);
       setLang("es");
     }
   }, [open, quote]);
@@ -104,7 +101,6 @@ export default function SendQuoteDialog({ open, onOpenChange, quote }: Props) {
     }
   };
 
-  const pdfUrl = `${window.location.origin}/cotizaciones/${quote?.id}/pdf`;
   const fmt = (n: number) => `$${n.toLocaleString("es-MX", { minimumFractionDigits: 2 })}`;
   const SEP = "━━━━━━━━━━━━━━━━━━━━";
 
@@ -267,8 +263,7 @@ export default function SendQuoteDialog({ open, onOpenChange, quote }: Props) {
               </div>
             </div>
 
-            {!showQR && (
-              <>
+            <>
                 {/* Preview del mensaje */}
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
@@ -288,7 +283,7 @@ export default function SendQuoteDialog({ open, onOpenChange, quote }: Props) {
                   💡 {lang === "en" ? "WhatsApp Web will open with this message ready to send." : "Se abrirá WhatsApp Web con este mensaje listo para enviar."}
                 </p>
 
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 gap-3">
                   <Button variant="outline" className="h-14 flex-col gap-1" onClick={handleWhatsApp}>
                     <MessageSquare className="h-5 w-5 text-green-600" />
                     <span className="text-xs">WhatsApp</span>
@@ -296,10 +291,6 @@ export default function SendQuoteDialog({ open, onOpenChange, quote }: Props) {
                   <Button variant="outline" className="h-14 flex-col gap-1" onClick={handleEmail}>
                     <Mail className="h-5 w-5 text-blue-600" />
                     <span className="text-xs">Email</span>
-                  </Button>
-                  <Button variant="outline" className="h-14 flex-col gap-1" onClick={async () => { setShowQR(true); await markSent(); }}>
-                    <QrCode className="h-5 w-5 text-foreground" />
-                    <span className="text-xs">Código QR</span>
                   </Button>
                 </div>
 
@@ -326,17 +317,7 @@ export default function SendQuoteDialog({ open, onOpenChange, quote }: Props) {
                 <div style={{ position: "absolute", left: "-9999px", top: 0 }}>
                   <QuoteImageCard ref={imageRef} quote={quote} client={client} items={items} />
                 </div>
-              </>
-            )}
-
-            {showQR && (
-              <div className="space-y-3">
-                <QRCodeDisplay url={pdfUrl} />
-                <Button variant="ghost" size="sm" className="w-full" onClick={() => setShowQR(false)}>
-                  ← Volver a opciones de envío
-                </Button>
-              </div>
-            )}
+            </>
           </div>
         )}
       </DialogContent>
