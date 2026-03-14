@@ -1,11 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { MessageSquare, Mail, QrCode, Copy, Globe } from "lucide-react";
+import { MessageSquare, Mail, QrCode, Copy, Globe, Download, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { buildWhatsAppMessage, openWhatsApp } from "./whatsapp-message";
 import QRCodeDisplay from "@/components/shared/QRCodeDisplay";
+import VoucherPrintView from "./VoucherPrintView";
+import { downloadImage, shareImage } from "@/lib/generate-share-image";
 
 interface OnSiteFees {
   amountPerAdult: number;
@@ -25,6 +27,23 @@ export default function SendConfirmationDialog({ open, onOpenChange, reservation
   const [lang, setLang] = useState<"es" | "en">("es");
   const [editableMessage, setEditableMessage] = useState("");
   const r = reservation;
+  const voucherRef = useRef<HTMLDivElement>(null);
+
+  const handleDownloadImage = async () => {
+    if (!voucherRef.current) return;
+    await downloadImage(voucherRef.current, `voucher-${r.folio ?? "walkme"}`);
+    toast.success("Imagen descargada");
+  };
+
+  const handleShareImage = async () => {
+    if (!voucherRef.current) return;
+    try {
+      await shareImage(voucherRef.current, `voucher-${r.folio ?? "walkme"}`, `Voucher ${r.folio ?? ""} — WalkMe Tours`);
+      onOpenChange(false);
+    } catch {
+      toast.error("No se pudo compartir");
+    }
+  };
 
   useEffect(() => {
     if (open && r) {
@@ -123,6 +142,32 @@ export default function SendConfirmationDialog({ open, onOpenChange, reservation
                   <QrCode className="h-5 w-5 text-foreground" />
                   <span className="text-xs">Código QR</span>
                 </Button>
+              </div>
+
+              {/* Separador */}
+              <div className="flex items-center gap-2 mt-2">
+                <div className="flex-1 border-t" />
+                <span className="text-xs text-muted-foreground">o enviar como imagen</span>
+                <div className="flex-1 border-t" />
+              </div>
+
+              {/* Botones de imagen */}
+              <div className="grid grid-cols-2 gap-3">
+                <Button variant="outline" className="h-14 flex-col gap-1" onClick={handleDownloadImage}>
+                  <Download className="h-5 w-5 text-purple-600" />
+                  <span className="text-xs">Descargar Imagen</span>
+                </Button>
+                <Button variant="outline" className="h-14 flex-col gap-1" onClick={handleShareImage}>
+                  <Share2 className="h-5 w-5 text-orange-600" />
+                  <span className="text-xs">Compartir</span>
+                </Button>
+              </div>
+
+              {/* Hidden voucher for image capture */}
+              <div style={{ position: "absolute", left: "-9999px", top: 0 }}>
+                <div ref={voucherRef}>
+                  <VoucherPrintView reservation={r} lang={lang} onSiteFees={onSiteFees} />
+                </div>
               </div>
             </>
           )}

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -6,9 +6,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { MessageSquare, Mail, Copy, QrCode, Globe } from "lucide-react";
+import { MessageSquare, Mail, Copy, QrCode, Globe, Download, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import QRCodeDisplay from "@/components/shared/QRCodeDisplay";
+import QuoteImageCard from "./QuoteImageCard";
+import { downloadImage, shareImage } from "@/lib/generate-share-image";
 
 interface Props {
   open: boolean;
@@ -81,7 +83,26 @@ export default function SendQuoteDialog({ open, onOpenChange, quote }: Props) {
     }
   };
 
+  const imageRef = useRef<HTMLDivElement>(null);
   const [editableMessage, setEditableMessage] = useState("");
+
+  const handleDownloadImage = async () => {
+    if (!imageRef.current) return;
+    await downloadImage(imageRef.current, `cotizacion-${quote?.folio ?? "walkme"}`);
+    toast.success("Imagen descargada");
+    await markSent();
+  };
+
+  const handleShareImage = async () => {
+    if (!imageRef.current) return;
+    try {
+      await shareImage(imageRef.current, `cotizacion-${quote?.folio ?? "walkme"}`, `Cotización ${quote?.folio ?? ""} — WalkMe Tours`);
+      await markSent();
+      onOpenChange(false);
+    } catch {
+      toast.error("No se pudo compartir");
+    }
+  };
 
   const pdfUrl = `${window.location.origin}/cotizaciones/${quote?.id}/pdf`;
   const fmt = (n: number) => `$${n.toLocaleString("es-MX", { minimumFractionDigits: 2 })}`;
@@ -280,6 +301,30 @@ export default function SendQuoteDialog({ open, onOpenChange, quote }: Props) {
                     <QrCode className="h-5 w-5 text-foreground" />
                     <span className="text-xs">Código QR</span>
                   </Button>
+                </div>
+
+                {/* Separador */}
+                <div className="flex items-center gap-2 mt-2">
+                  <div className="flex-1 border-t" />
+                  <span className="text-xs text-muted-foreground">o enviar como imagen</span>
+                  <div className="flex-1 border-t" />
+                </div>
+
+                {/* Botones de imagen */}
+                <div className="grid grid-cols-2 gap-3">
+                  <Button variant="outline" className="h-14 flex-col gap-1" onClick={handleDownloadImage}>
+                    <Download className="h-5 w-5 text-purple-600" />
+                    <span className="text-xs">Descargar Imagen</span>
+                  </Button>
+                  <Button variant="outline" className="h-14 flex-col gap-1" onClick={handleShareImage}>
+                    <Share2 className="h-5 w-5 text-orange-600" />
+                    <span className="text-xs">Compartir</span>
+                  </Button>
+                </div>
+
+                {/* Hidden image card for capture */}
+                <div style={{ position: "absolute", left: "-9999px", top: 0 }}>
+                  <QuoteImageCard ref={imageRef} quote={quote} client={client} items={items} />
                 </div>
               </>
             )}
