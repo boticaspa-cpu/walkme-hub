@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -23,15 +23,22 @@ interface Props {
 export default function SendConfirmationDialog({ open, onOpenChange, reservation, onSiteFees }: Props) {
   const [showQR, setShowQR] = useState(false);
   const [lang, setLang] = useState<"es" | "en">("es");
+  const [editableMessage, setEditableMessage] = useState("");
   const r = reservation;
+
+  useEffect(() => {
+    if (open && r) {
+      setEditableMessage(buildWhatsAppMessage(r, lang, onSiteFees ?? undefined));
+    }
+  }, [open, lang, r, onSiteFees]);
+
   if (!r) return null;
 
   const fmt = (n: number) => `$${n.toLocaleString("es-MX", { minimumFractionDigits: 2 })}`;
-  const message = buildWhatsAppMessage(r, lang, onSiteFees ?? undefined);
   const voucherUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-voucher-pdf?id=${r.id}&lang=${lang}`;
 
   const handleWhatsApp = () => {
-    openWhatsApp(r.clients?.phone, message);
+    openWhatsApp(r.clients?.phone, editableMessage);
     onOpenChange(false);
   };
 
@@ -41,13 +48,13 @@ export default function SendConfirmationDialog({ open, onOpenChange, reservation
       ? `Reservation Confirmation ${r.folio ?? ""} — WalkMe Tours`
       : `Confirmación Reserva ${r.folio ?? ""} — WalkMe Tours`;
     const subject = encodeURIComponent(subjectText);
-    const body = encodeURIComponent(message);
+    const body = encodeURIComponent(editableMessage);
     window.open(`mailto:${email}?subject=${subject}&body=${body}`, "_blank");
     onOpenChange(false);
   };
 
   const copyMessage = () => {
-    navigator.clipboard.writeText(message);
+    navigator.clipboard.writeText(editableMessage);
     toast.success("Mensaje copiado");
   };
 
@@ -96,9 +103,11 @@ export default function SendConfirmationDialog({ open, onOpenChange, reservation
                     <Copy className="h-3 w-3" /> Copiar
                   </Button>
                 </div>
-                <pre className="text-xs bg-green-50 border border-green-200 rounded-md p-3 whitespace-pre-wrap font-sans leading-relaxed max-h-52 overflow-y-auto">
-                  {message}
-                </pre>
+                <textarea
+                  className="text-xs bg-green-50 border border-green-200 rounded-md p-3 whitespace-pre-wrap font-sans leading-relaxed max-h-52 overflow-y-auto w-full resize-none min-h-[200px]"
+                  value={editableMessage}
+                  onChange={(e) => setEditableMessage(e.target.value)}
+                />
               </div>
 
               <div className="grid grid-cols-3 gap-3">

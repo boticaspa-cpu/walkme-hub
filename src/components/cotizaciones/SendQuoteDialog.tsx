@@ -81,56 +81,97 @@ export default function SendQuoteDialog({ open, onOpenChange, quote }: Props) {
     }
   };
 
+  const [editableMessage, setEditableMessage] = useState("");
+
   const pdfUrl = `${window.location.origin}/cotizaciones/${quote?.id}/pdf`;
   const fmt = (n: number) => `$${n.toLocaleString("es-MX", { minimumFractionDigits: 2 })}`;
+  const SEP = "━━━━━━━━━━━━━━━━━━━━";
 
-  const fmtDate = (d: string) =>
-    d ? new Date(d + "T12:00:00").toLocaleDateString("es-MX", { day: "2-digit", month: "short" }) : "";
+  const fmtDateNice = (d: string, language: "es" | "en") => {
+    if (!d) return "";
+    const date = new Date(d + "T12:00:00");
+    const str = language === "en"
+      ? date.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })
+      : date.toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+    return str.charAt(0).toUpperCase() + str.slice(1);
+  };
 
   const buildMessage = () => {
     const clientName = client?.name || contactForm.name || (lang === "en" ? "Client" : "Cliente");
     if (lang === "en") {
       const lines = [
+        SEP,
+        `   🌴 *WALKME TOURS*`,
+        `    Playa del Carmen`,
+        SEP,
+        ``,
         `Hi ${clientName}! 👋`,
         ``,
-        `Here's your quote from *WalkMe Tours* (${quote?.folio ?? ""}):`,
+        `Here's your quote:`,
+        `📋 *Folio:* ${quote?.folio ?? ""}`,
         ``,
       ];
       items.forEach((it: any) => {
         const sub = it.qty_adults * it.unit_price_mxn + it.qty_children * it.unit_price_child_mxn;
-        const fecha = fmtDate(it.tour_date);
+        const fecha = fmtDateNice(it.tour_date, "en");
         const pax = `${it.qty_adults} adult${it.qty_adults !== 1 ? "s" : ""}${it.qty_children ? `, ${it.qty_children} child${it.qty_children !== 1 ? "ren" : ""}` : ""}`;
-        lines.push(`🏝️ *${it.tours?.title ?? "Tour"}*${fecha ? ` — ${fecha}` : ""}`);
-        lines.push(`   ${pax} — ${fmt(sub)} MXN`);
+        lines.push(`┌─────────────────────`);
+        lines.push(`│ 🏝️ *${it.tours?.title ?? "Tour"}*`);
+        if (fecha) lines.push(`│ 📅 ${fecha}`);
+        lines.push(`│ 👥 ${pax}`);
+        lines.push(`│ 💰 Subtotal: ${fmt(sub)} MXN`);
+        lines.push(`└─────────────────────`);
+        lines.push(``);
       });
-      lines.push(``, `💰 *Total: ${fmt(quote?.total_mxn ?? 0)} MXN*`);
-      lines.push(``, `📄 Full quote: ${pdfUrl}`);
+      lines.push(`💰 *TOTAL: ${fmt(quote?.total_mxn ?? 0)} MXN*`);
+      lines.push(``, SEP);
+      lines.push(`📲 WhatsApp: +52 56 3974 8122`);
+      lines.push(`📷 Instagram: @walkme_travel`);
       lines.push(``, `Feel free to reach out with any questions! 😊`);
       return lines.join("\n");
     }
     const lines = [
+      SEP,
+      `   🌴 *WALKME TOURS*`,
+      `    Playa del Carmen`,
+      SEP,
+      ``,
       `Hola ${clientName}! 👋`,
       ``,
-      `Te comparto tu cotización de *WalkMe Tours* (${quote?.folio ?? ""}):`,
+      `Te compartimos tu cotización:`,
+      `📋 *Folio:* ${quote?.folio ?? ""}`,
       ``,
     ];
     items.forEach((it: any) => {
       const sub = it.qty_adults * it.unit_price_mxn + it.qty_children * it.unit_price_child_mxn;
-      const fecha = fmtDate(it.tour_date);
+      const fecha = fmtDateNice(it.tour_date, "es");
       const pax = `${it.qty_adults} adulto${it.qty_adults !== 1 ? "s" : ""}${it.qty_children ? `, ${it.qty_children} menor${it.qty_children !== 1 ? "es" : ""}` : ""}`;
-      lines.push(`🏝️ *${it.tours?.title ?? "Tour"}*${fecha ? ` — ${fecha}` : ""}`);
-      lines.push(`   ${pax} — ${fmt(sub)} MXN`);
+      lines.push(`┌─────────────────────`);
+      lines.push(`│ 🏝️ *${it.tours?.title ?? "Tour"}*`);
+      if (fecha) lines.push(`│ 📅 ${fecha}`);
+      lines.push(`│ 👥 ${pax}`);
+      lines.push(`│ 💰 Subtotal: ${fmt(sub)} MXN`);
+      lines.push(`└─────────────────────`);
+      lines.push(``);
     });
-    lines.push(``, `💰 *Total: ${fmt(quote?.total_mxn ?? 0)} MXN*`);
-    lines.push(``, `📄 Cotización completa: ${pdfUrl}`);
-    lines.push(``, `¡Cualquier duda con gusto te atiendo! 😊`);
+    lines.push(`💰 *TOTAL: ${fmt(quote?.total_mxn ?? 0)} MXN*`);
+    lines.push(``, SEP);
+    lines.push(`📲 WhatsApp: +52 56 3974 8122`);
+    lines.push(`📷 Instagram: @walkme_travel`);
+    lines.push(``, `¡Cualquier duda con gusto te atendemos! 😊`);
     return lines.join("\n");
   };
+
+  useEffect(() => {
+    if (!needsContact) {
+      setEditableMessage(buildMessage());
+    }
+  }, [lang, items, client, contactForm, needsContact]);
 
   const handleWhatsApp = async () => {
     const phone = client?.phone || contactForm.phone;
     const cleanPhone = phone?.replace(/\D/g, "") || "";
-    const msg = encodeURIComponent(buildMessage());
+    const msg = encodeURIComponent(editableMessage);
     const url = cleanPhone ? `https://wa.me/${cleanPhone}?text=${msg}` : `https://wa.me/?text=${msg}`;
     window.open(url, "_blank");
     await markSent();
@@ -143,14 +184,14 @@ export default function SendQuoteDialog({ open, onOpenChange, quote }: Props) {
       ? `Quote ${quote?.folio ?? ""} — WalkMe Tours`
       : `Cotización ${quote?.folio ?? ""} — WalkMe Tours`;
     const subject = encodeURIComponent(subjectText);
-    const body = encodeURIComponent(buildMessage());
+    const body = encodeURIComponent(editableMessage);
     window.open(`mailto:${email || ""}?subject=${subject}&body=${body}`, "_blank");
     await markSent();
     onOpenChange(false);
   };
 
   const copyMessage = () => {
-    navigator.clipboard.writeText(buildMessage());
+    navigator.clipboard.writeText(editableMessage);
     toast.success("Mensaje copiado");
   };
 
@@ -215,9 +256,11 @@ export default function SendQuoteDialog({ open, onOpenChange, quote }: Props) {
                       <Copy className="h-3 w-3" /> Copiar
                     </Button>
                   </div>
-                  <pre className="text-xs bg-green-50 border border-green-200 rounded-md p-3 whitespace-pre-wrap font-sans leading-relaxed max-h-52 overflow-y-auto">
-                    {buildMessage()}
-                  </pre>
+                  <textarea
+                    className="text-xs bg-green-50 border border-green-200 rounded-md p-3 whitespace-pre-wrap font-sans leading-relaxed max-h-52 overflow-y-auto w-full resize-none min-h-[200px]"
+                    value={editableMessage}
+                    onChange={(e) => setEditableMessage(e.target.value)}
+                  />
                 </div>
 
                 <p className="text-xs text-muted-foreground">
