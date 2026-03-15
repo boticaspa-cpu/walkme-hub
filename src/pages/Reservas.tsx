@@ -82,6 +82,9 @@ const emptyForm = {
   status: "scheduled",
   hotel_name: "",
   pickup_notes: "",
+  pickup_point: "",
+  tour_language: "",
+  tax_included: false,
   pax_email: "",
   operator_confirmation_code: "",
 };
@@ -120,6 +123,9 @@ const emptyShared = {
   hotel_name: "",
   pax_email: "",
   pickup_notes: "",
+  pickup_point: "",
+  tour_language: "",
+  tax_included: false,
   operator_confirmation_code: "",
 };
 
@@ -400,6 +406,9 @@ export default function Reservas() {
           status: form.status,
           hotel_name: form.hotel_name,
           pickup_notes: form.pickup_notes,
+          pickup_point: form.pickup_point || null,
+          tour_language: form.tour_language || null,
+          tax_included: form.tax_included,
           pax_email: form.pax_email,
           operator_confirmation_code: form.operator_confirmation_code,
         } as any;
@@ -427,6 +436,9 @@ export default function Reservas() {
           hotel_name: shared.hotel_name || "",
           pax_email: shared.pax_email || "",
           pickup_notes: shared.pickup_notes || "",
+          pickup_point: shared.pickup_point || null,
+          tour_language: shared.tour_language || null,
+          tax_included: shared.tax_included,
           operator_confirmation_code: shared.operator_confirmation_code || "",
         } as any));
         const { error } = await supabase.from("reservations").insert(inserts);
@@ -580,6 +592,9 @@ export default function Reservas() {
       status: r.status,
       hotel_name: r.hotel_name ?? "",
       pickup_notes: r.pickup_notes ?? "",
+      pickup_point: (r as any).pickup_point ?? "",
+      tour_language: (r as any).tour_language ?? "",
+      tax_included: (r as any).tax_included ?? false,
       pax_email: r.pax_email ?? "",
       operator_confirmation_code: r.operator_confirmation_code ?? "",
     });
@@ -966,13 +981,31 @@ export default function Reservas() {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1.5">
+                  <Label>Punto de pickup *</Label>
+                  <Input value={form.pickup_point} onChange={(e) => setForm((p) => ({ ...p, pickup_point: e.target.value }))} placeholder="Hotel lobby, muelle…" />
+                </div>
+                <div className="space-y-1.5">
                   <Label>Notas de pickup</Label>
-                  <Input value={form.pickup_notes} onChange={(e) => setForm((p) => ({ ...p, pickup_notes: e.target.value }))} placeholder="Lobby, puerta 3…" />
+                  <Input value={form.pickup_notes} onChange={(e) => setForm((p) => ({ ...p, pickup_notes: e.target.value }))} placeholder="Señas adicionales…" />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Idioma del tour *</Label>
+                  <Input value={form.tour_language} onChange={(e) => setForm((p) => ({ ...p, tour_language: e.target.value }))} placeholder="Español, English…" />
                 </div>
                 <div className="space-y-1.5">
                   <Label>Código confirmación operador</Label>
                   <Input value={form.operator_confirmation_code} onChange={(e) => setForm((p) => ({ ...p, operator_confirmation_code: e.target.value }))} placeholder="XC-78432" />
                 </div>
+              </div>
+              <div className="flex items-center gap-3 py-1">
+                <Switch
+                  id="tax_included_edit"
+                  checked={form.tax_included}
+                  onCheckedChange={(v) => setForm((p) => ({ ...p, tax_included: v }))}
+                />
+                <Label htmlFor="tax_included_edit" className="cursor-pointer">Impuestos incluidos en el total</Label>
               </div>
 
               <div className="space-y-1.5">
@@ -1086,6 +1119,26 @@ export default function Reservas() {
                     <Label>Email del pasajero</Label>
                     <Input type="email" value={shared.pax_email} onChange={(e) => setShared((p) => ({ ...p, pax_email: e.target.value }))} placeholder="correo@ejemplo.com" />
                   </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label>Punto de pickup *</Label>
+                    <Input value={shared.pickup_point} onChange={(e) => setShared((p) => ({ ...p, pickup_point: e.target.value }))} placeholder="Hotel lobby, muelle…" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Idioma del tour *</Label>
+                    <Input value={shared.tour_language} onChange={(e) => setShared((p) => ({ ...p, tour_language: e.target.value }))} placeholder="Español, English…" />
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 py-1">
+                  <Switch
+                    id="tax_included_create"
+                    checked={shared.tax_included}
+                    onCheckedChange={(v) => setShared((p) => ({ ...p, tax_included: v }))}
+                  />
+                  <Label htmlFor="tax_included_create" className="cursor-pointer">Impuestos incluidos en el total</Label>
                 </div>
 
                 <div className="space-y-1.5">
@@ -1213,8 +1266,8 @@ export default function Reservas() {
               disabled={
                 saveMutation.isPending ||
                 (editingId
-                  ? !form.tour_id || !form.client_id || !form.reservation_date
-                  : !shared.client_id || items.some((i) => !i.tour_id || !i.reservation_date))
+                  ? !form.tour_id || !form.client_id || !form.reservation_date || !form.reservation_time || !form.nationality || !form.pickup_point || !form.tour_language || form.pax_adults < 1
+                  : !shared.client_id || !shared.nationality || !shared.pickup_point || !shared.tour_language || items.some((i) => !i.tour_id || !i.reservation_date || !i.reservation_time || i.pax_adults < 1))
               }
             >
               {saveMutation.isPending ? "Guardando…" : editingId ? "Actualizar" : items.length > 1 ? `Crear ${items.length} Reservas` : "Crear Reserva"}

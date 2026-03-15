@@ -2,7 +2,10 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import walkMeLogo from "@/assets/walkme-logo.png";
-import { CheckCircle, MapPin, Users, Calendar, Clock, CreditCard, FileText, AlertTriangle } from "lucide-react";
+import {
+  CheckCircle, MapPin, Users, Calendar, Clock, CreditCard,
+  AlertTriangle, Phone, Mail, Globe, Hotel,
+} from "lucide-react";
 
 interface OnSiteFees {
   amountPerAdult: number;
@@ -33,6 +36,9 @@ interface VoucherProps {
     status?: string;
     hotel_name?: string;
     pickup_notes?: string;
+    pickup_point?: string;
+    tour_language?: string;
+    tax_included?: boolean;
     pax_email?: string;
     tours?: { title: string; includes: string[]; meeting_point: string; short_description: string } | null;
     clients?: { name: string; phone: string; email: string | null } | null;
@@ -41,91 +47,103 @@ interface VoucherProps {
   onSiteFees?: OnSiteFees;
 }
 
-const DEFAULT_POLICY_ES = `POLÍTICAS DE CANCELACIÓN — Cualquier cambio o cancelación a su reserva deberá realizarse con al menos 48 horas de anticipación al horario programado del tour. Solo se permite un cambio por reservación y las reservaciones con cambios no pueden ser canceladas. Para reembolsos completos se contemplarán con 48 horas de anticipación a su servicio. En caso de no estar a la hora indicada en este cupón y perder la excursión, no habrá derecho a reembolso. No aplica reembolso el mismo día de la excursión. WalkMe Tours actúa como agente intermediario de compañías de transportación y prestadores de servicios turísticos (proveedores), sin asumir responsabilidad alguna por accidentes, pérdidas, daños materiales o humanos, cambios de horario o alguna otra irregularidad originada por caso fortuito o fuerza mayor. Todos los proveedores de tours son contratistas independientes. Los menores de edad deberán ir acompañados por un adulto responsable en todo momento.`;
-const DEFAULT_POLICY_EN = `CANCELLATION POLICIES — Any change or cancellation to your reservation must be made at least 48 hours in advance of your scheduled tour. Only one change per reservation is allowed and reservations with changes cannot be canceled. For full refunds, they will be considered 48 hours in advance of your service. In case of not being at the time indicated and missing the excursion, there will be no right to reimbursement. No refund applies the same day of the excursion. WalkMe Tours acts as an intermediary agent between transportation companies and tour service providers (suppliers), without assuming any responsibility for accidents, losses, material or personal damages, schedule changes, or any other irregularity caused by unforeseen events. All tour service suppliers are independent contractors. Minors must be accompanied by a responsible adult at all times.`;
+const DEFAULT_POLICY_ES =
+  "POLÍTICAS DE CANCELACIÓN — Cualquier cambio o cancelación a su reserva deberá acudir a las oficinas de WALKME TOURS con su ticket de compra original, solo se permite un cambio por reservación y las reservaciones con cambios no pueden ser canceladas. Para reembolsos completos se contemplarán con 72 horas de anticipación a su servicio. En caso de no estar a la hora indicada en este cupón y perder la excursión no habrá derecho a reembolso. No aplica reembolso el mismo día de la excursión. El acto de suscripción o compra implica la total conformidad de todas y cada una de las condiciones mencionadas en este cupón. WALKME TOURS actúa como agente intermediario de compañías de transportación y prestadores de servicios turísticos (proveedores), sin asumir responsabilidad alguna por accidentes, muerte, pérdidas y/o daños materiales o humanos, cambios de horario o alguna otra irregularidad originada por caso fortuito o fuerza mayor. Todos los proveedores de tours son contratistas independientes. Los menores de edad deberán ir acompañados por un adulto responsable en todo momento.";
+
+const DEFAULT_POLICY_EN =
+  "CANCELLATION POLICIES — Any change or cancellation to your reservation must go to the desks of WALKME TOURS with your original purchase ticket, only one change per reservation is allowed and reservations with changes cannot be canceled. For full refunds, they will be considered 72 hours in advance of your service. In case of not being at the time indicated in this coupon and losing the excursion, there will be no right to reimbursement. No refund applies the same day of the excursion. The act of subscription or purchase implies full compliance with every one of the conditions mentioned in this coupon. WALKME TOURS acts as an intermediary agent between the transportation companies and tour service providers (suppliers), without assuming any responsibility for accidents, death, personal damage, loss/damage of material goods, change of schedule or any other irregular occurrence and unforeseen event during your excursion. All such suppliers providing tour services are independent contractors. Minors must be accompanied by a responsible adult at all times.";
 
 const t = {
   es: {
     title: "VOUCHER DE RESERVA",
-    folio: "Folio",
-    operatorFolio: "Folio Operador",
-    cancellationFolio: "Folio Cancelación",
-    confirmationCode: "Código Confirmación",
-    purchaseDate: "Fecha de compra",
-    client: "Cliente",
-    phone: "Teléfono",
-    email: "Email",
-    adults: "Adultos",
-    children: "Menores",
-    tour: "Tour",
-    departure: "Punto de encuentro",
-    tourDate: "Fecha del tour",
-    tourTime: "Hora",
-    includes: "Incluye",
-    priceAdult: "Precio adulto",
-    priceChild: "Precio menor",
-    total: "Total",
-    notes: "Notas",
-    cancellation: "Políticas de cancelación",
-    modality: "Modalidad",
+    folio: "FOLIO",
+    operator: "OPERADOR",
+    confirmation: "CONFIRMACIÓN",
+    date: "FECHA",
+    adults: "ADULTOS",
+    minors: "MENORES",
+    language: "IDIOMA",
+    tourDate: "FECHA",
+    tourTime: "HORA",
+    modality: "MODALIDAD",
+    zone: "ZONA",
+    hotel: "HOTEL",
+    pickupPoint: "PUNTO DE PICKUP",
+    includes: "INCLUYE",
+    priceAdult: "Adulto",
+    priceChild: "Menor",
+    total: "TOTAL",
+    notes: "NOTAS",
+    cancellation: "POLÍTICAS DE CANCELACIÓN",
     shared: "Compartido",
     private: "Privado",
-    zone: "Zona",
-    nationality: "Tarifa",
-    operator: "Proveedor",
-    hotel: "Hotel",
-    pickupNotes: "Notas de pickup",
     thanks: "¡Gracias por elegir WalkMe Tours!",
-    passengers: "Pasajeros",
-    tourDetails: "Detalles del Tour",
-    paymentSummary: "Resumen de Pago",
     confirmed: "CONFIRMADA",
     cancelled: "CANCELADA",
     pending: "PENDIENTE",
+    important: "IMPORTANTE",
+    taxNote: "se paga al abordar en efectivo",
+    perAdult: "por adulto",
+    perChild: "por menor",
   },
   en: {
     title: "RESERVATION VOUCHER",
-    folio: "Folio",
-    operatorFolio: "Operator Folio",
-    cancellationFolio: "Cancellation Folio",
-    confirmationCode: "Confirmation Code",
-    purchaseDate: "Purchase date",
-    client: "Client",
-    phone: "Phone",
-    email: "Email",
-    adults: "Adults",
-    children: "Minors",
-    tour: "Tour",
-    departure: "Meeting point",
-    tourDate: "Tour date",
-    tourTime: "Time",
-    includes: "Includes",
-    priceAdult: "Adult price",
-    priceChild: "Minor price",
-    total: "Total",
-    notes: "Notes",
-    cancellation: "Cancellation policies",
-    modality: "Modality",
+    folio: "FOLIO",
+    operator: "OPERATOR",
+    confirmation: "CONFIRMATION",
+    date: "DATE",
+    adults: "ADULTS",
+    minors: "MINORS",
+    language: "LANGUAGE",
+    tourDate: "DATE",
+    tourTime: "TIME",
+    modality: "MODALITY",
+    zone: "ZONE",
+    hotel: "HOTEL",
+    pickupPoint: "PICKUP POINT",
+    includes: "INCLUDES",
+    priceAdult: "Adult",
+    priceChild: "Minor",
+    total: "TOTAL",
+    notes: "NOTES",
+    cancellation: "CANCELLATION POLICIES",
     shared: "Shared",
     private: "Private",
-    zone: "Zone",
-    nationality: "Rate",
-    operator: "Supplier",
-    hotel: "Hotel",
-    pickupNotes: "Pickup notes",
     thanks: "Thank you for choosing WalkMe Tours!",
-    passengers: "Passengers",
-    tourDetails: "Tour Details",
-    paymentSummary: "Payment Summary",
     confirmed: "CONFIRMED",
     cancelled: "CANCELLED",
     pending: "PENDING",
+    important: "IMPORTANT",
+    taxNote: "payable at boarding in cash",
+    perAdult: "per adult",
+    perChild: "per minor",
   },
 };
 
-const fmtMXN = (n: number) => `$${n.toLocaleString("es-MX", { minimumFractionDigits: 2 })} MXN`;
+const fmtMXN = (n: number) =>
+  `$${n.toLocaleString("es-MX", { minimumFractionDigits: 2 })} MXN`;
 
-export default function VoucherPrintView({ reservation, lang: initialLang = "es", onSiteFees }: VoucherProps) {
+const DARK_GREEN = "#1B3D2F";
+const LIGHT_GREEN = "#E1F5EE";
+const LIGHT_YELLOW = "#FFF8EB";
+const LIGHT_GRAY = "#f7f6f3";
+const LIGHT_RED = "#FEF2F2";
+const LIGHT_NOTES = "#FFFBEB";
+const PINK = "#E85B8A";
+const ORANGE = "#E8943A";
+
+const labelStyle: React.CSSProperties = {
+  color: "#9ca3af",
+  fontSize: "8px",
+  textTransform: "uppercase",
+  letterSpacing: "1px",
+};
+
+export default function VoucherPrintView({
+  reservation,
+  lang: initialLang = "es",
+  onSiteFees,
+}: VoucherProps) {
   const [lang, setLang] = useState<"es" | "en">(initialLang);
   const l = t[lang];
 
@@ -137,14 +155,15 @@ export default function VoucherPrintView({ reservation, lang: initialLang = "es"
         .select("key, value")
         .in("key", ["cancellation_policy_es", "cancellation_policy_en"]);
       const map: Record<string, string> = {};
-      data?.forEach((r) => (map[r.key] = r.value));
+      data?.forEach((row) => (map[row.key] = row.value));
       return map;
     },
   });
 
-  const policy = lang === "es"
-    ? (policies?.cancellation_policy_es || DEFAULT_POLICY_ES)
-    : (policies?.cancellation_policy_en || DEFAULT_POLICY_EN);
+  const policy =
+    lang === "es"
+      ? policies?.cancellation_policy_es || DEFAULT_POLICY_ES
+      : policies?.cancellation_policy_en || DEFAULT_POLICY_EN;
 
   const r = reservation;
   const tour = r.tours;
@@ -154,279 +173,447 @@ export default function VoucherPrintView({ reservation, lang: initialLang = "es"
   const isConfirmed = !!r.operator_folio && !isCancelled;
 
   const statusLabel = isCancelled ? l.cancelled : isConfirmed ? l.confirmed : l.pending;
-  const statusColor = isCancelled ? "#dc2626" : isConfirmed ? "#2d5a27" : "#d97706";
+  const statusBg = isCancelled ? "#dc2626" : isConfirmed ? "#16a34a" : "#d97706";
+
+  const pickupDisplay = r.pickup_point || r.pickup_notes;
 
   return (
-    <div className="voucher-print-root bg-white text-black" id="voucher-content" style={{ fontFamily: "Arial, sans-serif", maxWidth: "680px", margin: "0 auto" }}>
+    <div
+      className="voucher-print-root bg-white text-black"
+      id="voucher-content"
+      style={{ fontFamily: "Arial, sans-serif", maxWidth: "680px", margin: "0 auto" }}
+    >
       {/* Language toggle — hidden on print */}
-      <div className="flex justify-end gap-1 mb-3 print:hidden">
+      <div className="flex justify-end gap-1 mb-2 print:hidden">
         <button
           onClick={() => setLang("es")}
-          className={`px-3 py-1 text-xs rounded-full border transition-colors ${lang === "es" ? "text-white border-transparent" : "border-gray-300 text-gray-600"}`}
-          style={lang === "es" ? { backgroundColor: "#2d5a27" } : {}}
+          style={
+            lang === "es"
+              ? { backgroundColor: DARK_GREEN, color: "white", border: "none", padding: "3px 12px", borderRadius: "20px", fontSize: "11px", cursor: "pointer" }
+              : { background: "none", border: "1px solid #d1d5db", color: "#6b7280", padding: "3px 12px", borderRadius: "20px", fontSize: "11px", cursor: "pointer" }
+          }
         >
           ES
         </button>
         <button
           onClick={() => setLang("en")}
-          className={`px-3 py-1 text-xs rounded-full border transition-colors ${lang === "en" ? "text-white border-transparent" : "border-gray-300 text-gray-600"}`}
-          style={lang === "en" ? { backgroundColor: "#2d5a27" } : {}}
+          style={
+            lang === "en"
+              ? { backgroundColor: DARK_GREEN, color: "white", border: "none", padding: "3px 12px", borderRadius: "20px", fontSize: "11px", cursor: "pointer" }
+              : { background: "none", border: "1px solid #d1d5db", color: "#6b7280", padding: "3px 12px", borderRadius: "20px", fontSize: "11px", cursor: "pointer" }
+          }
         >
           EN
         </button>
       </div>
 
       {/* ── HEADER ── */}
-      <div className="rounded-xl overflow-hidden mb-4" style={{ border: "2px solid #2d5a27" }}>
-        <div className="flex items-center justify-between px-5 py-3" style={{ background: "linear-gradient(135deg, #2d5a27 0%, #3d7a35 100%)" }}>
-          <div className="flex items-center gap-3">
-            <img src={walkMeLogo} alt="WalkMe Tours" className="h-14 w-auto rounded-lg" style={{ background: "white", padding: "4px" }} />
-            <div>
-              <h1 className="text-lg font-bold text-white tracking-wide">WALKME TOURS</h1>
-              <p className="text-xs text-white/80">{l.title}</p>
+      <div
+        style={{
+          backgroundColor: DARK_GREEN,
+          padding: "12px 16px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <img
+            src={walkMeLogo}
+            alt="WalkMe Tours"
+            style={{
+              height: "44px",
+              width: "auto",
+              background: "white",
+              borderRadius: "6px",
+              padding: "3px",
+            }}
+          />
+          <div>
+            <div style={{ color: "white", fontWeight: "bold", fontSize: "15px", letterSpacing: "1px" }}>
+              WALKME TOURS
             </div>
-          </div>
-          <div className="text-right">
-            <span
-              className="inline-block px-3 py-1 rounded-full text-xs font-bold text-white"
-              style={{ backgroundColor: statusColor }}
-            >
-              {statusLabel}
-            </span>
+            <div style={{ color: "rgba(255,255,255,0.7)", fontSize: "8px", letterSpacing: "2px" }}>
+              {l.title}
+            </div>
           </div>
         </div>
+        <span
+          style={{
+            backgroundColor: statusBg,
+            color: "white",
+            padding: "3px 10px",
+            borderRadius: "20px",
+            fontSize: "9px",
+            fontWeight: "bold",
+            letterSpacing: "1px",
+          }}
+        >
+          {statusLabel}
+        </span>
+      </div>
 
-        {/* Folios row */}
-        <div className="flex flex-wrap gap-4 px-5 py-3 bg-white" style={{ borderTop: "1px solid #e5e7eb" }}>
-          <div>
-            <span className="text-[10px] uppercase tracking-wider text-gray-400">{l.folio}</span>
-            <p className="text-sm font-bold font-mono" style={{ color: "#2d5a27" }}>{r.folio ?? "—"}</p>
+      {/* ── FOLIOS BAR ── */}
+      <div
+        style={{
+          backgroundColor: LIGHT_GRAY,
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr 1fr 1fr",
+          padding: "8px 16px",
+          gap: "8px",
+          borderBottom: "1px solid #e5e7eb",
+        }}
+      >
+        <div>
+          <div style={labelStyle}>{l.folio}</div>
+          <div style={{ color: DARK_GREEN, fontWeight: "bold", fontSize: "13px", fontFamily: "monospace", marginTop: "2px" }}>
+            {r.folio ?? "—"}
           </div>
-          {r.operator_folio && (
-            <div>
-              <span className="text-[10px] uppercase tracking-wider text-gray-400">{l.operatorFolio}</span>
-              <p className="text-sm font-bold font-mono" style={{ color: "#2d5a27" }}>{r.operator_folio}</p>
-            </div>
-          )}
-          {r.operator_name && (
-            <div>
-              <span className="text-[10px] uppercase tracking-wider text-gray-400">{l.operator}</span>
-              <p className="text-sm font-bold" style={{ color: "#2d5a27" }}>{r.operator_name}</p>
-            </div>
-          )}
-          {r.operator_confirmation_code && (
-            <div>
-              <span className="text-[10px] uppercase tracking-wider text-gray-400">{l.confirmationCode}</span>
-              <p className="text-base font-bold font-mono px-2 py-0.5 rounded" style={{ color: "#2d5a27", backgroundColor: "#f0f7ef" }}>{r.operator_confirmation_code}</p>
-            </div>
-          )}
-          {r.cancellation_folio && (
-            <div>
-              <span className="text-[10px] uppercase tracking-wider text-gray-400">{l.cancellationFolio}</span>
-              <p className="text-sm font-bold font-mono text-red-600">{r.cancellation_folio}</p>
-            </div>
-          )}
-          <div className="ml-auto text-right">
-            <span className="text-[10px] uppercase tracking-wider text-gray-400">{l.purchaseDate}</span>
-            <p className="text-sm">{new Date(r.created_at).toLocaleDateString(lang === "es" ? "es-MX" : "en-US")}</p>
+        </div>
+        <div>
+          <div style={labelStyle}>{l.operator}</div>
+          <div style={{ fontWeight: "600", fontSize: "11px", marginTop: "2px" }}>
+            {r.operator_name ?? "—"}
+          </div>
+        </div>
+        <div>
+          <div style={labelStyle}>{l.confirmation}</div>
+          <div style={{ fontWeight: "600", fontSize: "11px", fontFamily: "monospace", marginTop: "2px" }}>
+            {r.operator_confirmation_code ?? "—"}
+          </div>
+        </div>
+        <div style={{ textAlign: "right" }}>
+          <div style={labelStyle}>{l.date}</div>
+          <div style={{ fontWeight: "600", fontSize: "11px", marginTop: "2px" }}>
+            {new Date(r.created_at).toLocaleDateString(lang === "es" ? "es-MX" : "en-US")}
           </div>
         </div>
       </div>
 
       {/* ── CLIENT SECTION ── */}
-      <div className="rounded-xl overflow-hidden mb-4" style={{ border: "1px solid #e5e7eb" }}>
-        <div className="flex items-center gap-2 px-4 py-2" style={{ backgroundColor: "#f0f7ef" }}>
-          <Users size={14} style={{ color: "#2d5a27" }} />
-          <h3 className="text-xs font-bold uppercase tracking-wider" style={{ color: "#2d5a27" }}>{l.passengers}</h3>
-        </div>
-        <table className="w-full text-sm" style={{ borderCollapse: "collapse" }}>
-          <thead>
-            <tr style={{ backgroundColor: "#f9fafb" }}>
-              <th className="text-left py-2 px-4 text-xs font-semibold text-gray-500">{l.client}</th>
-              <th className="text-center py-2 px-4 text-xs font-semibold text-gray-500">{l.adults}</th>
-              <th className="text-center py-2 px-4 text-xs font-semibold text-gray-500">{l.children}</th>
-              <th className="text-right py-2 px-4 text-xs font-semibold text-gray-500">{l.zone}</th>
-              <th className="text-right py-2 px-4 text-xs font-semibold text-gray-500">{l.nationality}</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr style={{ borderTop: "1px solid #f3f4f6" }}>
-              <td className="py-2 px-4">
-                <p className="font-medium">{client?.name ?? "—"}</p>
-                {client?.phone && <p className="text-xs text-gray-400">{client.phone}</p>}
-                {(r.pax_email || client?.email) && <p className="text-xs text-gray-400">{r.pax_email || client?.email}</p>}
-              </td>
-              <td className="text-center py-2 px-4 font-bold" style={{ color: "#2d5a27" }}>{r.pax_adults}</td>
-              <td className="text-center py-2 px-4 font-bold" style={{ color: "#2d5a27" }}>{r.pax_children}</td>
-              <td className="text-right py-2 px-4">
-                <span className="inline-block px-2 py-0.5 rounded-full text-xs font-medium" style={{ backgroundColor: "#f0f7ef", color: "#2d5a27" }}>
-                  {r.zone || "—"}
-                </span>
-              </td>
-              <td className="text-right py-2 px-4">
-                <span className="inline-block px-2 py-0.5 rounded-full text-xs font-medium" style={{ backgroundColor: "#f0f7ef", color: "#2d5a27" }}>
-                  {r.nationality || "—"}
-                </span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      {/* ── TOUR DETAILS ── */}
-      <div className="rounded-xl overflow-hidden mb-4" style={{ border: "1px solid #e5e7eb" }}>
-        <div className="flex items-center gap-2 px-4 py-2" style={{ backgroundColor: "#f0f7ef" }}>
-          <Calendar size={14} style={{ color: "#2d5a27" }} />
-          <h3 className="text-xs font-bold uppercase tracking-wider" style={{ color: "#2d5a27" }}>{l.tourDetails}</h3>
-        </div>
-        <div className="p-4 space-y-3">
-          <div>
-            <p className="text-base font-bold" style={{ color: "#2d5a27" }}>{tour?.title ?? "—"}</p>
-            {tour?.short_description && <p className="text-xs text-gray-500 mt-0.5">{tour.short_description}</p>}
+      <div
+        style={{
+          padding: "10px 16px",
+          display: "flex",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          borderBottom: "1px solid #f3f4f6",
+          gap: "12px",
+        }}
+      >
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontWeight: "bold", fontSize: "15px", color: "#111827" }}>
+            {client?.name ?? "—"}
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="flex items-start gap-1.5">
-              <Calendar size={12} className="mt-0.5 text-gray-400 shrink-0" />
-              <div>
-                <p className="text-[10px] uppercase text-gray-400">{l.tourDate}</p>
-                <p className="text-sm font-medium">{r.reservation_date}</p>
-              </div>
+          {client?.phone && (
+            <div style={{ display: "flex", alignItems: "center", gap: "4px", marginTop: "2px" }}>
+              <Phone size={10} color="#9ca3af" />
+              <span style={{ color: "#6b7280", fontSize: "10px" }}>{client.phone}</span>
             </div>
-            <div className="flex items-start gap-1.5">
-              <Clock size={12} className="mt-0.5 text-gray-400 shrink-0" />
-              <div>
-                <p className="text-[10px] uppercase text-gray-400">{l.tourTime}</p>
-                <p className="text-sm font-medium">{r.reservation_time || "—"}</p>
-              </div>
+          )}
+          {(r.pax_email || client?.email) && (
+            <div style={{ display: "flex", alignItems: "center", gap: "4px", marginTop: "1px" }}>
+              <Mail size={10} color="#9ca3af" />
+              <span style={{ color: "#6b7280", fontSize: "10px" }}>{r.pax_email || client?.email}</span>
             </div>
-            <div className="flex items-start gap-1.5">
-              <MapPin size={12} className="mt-0.5 text-gray-400 shrink-0" />
-              <div>
-                <p className="text-[10px] uppercase text-gray-400">{l.departure}</p>
-                <p className="text-sm font-medium">{tour?.meeting_point || "—"}</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-1.5">
-              <FileText size={12} className="mt-0.5 text-gray-400 shrink-0" />
-              <div>
-                <p className="text-[10px] uppercase text-gray-400">{l.modality}</p>
-                <p className="text-sm font-medium">{r.modality === "shared" ? l.shared : l.private}</p>
-              </div>
-            </div>
+          )}
+        </div>
+        <div style={{ display: "flex", gap: "6px", flexShrink: 0 }}>
+          <div
+            style={{
+              backgroundColor: DARK_GREEN,
+              color: "white",
+              borderRadius: "6px",
+              padding: "5px 10px",
+              textAlign: "center",
+              minWidth: "44px",
+            }}
+          >
+            <div style={{ fontSize: "7px", letterSpacing: "1px", opacity: 0.75 }}>{l.adults}</div>
+            <div style={{ fontWeight: "bold", fontSize: "16px", lineHeight: 1 }}>{r.pax_adults}</div>
           </div>
-          {/* Hotel & pickup notes */}
-          {(r.hotel_name || r.pickup_notes) && (
-            <div className="grid grid-cols-2 gap-3 pt-2" style={{ borderTop: "1px solid #f3f4f6" }}>
-              {r.hotel_name && (
-                <div className="flex items-start gap-1.5">
-                  <span className="mt-0.5 text-gray-400 shrink-0">🏨</span>
-                  <div>
-                    <p className="text-[10px] uppercase text-gray-400">{l.hotel}</p>
-                    <p className="text-sm font-medium">{r.hotel_name}</p>
-                  </div>
-                </div>
-              )}
-              {r.pickup_notes && (
-                <div className="flex items-start gap-1.5">
-                  <span className="mt-0.5 text-gray-400 shrink-0">🚏</span>
-                  <div>
-                    <p className="text-[10px] uppercase text-gray-400">{l.pickupNotes}</p>
-                    <p className="text-sm font-medium">{r.pickup_notes}</p>
-                  </div>
-                </div>
-              )}
+          <div
+            style={{
+              backgroundColor: ORANGE,
+              color: "white",
+              borderRadius: "6px",
+              padding: "5px 10px",
+              textAlign: "center",
+              minWidth: "44px",
+            }}
+          >
+            <div style={{ fontSize: "7px", letterSpacing: "1px", opacity: 0.75 }}>{l.minors}</div>
+            <div style={{ fontWeight: "bold", fontSize: "16px", lineHeight: 1 }}>{r.pax_children}</div>
+          </div>
+          {r.tour_language && (
+            <div
+              style={{
+                backgroundColor: PINK,
+                color: "white",
+                borderRadius: "6px",
+                padding: "5px 10px",
+                textAlign: "center",
+                minWidth: "44px",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "2px",
+              }}
+            >
+              <Globe size={9} color="rgba(255,255,255,0.8)" />
+              <div style={{ fontSize: "7px", letterSpacing: "1px", opacity: 0.75 }}>{l.language}</div>
+              <div style={{ fontWeight: "bold", fontSize: "9px", lineHeight: 1 }}>{r.tour_language}</div>
             </div>
           )}
         </div>
       </div>
 
-      {/* ── INCLUDES ── */}
-      {tour?.includes && tour.includes.length > 0 && (
-        <div className="rounded-xl overflow-hidden mb-4" style={{ border: "1px solid #e5e7eb" }}>
-          <div className="flex items-center gap-2 px-4 py-2" style={{ backgroundColor: "#f0f7ef" }}>
-            <CheckCircle size={14} style={{ color: "#2d5a27" }} />
-            <h3 className="text-xs font-bold uppercase tracking-wider" style={{ color: "#2d5a27" }}>{l.includes}</h3>
-          </div>
-          <div className="p-4">
-            <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-              {tour.includes.map((item, i) => (
-                <div key={i} className="flex items-center gap-1.5 text-xs">
-                  <span style={{ color: "#2d5a27" }}>✓</span>
-                  <span>{item}</span>
-                </div>
-              ))}
+      {/* ── TOUR SECTION ── */}
+      <div
+        style={{
+          backgroundColor: LIGHT_GREEN,
+          padding: "10px 16px",
+          borderBottom: "1px solid #c8ead8",
+        }}
+      >
+        <div style={{ fontWeight: "bold", fontSize: "14px", color: DARK_GREEN, marginBottom: "8px" }}>
+          {tour?.title ?? "—"}
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "8px" }}>
+          <div>
+            <div style={{ ...labelStyle, display: "flex", alignItems: "center", gap: "3px" }}>
+              <Calendar size={9} />
+              {l.tourDate}
             </div>
+            <div style={{ fontWeight: "600", fontSize: "11px", marginTop: "2px" }}>
+              {r.reservation_date}
+            </div>
+          </div>
+          <div>
+            <div style={{ ...labelStyle, display: "flex", alignItems: "center", gap: "3px" }}>
+              <Clock size={9} />
+              {l.tourTime}
+            </div>
+            <div style={{ fontWeight: "600", fontSize: "11px", marginTop: "2px" }}>
+              {r.reservation_time || "—"}
+            </div>
+          </div>
+          <div>
+            <div style={labelStyle}>{l.modality}</div>
+            <div style={{ fontWeight: "600", fontSize: "11px", marginTop: "2px" }}>
+              {r.modality === "shared" ? l.shared : l.private}
+            </div>
+          </div>
+          <div>
+            <div style={labelStyle}>{l.zone}</div>
+            <div style={{ fontWeight: "600", fontSize: "11px", marginTop: "2px" }}>
+              {r.zone || "—"}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── HOTEL / PICKUP SECTION ── */}
+      {(r.hotel_name || pickupDisplay) && (
+        <div
+          style={{
+            backgroundColor: LIGHT_YELLOW,
+            padding: "8px 16px",
+            borderBottom: "1px solid #fde68a",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+            gap: "12px",
+          }}
+        >
+          <div>
+            {r.hotel_name && (
+              <>
+                <div style={{ ...labelStyle, color: "#92400e", display: "flex", alignItems: "center", gap: "3px" }}>
+                  <Hotel size={9} />
+                  {l.hotel}
+                </div>
+                <div style={{ fontWeight: "600", fontSize: "12px", marginTop: "2px" }}>
+                  {r.hotel_name}
+                </div>
+              </>
+            )}
+          </div>
+          {pickupDisplay && (
+            <div style={{ textAlign: "right" }}>
+              <div
+                style={{
+                  ...labelStyle,
+                  color: "#92400e",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "flex-end",
+                  gap: "3px",
+                }}
+              >
+                <MapPin size={9} />
+                {l.pickupPoint}
+              </div>
+              <div style={{ fontWeight: "600", fontSize: "12px", marginTop: "2px" }}>
+                {pickupDisplay}
+              </div>
+              {r.reservation_time && (
+                <div style={{ color: "#6b7280", fontSize: "10px" }}>{r.reservation_time}</div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── INCLUDES SECTION ── */}
+      {tour?.includes && tour.includes.length > 0 && (
+        <div style={{ padding: "8px 16px", borderBottom: "1px solid #f3f4f6" }}>
+          <div
+            style={{
+              ...labelStyle,
+              display: "flex",
+              alignItems: "center",
+              gap: "4px",
+              marginBottom: "5px",
+            }}
+          >
+            <CheckCircle size={9} color={DARK_GREEN} />
+            {l.includes}
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "2px 12px" }}>
+            {tour.includes.map((item, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "10px" }}>
+                <span style={{ color: DARK_GREEN, fontWeight: "bold", fontSize: "12px", lineHeight: 1 }}>+</span>
+                <span>{item}</span>
+              </div>
+            ))}
           </div>
         </div>
       )}
 
-      {/* ── PAYMENT SUMMARY ── */}
-      <div className="rounded-xl overflow-hidden mb-4" style={{ border: "1px solid #e5e7eb" }}>
-        <div className="flex items-center gap-2 px-4 py-2" style={{ backgroundColor: "#f0f7ef" }}>
-          <CreditCard size={14} style={{ color: "#2d5a27" }} />
-          <h3 className="text-xs font-bold uppercase tracking-wider" style={{ color: "#2d5a27" }}>{l.paymentSummary}</h3>
-        </div>
+      {/* ── PAYMENT SECTION ── */}
+      <div style={{ borderBottom: "1px solid #f3f4f6" }}>
         {r.unit_price_mxn !== undefined && r.unit_price_mxn > 0 && (
-          <table className="w-full text-sm" style={{ borderCollapse: "collapse" }}>
-            <tbody>
-              {r.pax_adults > 0 && (
-                <tr style={{ borderBottom: "1px solid #f3f4f6" }}>
-                  <td className="py-2 px-4 text-gray-600">{r.pax_adults} × {l.priceAdult}</td>
-                  <td className="py-2 px-4 text-right text-gray-500">{fmtMXN(r.unit_price_mxn!)}</td>
-                  <td className="py-2 px-4 text-right font-medium">{fmtMXN(r.pax_adults * r.unit_price_mxn!)}</td>
-                </tr>
+          <div style={{ padding: "6px 16px" }}>
+            {r.pax_adults > 0 && (
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  fontSize: "11px",
+                  padding: "2px 0",
+                  borderBottom: r.pax_children > 0 ? "1px solid #f9fafb" : "none",
+                  color: "#4b5563",
+                }}
+              >
+                <span>{r.pax_adults} × {l.priceAdult}</span>
+                <span style={{ fontFamily: "monospace" }}>
+                  {fmtMXN(r.unit_price_mxn!)} × {r.pax_adults} ={" "}
+                  <strong>{fmtMXN(r.pax_adults * r.unit_price_mxn!)}</strong>
+                </span>
+              </div>
+            )}
+            {r.pax_children > 0 &&
+              r.unit_price_child_mxn !== undefined &&
+              r.unit_price_child_mxn > 0 && (
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    fontSize: "11px",
+                    padding: "2px 0",
+                    color: "#4b5563",
+                  }}
+                >
+                  <span>{r.pax_children} × {l.priceChild}</span>
+                  <span style={{ fontFamily: "monospace" }}>
+                    {fmtMXN(r.unit_price_child_mxn!)} × {r.pax_children} ={" "}
+                    <strong>{fmtMXN(r.pax_children * r.unit_price_child_mxn!)}</strong>
+                  </span>
+                </div>
               )}
-              {r.pax_children > 0 && r.unit_price_child_mxn !== undefined && r.unit_price_child_mxn > 0 && (
-                <tr style={{ borderBottom: "1px solid #f3f4f6" }}>
-                  <td className="py-2 px-4 text-gray-600">{r.pax_children} × {l.priceChild}</td>
-                  <td className="py-2 px-4 text-right text-gray-500">{fmtMXN(r.unit_price_child_mxn!)}</td>
-                  <td className="py-2 px-4 text-right font-medium">{fmtMXN(r.pax_children * r.unit_price_child_mxn!)}</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+          </div>
         )}
-        <div className="flex justify-between items-center px-4 py-3" style={{ background: "linear-gradient(135deg, #2d5a27 0%, #3d7a35 100%)" }}>
-          <span className="text-sm font-bold text-white">{l.total}</span>
-          <span className="text-xl font-bold text-white">{fmtMXN(r.total_mxn)}</span>
+        <div
+          style={{
+            backgroundColor: DARK_GREEN,
+            padding: "8px 16px",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            <CreditCard size={14} color="white" />
+            <span style={{ color: "white", fontWeight: "bold", fontSize: "11px", letterSpacing: "1px" }}>
+              {l.total}
+            </span>
+          </div>
+          <span style={{ color: "white", fontWeight: "bold", fontSize: "18px" }}>
+            {fmtMXN(r.total_mxn)}
+          </span>
         </div>
       </div>
 
-      {/* ── On-site fees warning ── */}
+      {/* ── TAX / ON-SITE FEES SECTION ── */}
       {onSiteFees && (onSiteFees.amountPerAdult > 0 || onSiteFees.amountPerChild > 0) && (
-        <div className="mb-4 rounded-xl p-3" style={{ border: "2px solid #dc2626", backgroundColor: "#fef2f2" }}>
-          <div className="flex items-center gap-2 mb-1">
-            <AlertTriangle size={14} className="text-red-600" />
-            <p className="text-sm font-bold text-red-700">
-              {lang === "es" ? "IMPORTANTE" : "IMPORTANT"}
-            </p>
+        <div
+          style={{
+            backgroundColor: LIGHT_RED,
+            padding: "8px 16px",
+            borderBottom: "1px solid #fecaca",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "5px", marginBottom: "2px" }}>
+            <AlertTriangle size={11} color="#b91c1c" />
+            <span style={{ color: "#b91c1c", fontWeight: "bold", fontSize: "10px" }}>{l.important}</span>
           </div>
-          <p className="text-xs text-red-700">
-            {lang === "es"
-              ? `Impuesto de $${onSiteFees.amountPerAdult.toFixed(2)} ${onSiteFees.currency} por adulto${onSiteFees.amountPerChild > 0 ? ` / $${onSiteFees.amountPerChild.toFixed(2)} ${onSiteFees.currency} por menor` : ""} — se paga al abordar en efectivo.`
-              : `Fee of $${onSiteFees.amountPerAdult.toFixed(2)} ${onSiteFees.currency} per adult${onSiteFees.amountPerChild > 0 ? ` / $${onSiteFees.amountPerChild.toFixed(2)} ${onSiteFees.currency} per child` : ""} — payable at boarding in cash.`}
+          <p style={{ color: "#991b1b", fontSize: "10px", margin: 0 }}>
+            {onSiteFees.amountPerAdult > 0 &&
+              `$${onSiteFees.amountPerAdult.toFixed(2)} ${onSiteFees.currency} ${l.perAdult}`}
+            {onSiteFees.amountPerAdult > 0 && onSiteFees.amountPerChild > 0 && " / "}
+            {onSiteFees.amountPerChild > 0 &&
+              `$${onSiteFees.amountPerChild.toFixed(2)} ${onSiteFees.currency} ${l.perChild}`}
+            {" — "}
+            {l.taxNote}.
           </p>
         </div>
       )}
 
-      {/* ── Notes ── */}
+      {/* ── NOTES ── */}
       {r.notes && (
-        <div className="mb-4 rounded-xl p-3" style={{ border: "1px solid #e5e7eb", backgroundColor: "#fffbeb" }}>
-          <h3 className="text-xs font-bold mb-1 text-gray-700">{l.notes}</h3>
-          <p className="text-xs text-gray-600 whitespace-pre-wrap">{r.notes}</p>
+        <div
+          style={{
+            backgroundColor: LIGHT_NOTES,
+            padding: "8px 16px",
+            borderBottom: "1px solid #fde68a",
+          }}
+        >
+          <div style={{ ...labelStyle, color: "#92400e", marginBottom: "3px" }}>{l.notes}</div>
+          <p style={{ fontSize: "10px", color: "#4b5563", whiteSpace: "pre-wrap", margin: 0 }}>
+            {r.notes}
+          </p>
         </div>
       )}
 
-      {/* ── Cancellation policy ── */}
-      <div className="mb-4 rounded-xl p-3" style={{ backgroundColor: "#f9fafb", border: "1px solid #e5e7eb" }}>
-        <h3 className="text-[10px] font-bold mb-1 uppercase tracking-wider text-gray-400">{l.cancellation}</h3>
-        <p className="text-[10px] text-gray-500 leading-tight whitespace-pre-wrap">{policy}</p>
+      {/* ── CANCELLATION POLICIES ── */}
+      <div
+        style={{
+          backgroundColor: LIGHT_GRAY,
+          padding: "8px 16px",
+          borderTop: "1px solid #e5e7eb",
+          borderBottom: "1px solid #e5e7eb",
+        }}
+      >
+        <div style={{ ...labelStyle, marginBottom: "3px" }}>{l.cancellation}</div>
+        <p style={{ fontSize: "8px", color: "#6b7280", lineHeight: "1.4", margin: 0 }}>{policy}</p>
       </div>
 
-      {/* ── Footer ── */}
-      <div className="rounded-xl overflow-hidden" style={{ background: "linear-gradient(135deg, #2d5a27 0%, #3d7a35 100%)" }}>
-        <p className="text-center text-xs text-white/90 py-2.5 font-medium">
-          🌴 {l.thanks}
+      {/* ── FOOTER ── */}
+      <div style={{ backgroundColor: DARK_GREEN, padding: "8px 16px", textAlign: "center" }}>
+        <p style={{ color: "rgba(255,255,255,0.9)", fontSize: "10px", fontWeight: "500", margin: 0 }}>
+          {l.thanks}
         </p>
       </div>
     </div>
