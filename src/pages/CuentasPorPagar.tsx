@@ -53,6 +53,7 @@ export default function CuentasPorPagar() {
     payment_method: "",
     payment_reference: "",
     payment_date: today,
+    payment_amount: "",
   });
 
   if (role !== "admin") {
@@ -82,14 +83,19 @@ export default function CuentasPorPagar() {
 
   const markPaidMutation = useMutation({
     mutationFn: async (item: Payable) => {
+      const parsedAmount = parseFloat(payForm.payment_amount);
       const noteParts = [
         payForm.payment_method ? `Método: ${payForm.payment_method}` : "",
         payForm.payment_reference ? `Ref: ${payForm.payment_reference}` : "",
         payForm.payment_date ? `Fecha: ${payForm.payment_date}` : "",
       ].filter(Boolean);
+      const amountUpdate = Number(item.amount_fx) > 0
+        ? { amount_fx: isNaN(parsedAmount) ? item.amount_fx : parsedAmount }
+        : { amount_mxn: isNaN(parsedAmount) ? item.amount_mxn : parsedAmount };
       const { error } = await (supabase as any)
         .from("operator_payables")
         .update({
+          ...amountUpdate,
           status: "paid",
           paid_at: new Date().toISOString(),
           notes: noteParts.join(" | "),
@@ -102,7 +108,7 @@ export default function CuentasPorPagar() {
       qc.invalidateQueries({ queryKey: ["operator-payables"] });
       toast.success("Marcado como pagado");
       setPayDialogItem(null);
-      setPayForm({ payment_method: "", payment_reference: "", payment_date: today });
+      setPayForm({ payment_method: "", payment_reference: "", payment_date: today, payment_amount: "" });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -221,7 +227,10 @@ export default function CuentasPorPagar() {
                             variant="outline"
                             onClick={() => {
                               setPayDialogItem(p);
-                              setPayForm({ payment_method: "", payment_reference: "", payment_date: today });
+                              const defaultAmount = Number(p.amount_fx) > 0
+                                ? Number(p.amount_fx).toFixed(2)
+                                : Number(p.amount_mxn).toFixed(2);
+                              setPayForm({ payment_method: "", payment_reference: "", payment_date: today, payment_amount: defaultAmount });
                             }}
                           >
                             <CheckCircle className="h-3.5 w-3.5 mr-1" />
@@ -254,12 +263,29 @@ export default function CuentasPorPagar() {
               <span>{payDialogItem?.reservations?.tours?.title ?? "—"}</span>
               <span className="text-muted-foreground">Folio:</span>
               <span className="font-mono">{payDialogItem?.reservations?.folio ?? "—"}</span>
-              <span className="text-muted-foreground">Monto:</span>
+              <span className="text-muted-foreground">Monto original:</span>
               <span className="font-semibold">
                 {Number(payDialogItem?.amount_fx) > 0
                   ? `$${Number(payDialogItem?.amount_fx).toFixed(2)} ${payDialogItem?.currency_fx}`
                   : fmt(Number(payDialogItem?.amount_mxn))}
               </span>
+            </div>
+
+            <div className="space-y-1">
+              <Label>
+                Monto a pagar
+                {Number(payDialogItem?.amount_fx) > 0
+                  ? ` (${payDialogItem?.currency_fx})`
+                  : " (MXN)"}
+              </Label>
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                value={payForm.payment_amount}
+                onChange={(e) => setPayForm((p) => ({ ...p, payment_amount: e.target.value }))}
+                placeholder="0.00"
+              />
             </div>
 
             <div className="space-y-1">
