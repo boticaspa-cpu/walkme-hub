@@ -70,6 +70,20 @@ export default function Clientes() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("clients").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["clients"] });
+      qc.invalidateQueries({ queryKey: ["clients-list"] });
+      toast.success("Cliente eliminado");
+      setDeleteId(null);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const closeDialog = () => { setDialogOpen(false); setEditingId(null); setForm(emptyForm); };
   const openCreate = () => { setForm(emptyForm); setEditingId(null); setDialogOpen(true); };
   const openEdit = (c: any) => {
