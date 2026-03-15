@@ -30,6 +30,7 @@ export default function Clientes() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const { data: clients = [], isLoading } = useQuery({
     queryKey: ["clients"],
