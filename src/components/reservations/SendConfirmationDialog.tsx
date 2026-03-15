@@ -125,7 +125,7 @@ export default function SendConfirmationDialog({ open, onOpenChange, reservation
                 />
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 <Button variant="outline" className="h-14 flex-col gap-1" onClick={handleWhatsApp}>
                   <MessageSquare className="h-5 w-5 text-green-600" />
                   <span className="text-xs">WhatsApp</span>
@@ -133,10 +133,6 @@ export default function SendConfirmationDialog({ open, onOpenChange, reservation
                 <Button variant="outline" className="h-14 flex-col gap-1" onClick={handleEmail}>
                   <Mail className="h-5 w-5 text-blue-600" />
                   <span className="text-xs">Email</span>
-                </Button>
-                <Button variant="outline" className="h-14 flex-col gap-1" onClick={() => setShowQR(true)}>
-                  <QrCode className="h-5 w-5 text-foreground" />
-                  <span className="text-xs">Código QR</span>
                 </Button>
               </div>
 
@@ -165,17 +161,7 @@ export default function SendConfirmationDialog({ open, onOpenChange, reservation
                   <VoucherPrintView reservation={r} lang={lang} onSiteFees={onSiteFees} />
                 </div>
               </div>
-            </>
-          )}
-
-          {showQR && (
-            <div className="space-y-3">
-              <QRCodeDisplay url={voucherUrl} />
-              <Button variant="ghost" size="sm" className="w-full" onClick={() => setShowQR(false)}>
-                ← Volver a opciones de envío
-              </Button>
-            </div>
-          )}
+          </>
         </div>
       </DialogContent>
     </Dialog>
