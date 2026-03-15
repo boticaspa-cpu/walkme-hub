@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import walkMeLogo from "@/assets/walkme-logo.png";
 import {
   CheckCircle, MapPin, Users, Calendar, Clock, CreditCard,
-  AlertTriangle, Phone, Mail, Globe, Hotel,
+  AlertTriangle, Phone, Mail, Globe, Building2,
 } from "lucide-react";
 
 interface OnSiteFees {
@@ -48,10 +48,10 @@ interface VoucherProps {
 }
 
 const DEFAULT_POLICY_ES =
-  "POLÍTICAS DE CANCELACIÓN — Cualquier cambio o cancelación a su reserva deberá acudir a las oficinas de WALKME TOURS con su ticket de compra original, solo se permite un cambio por reservación y las reservaciones con cambios no pueden ser canceladas. Para reembolsos completos se contemplarán con 72 horas de anticipación a su servicio. En caso de no estar a la hora indicada en este cupón y perder la excursión no habrá derecho a reembolso. No aplica reembolso el mismo día de la excursión. El acto de suscripción o compra implica la total conformidad de todas y cada una de las condiciones mencionadas en este cupón. WALKME TOURS actúa como agente intermediario de compañías de transportación y prestadores de servicios turísticos (proveedores), sin asumir responsabilidad alguna por accidentes, muerte, pérdidas y/o daños materiales o humanos, cambios de horario o alguna otra irregularidad originada por caso fortuito o fuerza mayor. Todos los proveedores de tours son contratistas independientes. Los menores de edad deberán ir acompañados por un adulto responsable en todo momento.";
+  "POLÍTICAS DE CANCELACIÓN — Cualquier cambio o cancelación a su reserva deberá acudir a las oficinas de WALKME TOURS con su ticket de compra original, solo se permite un cambio por reservación y las reservaciones con cambios no pueden ser canceladas. Para reembolsos completos se contemplarán con 72 horas de anticipación a su servicio. En caso de no estar a la hora indicada en este cupón y perder la excursión no habrá derecho a reembolso. No aplica reembolso el mismo día de la excursión. El acto de suscripción o compra implica la total conformidad de todas y cada una de las condiciones mencionadas en este cupón. WALKME TOURS actúa como agente intermediario de compañías de transportación y prestadores de servicios turísticos (proveedores), sin asumir responsabilidad alguna por accidentes, muerte, pérdidas y/o daños materiales o humanos, cambios de horario o alguna otra irregularidad originada por caso fortuito o fuerza mayor ocurrida durante su travesía. Todos los proveedores de tours son contratistas independientes. El acto de su suscripción o compra implica la total conformidad de todas y cada una de las condiciones mencionadas en este cupón. Los menores de edad deberán ir acompañados por un adulto responsable en todo momento.";
 
 const DEFAULT_POLICY_EN =
-  "CANCELLATION POLICIES — Any change or cancellation to your reservation must go to the desks of WALKME TOURS with your original purchase ticket, only one change per reservation is allowed and reservations with changes cannot be canceled. For full refunds, they will be considered 72 hours in advance of your service. In case of not being at the time indicated in this coupon and losing the excursion, there will be no right to reimbursement. No refund applies the same day of the excursion. The act of subscription or purchase implies full compliance with every one of the conditions mentioned in this coupon. WALKME TOURS acts as an intermediary agent between the transportation companies and tour service providers (suppliers), without assuming any responsibility for accidents, death, personal damage, loss/damage of material goods, change of schedule or any other irregular occurrence and unforeseen event during your excursion. All such suppliers providing tour services are independent contractors. Minors must be accompanied by a responsible adult at all times.";
+  "CANCELLATION POLICIES — Any change or cancellation to your reservation must go to the desks of WALKME TOURS with your original purchase ticket, only one change per reservation is allowed and reservations with changes cannot be canceled. For full refunds, they will be considered 72 hours in advance of your service. In case of not being at the time indicated in this coupon and losing the excursion, there will be no right to reimbursement. No refund applies the same day of the excursion. The act of subscription or purchase implies full compliance with every one of the conditions mentioned in this coupon. WALKME TOURS acts as an intermediary agent between the transportation companies and tour service providers (suppliers), without assuming any responsibility for accidents, death, personal damage, loss/damage of material goods, change of schedule or any other irregular occurrence and unforeseen event during your excursion. All such suppliers providing tour services are independent contractors. The act of purchasing a service becomes the full agreement of all the terms and conditions stated in this coupon. Minors must be accompanied by a responsible adult at all times.";
 
 const t = {
   es: {
@@ -211,7 +211,7 @@ export default function VoucherPrintView({
       <div
         style={{
           backgroundColor: DARK_GREEN,
-          padding: "12px 16px",
+          padding: "8px 12px",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
@@ -222,7 +222,7 @@ export default function VoucherPrintView({
             src={walkMeLogo}
             alt="WalkMe Tours"
             style={{
-              height: "44px",
+              height: "36px",
               width: "auto",
               background: "white",
               borderRadius: "6px",
@@ -259,8 +259,8 @@ export default function VoucherPrintView({
           backgroundColor: LIGHT_GRAY,
           display: "grid",
           gridTemplateColumns: "1fr 1fr 1fr 1fr",
-          padding: "8px 16px",
-          gap: "8px",
+          padding: "5px 12px",
+          gap: "6px",
           borderBottom: "1px solid #e5e7eb",
         }}
       >
@@ -293,7 +293,7 @@ export default function VoucherPrintView({
       {/* ── CLIENT SECTION ── */}
       <div
         style={{
-          padding: "10px 16px",
+          padding: "6px 12px",
           display: "flex",
           alignItems: "flex-start",
           justifyContent: "space-between",
@@ -302,7 +302,7 @@ export default function VoucherPrintView({
         }}
       >
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontWeight: "bold", fontSize: "15px", color: "#111827" }}>
+          <div style={{ fontWeight: "bold", fontSize: "13px", color: "#111827" }}>
             {client?.name ?? "—"}
           </div>
           {client?.phone && (
@@ -330,7 +330,7 @@ export default function VoucherPrintView({
             }}
           >
             <div style={{ fontSize: "7px", letterSpacing: "1px", opacity: 0.75 }}>{l.adults}</div>
-            <div style={{ fontWeight: "bold", fontSize: "16px", lineHeight: 1 }}>{r.pax_adults}</div>
+            <div style={{ fontWeight: "bold", fontSize: "14px", lineHeight: 1 }}>{r.pax_adults}</div>
           </div>
           <div
             style={{
@@ -343,7 +343,7 @@ export default function VoucherPrintView({
             }}
           >
             <div style={{ fontSize: "7px", letterSpacing: "1px", opacity: 0.75 }}>{l.minors}</div>
-            <div style={{ fontWeight: "bold", fontSize: "16px", lineHeight: 1 }}>{r.pax_children}</div>
+            <div style={{ fontWeight: "bold", fontSize: "14px", lineHeight: 1 }}>{r.pax_children}</div>
           </div>
           {r.tour_language && (
             <div
@@ -361,9 +361,9 @@ export default function VoucherPrintView({
                 gap: "2px",
               }}
             >
-              <Globe size={9} color="rgba(255,255,255,0.8)" />
-              <div style={{ fontSize: "7px", letterSpacing: "1px", opacity: 0.75 }}>{l.language}</div>
-              <div style={{ fontWeight: "bold", fontSize: "9px", lineHeight: 1 }}>{r.tour_language}</div>
+              <Globe size={9} color="white" />
+              <div style={{ fontSize: "7px", letterSpacing: "1px", color: "white" }}>{l.language}</div>
+              <div style={{ fontWeight: "bold", fontSize: "9px", lineHeight: 1, color: "white" }}>{r.tour_language}</div>
             </div>
           )}
         </div>
@@ -373,11 +373,11 @@ export default function VoucherPrintView({
       <div
         style={{
           backgroundColor: LIGHT_GREEN,
-          padding: "10px 16px",
+          padding: "6px 12px",
           borderBottom: "1px solid #c8ead8",
         }}
       >
-        <div style={{ fontWeight: "bold", fontSize: "14px", color: DARK_GREEN, marginBottom: "8px" }}>
+        <div style={{ fontWeight: "bold", fontSize: "12px", color: DARK_GREEN, marginBottom: "4px" }}>
           {tour?.title ?? "—"}
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "8px" }}>
@@ -419,7 +419,7 @@ export default function VoucherPrintView({
         <div
           style={{
             backgroundColor: LIGHT_YELLOW,
-            padding: "8px 16px",
+            padding: "5px 12px",
             borderBottom: "1px solid #fde68a",
             display: "flex",
             justifyContent: "space-between",
@@ -431,7 +431,7 @@ export default function VoucherPrintView({
             {r.hotel_name && (
               <>
                 <div style={{ ...labelStyle, color: "#92400e", display: "flex", alignItems: "center", gap: "3px" }}>
-                  <Hotel size={9} />
+                  <Building2 size={9} />
                   {l.hotel}
                 </div>
                 <div style={{ fontWeight: "600", fontSize: "12px", marginTop: "2px" }}>
@@ -468,23 +468,23 @@ export default function VoucherPrintView({
 
       {/* ── INCLUDES SECTION ── */}
       {tour?.includes && tour.includes.length > 0 && (
-        <div style={{ padding: "8px 16px", borderBottom: "1px solid #f3f4f6" }}>
+        <div style={{ padding: "5px 12px", borderBottom: "1px solid #f3f4f6" }}>
           <div
             style={{
               ...labelStyle,
               display: "flex",
               alignItems: "center",
               gap: "4px",
-              marginBottom: "5px",
+              marginBottom: "3px",
             }}
           >
             <CheckCircle size={9} color={DARK_GREEN} />
             {l.includes}
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "2px 12px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1px 12px" }}>
             {tour.includes.map((item, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "10px" }}>
-                <span style={{ color: DARK_GREEN, fontWeight: "bold", fontSize: "12px", lineHeight: 1 }}>+</span>
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "11px" }}>
+                <span style={{ color: DARK_GREEN, fontWeight: "bold", fontSize: "11px", lineHeight: 1 }}>+</span>
                 <span>{item}</span>
               </div>
             ))}
@@ -495,7 +495,7 @@ export default function VoucherPrintView({
       {/* ── PAYMENT SECTION ── */}
       <div style={{ borderBottom: "1px solid #f3f4f6" }}>
         {r.unit_price_mxn !== undefined && r.unit_price_mxn > 0 && (
-          <div style={{ padding: "6px 16px" }}>
+          <div style={{ padding: "4px 12px" }}>
             {r.pax_adults > 0 && (
               <div
                 style={{
@@ -538,7 +538,7 @@ export default function VoucherPrintView({
         <div
           style={{
             backgroundColor: DARK_GREEN,
-            padding: "8px 16px",
+            padding: "6px 12px",
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
@@ -550,7 +550,7 @@ export default function VoucherPrintView({
               {l.total}
             </span>
           </div>
-          <span style={{ color: "white", fontWeight: "bold", fontSize: "18px" }}>
+          <span style={{ color: "white", fontWeight: "bold", fontSize: "15px" }}>
             {fmtMXN(r.total_mxn)}
           </span>
         </div>
@@ -561,7 +561,7 @@ export default function VoucherPrintView({
         <div
           style={{
             backgroundColor: LIGHT_RED,
-            padding: "8px 16px",
+            padding: "5px 12px",
             borderBottom: "1px solid #fecaca",
           }}
         >
@@ -586,7 +586,7 @@ export default function VoucherPrintView({
         <div
           style={{
             backgroundColor: LIGHT_NOTES,
-            padding: "8px 16px",
+            padding: "5px 12px",
             borderBottom: "1px solid #fde68a",
           }}
         >
@@ -601,17 +601,17 @@ export default function VoucherPrintView({
       <div
         style={{
           backgroundColor: LIGHT_GRAY,
-          padding: "8px 16px",
+          padding: "5px 12px",
           borderTop: "1px solid #e5e7eb",
           borderBottom: "1px solid #e5e7eb",
         }}
       >
         <div style={{ ...labelStyle, marginBottom: "3px" }}>{l.cancellation}</div>
-        <p style={{ fontSize: "8px", color: "#6b7280", lineHeight: "1.4", margin: 0 }}>{policy}</p>
+        <p style={{ fontSize: "7px", color: "#6b7280", lineHeight: "1.35", margin: 0 }}>{policy}</p>
       </div>
 
       {/* ── FOOTER ── */}
-      <div style={{ backgroundColor: DARK_GREEN, padding: "8px 16px", textAlign: "center" }}>
+      <div style={{ backgroundColor: DARK_GREEN, padding: "5px 12px", textAlign: "center" }}>
         <p style={{ color: "rgba(255,255,255,0.9)", fontSize: "10px", fontWeight: "500", margin: 0 }}>
           {l.thanks}
         </p>
