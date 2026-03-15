@@ -61,6 +61,8 @@ const adminNav = [
   { title: "Cierre Diario", url: "/cierre-diario", icon: ClipboardCheck },
   { title: "Reportes", url: "/reportes", icon: BarChart3 },
   { title: "Gastos", url: "/gastos", icon: Receipt },
+  { title: "Cuentas por Pagar", url: "/cuentas-por-pagar", icon: BadgeDollarSign },
+  { title: "Comisiones", url: "/comisiones", icon: BadgePercent },
   { title: "Configuración", url: "/configuracion", icon: Settings },
 ];
 

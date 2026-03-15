@@ -23,6 +23,7 @@ import Calendario from "./pages/Calendario";
 import POS from "./pages/POS";
 import CierreDiario from "./pages/CierreDiario";
 import Comisiones from "./pages/Comisiones";
+import CuentasPorPagar from "./pages/CuentasPorPagar";
 import Reportes from "./pages/Reportes";
 import Configuracion from "./pages/Configuracion";
 import Gastos from "./pages/Gastos";
@@ -62,6 +63,7 @@ const App = () => (
               <Route path="/cierre-diario" element={<CierreDiario />} />
               <Route path="/comisiones" element={<Comisiones />} />
               <Route element={<AdminRoute />}>
+                <Route path="/cuentas-por-pagar" element={<CuentasPorPagar />} />
                 <Route path="/reportes" element={<Reportes />} />
                 <Route path="/configuracion" element={<Configuracion />} />
                 <Route path="/gastos" element={<Gastos />} />

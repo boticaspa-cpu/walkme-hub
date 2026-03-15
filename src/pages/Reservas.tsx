@@ -414,6 +414,87 @@ export default function Reservas() {
         } as any;
         const { error } = await supabase.from("reservations").update(payload).eq("id", editingId);
         if (error) throw error;
+
+        // Auto-create payable and commission when status → confirmed
+        if (form.status === "confirmed") {
+          try {
+            const existingRes = reservations.find((r: any) => r.id === editingId);
+
+            // A) Operator payable
+            const { data: existingPayable } = await (supabase as any)
+              .from("operator_payables")
+              .select("id")
+              .eq("reservation_id", editingId)
+              .maybeSingle();
+
+            if (!existingPayable) {
+              const tour = tours.find((t: any) => t.id === form.tour_id);
+              const operatorId = (tour as any)?.operator_id;
+              if (operatorId) {
+                const operator = operators.find((o: any) => o.id === operatorId);
+                const paymentRules: string = (operator as any)?.payment_rules ?? "prepago";
+                const svcDate = new Date(form.reservation_date + "T12:00:00");
+                let dueDate = new Date(svcDate);
+                if (paymentRules === "15days" || paymentRules.includes("15")) {
+                  dueDate.setDate(dueDate.getDate() + 15);
+                } else if (paymentRules === "monthly" || paymentRules === "mensual") {
+                  dueDate = new Date(svcDate.getFullYear(), svcDate.getMonth() + 1, 0);
+                }
+                const payableMonth = `${dueDate.getFullYear()}-${String(dueDate.getMonth() + 1).padStart(2, "0")}`;
+                await (supabase as any).from("operator_payables").insert({
+                  reservation_id: editingId,
+                  operator_id: operatorId,
+                  service_date: form.reservation_date,
+                  payment_rule_snapshot: paymentRules,
+                  due_date: dueDate.toISOString().split("T")[0],
+                  payable_month: payableMonth,
+                  amount_mxn: 0,
+                  amount_fx: 0,
+                  currency_fx: "USD",
+                  status: "pending",
+                });
+              }
+            }
+
+            // B) Seller commission
+            const { data: existingComm } = await (supabase as any)
+              .from("seller_commissions")
+              .select("id")
+              .eq("reservation_id", editingId)
+              .maybeSingle();
+
+            if (!existingComm && existingRes?.created_by) {
+              const { data: profile } = await supabase
+                .from("profiles")
+                .select("commission_rate")
+                .eq("id", existingRes.created_by)
+                .single();
+              const commRate = profile?.commission_rate ?? 50;
+              const saleTotal = Math.max(0, form.total_mxn - (form.discount_mxn || 0));
+              const operatorCostMxn = 0;
+              const cardFee = 0;
+              const profit = saleTotal - operatorCostMxn - cardFee;
+              const commAmount = Math.round(profit * (commRate / 100) * 100) / 100;
+              const agencyAmount = Math.round((profit - commAmount) * 100) / 100;
+              await (supabase as any).from("seller_commissions").insert({
+                reservation_id: editingId,
+                seller_id: existingRes.created_by,
+                sale_total_mxn: saleTotal,
+                operator_cost_mxn: operatorCostMxn,
+                card_fee_mxn: cardFee,
+                card_fee_percentage: 4,
+                profit_mxn: profit,
+                commission_percentage: commRate,
+                commission_amount_mxn: commAmount,
+                agency_amount_mxn: agencyAmount,
+                status: "pending",
+              });
+            }
+          } catch (e) {
+            // Non-blocking: log but don't fail the save
+            console.warn("Auto-create payable/commission failed:", e);
+          }
+        }
       } else {
         // Create mode: insert one row per tour item
         const itemsSubtotal = items.reduce((a, i) => a + i.total_mxn, 0);
