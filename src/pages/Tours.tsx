@@ -437,7 +437,7 @@ export default function Tours() {
   const filtered = tours.filter((t) => {
     if (categoryFilter !== "all" && t.categories?.name !== categoryFilter) return false;
     if (destinationFilter !== "all" && (t as any).destinations?.name !== destinationFilter) return false;
-    if (search && !t.title.toLowerCase().includes(search.toLowerCase())) return false;
+    if (search) { const q = search.toLowerCase(); if (!t.title.toLowerCase().includes(q) && !(t as any).operators?.name?.toLowerCase().includes(q)) return false; }
     return true;
   });
 
