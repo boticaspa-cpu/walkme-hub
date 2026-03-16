@@ -1176,7 +1176,18 @@ export default function Tours() {
                   <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{tour.days.length} días/sem</span>
                 </div>
                 <div className="flex items-center justify-between pt-1">
-                  <span className="font-bold text-primary">{formatPrice(tour.price_mxn)}</span>
+                  <div className="flex flex-col">
+                    <span className="font-bold text-primary">{formatPrice(tour.price_mxn)}</span>
+                    {((tour.tax_adult_usd ?? 0) > 0 || (tour.tax_child_usd ?? 0) > 0) && (
+                      <span className="inline-flex items-center gap-1 text-[10px] text-amber-600 bg-amber-50 dark:bg-amber-950/30 dark:text-amber-400 rounded-full px-2 py-0.5 mt-0.5 w-fit">
+                        <DollarSign className="h-3 w-3 shrink-0" />
+                        + Tax: {(tour.tax_adult_usd ?? 0) > 0 && `$${tour.tax_adult_usd} adulto`}
+                        {(tour.tax_adult_usd ?? 0) > 0 && (tour.tax_child_usd ?? 0) > 0 && " · "}
+                        {(tour.tax_child_usd ?? 0) > 0 && `$${tour.tax_child_usd} menor`}
+                        {" USD"}
+                      </span>
+                    )}
+                  </div>
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-muted-foreground">{tour.categories?.name ?? ""}</span>
                     {isAdmin && (

@@ -617,6 +617,8 @@ export type Database = {
           active: boolean
           base_currency: string
           contact_name: string
+          cost_percentage: number | null
+          cost_type: string
           created_at: string
           email: string | null
           exchange_rate: number
@@ -625,7 +627,9 @@ export type Database = {
           logo_url: string | null
           name: string
           payment_rules: string
+          payment_term: string
           phone: string
+          preferred_payment_method: string
           tags: string[]
           updated_at: string
         }
@@ -633,6 +637,8 @@ export type Database = {
           active?: boolean
           base_currency?: string
           contact_name?: string
+          cost_percentage?: number | null
+          cost_type?: string
           created_at?: string
           email?: string | null
           exchange_rate?: number
@@ -641,7 +647,9 @@ export type Database = {
           logo_url?: string | null
           name: string
           payment_rules?: string
+          payment_term?: string
           phone?: string
+          preferred_payment_method?: string
           tags?: string[]
           updated_at?: string
         }
@@ -649,6 +657,8 @@ export type Database = {
           active?: boolean
           base_currency?: string
           contact_name?: string
+          cost_percentage?: number | null
+          cost_type?: string
           created_at?: string
           email?: string | null
           exchange_rate?: number
@@ -657,7 +667,9 @@ export type Database = {
           logo_url?: string | null
           name?: string
           payment_rules?: string
+          payment_term?: string
           phone?: string
+          preferred_payment_method?: string
           tags?: string[]
           updated_at?: string
         }
@@ -666,6 +678,7 @@ export type Database = {
       profiles: {
         Row: {
           approval_status: string
+          commission_percentage: number
           commission_rate: number
           created_at: string
           full_name: string
@@ -674,6 +687,7 @@ export type Database = {
         }
         Insert: {
           approval_status?: string
+          commission_percentage?: number
           commission_rate?: number
           created_at?: string
           full_name?: string
@@ -682,6 +696,7 @@ export type Database = {
         }
         Update: {
           approval_status?: string
+          commission_percentage?: number
           commission_rate?: number
           created_at?: string
           full_name?: string
@@ -1056,12 +1071,15 @@ export type Database = {
           pax_email: string
           payment_status: string
           pickup_notes: string
+          pickup_point: string
           reservation_date: string
           reservation_time: string
           sale_id: string | null
           status: string
+          tax_included: boolean
           total_mxn: number
           tour_id: string | null
+          tour_language: string
           updated_at: string
           zone: string
         }
@@ -1087,12 +1105,15 @@ export type Database = {
           pax_email?: string
           payment_status?: string
           pickup_notes?: string
+          pickup_point?: string
           reservation_date: string
           reservation_time?: string
           sale_id?: string | null
           status?: string
+          tax_included?: boolean
           total_mxn?: number
           tour_id?: string | null
+          tour_language?: string
           updated_at?: string
           zone?: string
         }
@@ -1118,12 +1139,15 @@ export type Database = {
           pax_email?: string
           payment_status?: string
           pickup_notes?: string
+          pickup_point?: string
           reservation_date?: string
           reservation_time?: string
           sale_id?: string | null
           status?: string
+          tax_included?: boolean
           total_mxn?: number
           tour_id?: string | null
+          tour_language?: string
           updated_at?: string
           zone?: string
         }
@@ -1309,6 +1333,77 @@ export type Database = {
             columns: ["sold_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      seller_commissions: {
+        Row: {
+          agency_amount_mxn: number
+          card_fee_mxn: number
+          card_fee_percentage: number
+          commission_amount_mxn: number
+          commission_percentage: number
+          created_at: string
+          id: string
+          notes: string | null
+          operator_cost_mxn: number
+          payment_date: string | null
+          payment_method: string | null
+          payment_reference: string | null
+          profit_mxn: number
+          reservation_id: string | null
+          sale_total_mxn: number
+          seller_id: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          agency_amount_mxn?: number
+          card_fee_mxn?: number
+          card_fee_percentage?: number
+          commission_amount_mxn?: number
+          commission_percentage?: number
+          created_at?: string
+          id?: string
+          notes?: string | null
+          operator_cost_mxn?: number
+          payment_date?: string | null
+          payment_method?: string | null
+          payment_reference?: string | null
+          profit_mxn?: number
+          reservation_id?: string | null
+          sale_total_mxn?: number
+          seller_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          agency_amount_mxn?: number
+          card_fee_mxn?: number
+          card_fee_percentage?: number
+          commission_amount_mxn?: number
+          commission_percentage?: number
+          created_at?: string
+          id?: string
+          notes?: string | null
+          operator_cost_mxn?: number
+          payment_date?: string | null
+          payment_method?: string | null
+          payment_reference?: string | null
+          profit_mxn?: number
+          reservation_id?: string | null
+          sale_total_mxn?: number
+          seller_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seller_commissions_reservation_id_fkey"
+            columns: ["reservation_id"]
+            isOneToOne: false
+            referencedRelation: "reservations"
             referencedColumns: ["id"]
           },
         ]
