@@ -1,40 +1,33 @@
 
 
-# Plan: Fix missing trigger + create Marina Mena's profile
+# Mostrar impuestos (tax) en la ficha/card del tour
 
-## Root Cause
-The `handle_new_user()` function exists but there is **no trigger** on `auth.users` that calls it. New signups never get a profile or role created.
+## Problema
+Las tarjetas de tour en el grid solo muestran el precio MXN, pero no indican si hay impuestos USD adicionales que el cliente debe pagar en destino. Esto genera confusión al cotizar.
 
-## Changes
+## Cambio
 
-### 1. DB Migration — Create the trigger + backfill Marina Mena
+**Archivo:** `src/pages/Tours.tsx` — en la sección de la card (líneas ~1178-1179)
 
-```sql
--- Create the trigger on auth.users
-CREATE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW
-  EXECUTE FUNCTION public.handle_new_user();
+Debajo del precio MXN, agregar una línea sutil y visual que muestre los impuestos USD cuando existan (`tax_adult_usd > 0` o `tax_child_usd > 0`):
 
--- Backfill the existing user who was missed
-INSERT INTO public.profiles (id, full_name, approval_status)
-VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'Marina Mena', 'pending')
-ON CONFLICT (id) DO NOTHING;
+- Un small badge/pill con icono de `DollarSign` y texto como: `+ Tax: $15 USD adulto · $10 USD menor`
+- Estilo: texto `text-[10px]` en color `text-amber-600` con fondo `bg-amber-50` para que destaque visualmente sin ser invasivo
+- Solo se muestra cuando alguno de los valores de tax es mayor a 0
 
-INSERT INTO public.user_roles (user_id, role)
-VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'seller')
-ON CONFLICT (user_id, role) DO NOTHING;
+Resultado visual aproximado en la card:
+```text
+┌─────────────────────────────┐
+│  [imagen]                   │
+│  Título del Tour   [badges] │
+│  Descripción breve...       │
+│  📍 Operador  🕐 5 días/sem │
+│  $2,500 MXN                 │
+│  💲 + Tax: $15 adulto · $10 │
+│     menor (pago en destino) │
+│            [categoría] [sw] │
+└─────────────────────────────┘
 ```
 
-### 2. No code changes needed
-The `AuthContext` and `Configuracion` page already handle the approval flow. Once Marina's profile exists with `pending` status, she'll appear in the user list on Configuracion and you can approve her from there.
-
-## Result
-- Marina Mena will appear in Configuracion with status "Pendiente"
-- You approve her and she can log in
-- Future signups will automatically get profile + seller role via the trigger
-
-| File | Change |
-|---|---|
-| SQL Migration | Attach trigger to auth.users + backfill Marina Mena |
+Solo se toca un archivo, ~5 líneas nuevas insertadas después de la línea del precio.
 
