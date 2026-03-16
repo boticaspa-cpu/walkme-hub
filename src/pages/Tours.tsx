@@ -437,7 +437,7 @@ export default function Tours() {
   const filtered = tours.filter((t) => {
     if (categoryFilter !== "all" && t.categories?.name !== categoryFilter) return false;
     if (destinationFilter !== "all" && (t as any).destinations?.name !== destinationFilter) return false;
-    if (search && !t.title.toLowerCase().includes(search.toLowerCase())) return false;
+    if (search) { const q = search.toLowerCase(); if (!t.title.toLowerCase().includes(q) && !(t as any).operators?.name?.toLowerCase().includes(q)) return false; }
     return true;
   });
 
@@ -1108,7 +1108,7 @@ export default function Tours() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input placeholder="Buscar tour..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
+          <Input placeholder="Buscar tour u operador..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
         <Select value={categoryFilter} onValueChange={setCategoryFilter}>
           <SelectTrigger className="w-40">
