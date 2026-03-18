@@ -211,7 +211,7 @@ export default function Configuracion() {
 
       {/* Users */}
       <Card>
-        <CardHeader className="flex-row items-center justify-between">
+        <CardHeader className="flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
           <CardTitle className="text-base">Usuarios del Sistema</CardTitle>
           <Button size="sm" onClick={() => setInviteDialogOpen(true)}>
             <UserPlus className="mr-2 h-4 w-4" /> Invitar Vendedor
@@ -313,7 +313,7 @@ export default function Configuracion() {
 
       {/* Exchange Rates */}
       <Card>
-        <CardHeader className="flex-row items-center justify-between">
+        <CardHeader className="flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
           <CardTitle className="text-base flex items-center gap-1.5">
             <DollarSign className="h-4 w-4" /> Tipos de Cambio del Operador
           </CardTitle>
@@ -347,7 +347,7 @@ export default function Configuracion() {
 
       {/* Templates */}
       <Card>
-        <CardHeader className="flex-row items-center justify-between">
+        <CardHeader className="flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
           <CardTitle className="text-base">Plantillas de Mensajes</CardTitle>
           <Button size="sm" variant="outline" onClick={openCreateTemplate}><Plus className="mr-2 h-4 w-4" /> Nueva Plantilla</Button>
         </CardHeader>
