@@ -1,40 +1,40 @@
 
 
-# Plan: Fix missing trigger + create Marina Mena's profile
+# Forzar actualización en celular — Service Worker + reload automático
 
-## Root Cause
-The `handle_new_user()` function exists but there is **no trigger** on `auth.users` that calls it. New signups never get a profile or role created.
+## Problema
+El plugin `vite-plugin-pwa` está configurado pero **nunca se registra el Service Worker** en `main.tsx`. Sin esa línea, el SW no se instala y el navegador del celular sigue sirviendo la versión cacheada por su propio cache HTTP. Además, falta lógica para detectar una nueva versión y recargar la página automáticamente.
 
-## Changes
+## Cambios
 
-### 1. DB Migration — Create the trigger + backfill Marina Mena
+### 1. `src/main.tsx` — Registrar SW con auto-reload
+Agregar el import de `registerSW` de `vite-plugin-pwa/virtual` y llamarlo para que:
+- Registre el Service Worker
+- Cuando detecte una nueva versión, recargue la página automáticamente
 
-```sql
--- Create the trigger on auth.users
-CREATE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW
-  EXECUTE FUNCTION public.handle_new_user();
+```typescript
+import { registerSW } from "virtual:pwa-register";
 
--- Backfill the existing user who was missed
-INSERT INTO public.profiles (id, full_name, approval_status)
-VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'Marina Mena', 'pending')
-ON CONFLICT (id) DO NOTHING;
-
-INSERT INTO public.user_roles (user_id, role)
-VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'seller')
-ON CONFLICT (user_id, role) DO NOTHING;
+// Auto-reload when new version detected
+registerSW({ onNeedRefresh() { window.location.reload(); } });
 ```
 
-### 2. No code changes needed
-The `AuthContext` and `Configuracion` page already handle the approval flow. Once Marina's profile exists with `pending` status, she'll appear in the user list on Configuracion and you can approve her from there.
+### 2. `vite.config.ts` — Agregar `skipWaiting` al workbox config
+Agregar `skipWaiting: true` y `clientsClaim: true` en la configuración de workbox para que el nuevo SW tome control inmediatamente sin esperar a que el usuario cierre todas las pestañas.
 
-## Result
-- Marina Mena will appear in Configuracion with status "Pendiente"
-- You approve her and she can log in
-- Future signups will automatically get profile + seller role via the trigger
+### 3. `index.html` — Agregar cache-busting meta tag
+Agregar `<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">` para evitar que el navegador cachee el HTML principal.
 
-| File | Change |
-|---|---|
-| SQL Migration | Attach trigger to auth.users + backfill Marina Mena |
+## Instrucciones para el usuario
+Después de publicar estos cambios, en el celular:
+1. Abrir la app en el navegador
+2. Hacer "pull to refresh" o recargar manualmente **una vez**
+3. A partir de ahí, las futuras actualizaciones se aplicarán automáticamente
+
+Si la app está instalada como PWA en la pantalla de inicio, puede ser necesario eliminarla y volver a agregarla una vez.
+
+## Archivos
+- `src/main.tsx` (~3 líneas nuevas)
+- `vite.config.ts` (~2 líneas nuevas en workbox config)  
+- `index.html` (~1 línea nueva)
 
