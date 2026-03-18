@@ -252,7 +252,7 @@ export function FloatingChatWidget() {
       {/* Input */}
       <form
         onSubmit={(e) => { e.preventDefault(); send(input); }}
-        className="flex gap-2 px-3 py-2.5 border-t border-border"
+        className="flex gap-2 px-3 py-2.5 border-t border-border safe-area-pb"
       >
         <input
           value={input}
