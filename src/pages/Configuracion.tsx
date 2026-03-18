@@ -313,7 +313,7 @@ export default function Configuracion() {
 
       {/* Exchange Rates */}
       <Card>
-        <CardHeader className="flex-row items-center justify-between">
+        <CardHeader className="flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
           <CardTitle className="text-base flex items-center gap-1.5">
             <DollarSign className="h-4 w-4" /> Tipos de Cambio del Operador
           </CardTitle>
