@@ -845,7 +845,7 @@ export default function Reservas() {
             </div>
             <DateRangeFilter dateFrom={dateFrom} dateTo={dateTo} onDateFromChange={setDateFrom} onDateToChange={setDateTo} />
             <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger className="h-9 w-[150px]">
+<SelectTrigger className="h-9 w-full sm:w-[150px]">
                 <SelectValue placeholder="Estado" />
               </SelectTrigger>
               <SelectContent>
