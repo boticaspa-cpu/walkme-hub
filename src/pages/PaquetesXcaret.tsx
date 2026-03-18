@@ -91,35 +91,37 @@ export default function PaquetesXcaret() {
   const [description, setDescription] = useState("");
   const [selectedTourIds, setSelectedTourIds] = useState<string[]>([]);
 
-  // Fetch Xcaret category IDs
-  const { data: xcaretCategories = [] } = useQuery({
-    queryKey: ["xcaret-categories"],
+  // Fetch Xcaret operator IDs (Blue Dreams + McSERI Tours)
+  const { data: xcaretOperators = [] } = useQuery({
+    queryKey: ["xcaret-operators"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("categories")
+        .from("operators")
         .select("id")
-        .ilike("name", "%xcaret%");
+        .or("name.ilike.%blue dream%,name.ilike.%mcseri%");
       if (error) throw error;
       return data ?? [];
     },
   });
 
-  const xcaretCatIds = xcaretCategories.map((c) => c.id);
+  const xcaretOpIds = xcaretOperators.map((o) => o.id);
 
-  // Fetch only tours belonging to Xcaret categories
+  // Fetch only tours from Xcaret operators, excluding Fury and ATV
   const { data: tours = [] } = useQuery<Tour[]>({
-    queryKey: ["tours-for-promos", xcaretCatIds],
+    queryKey: ["tours-for-promos", xcaretOpIds],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("tours")
         .select("id, title, public_price_adult_usd, public_price_child_usd, tax_adult_usd, tax_child_usd, exchange_rate_tour, active")
         .eq("active", true)
-        .in("category_id", xcaretCatIds)
+        .in("operator_id", xcaretOpIds)
+        .not("title", "ilike", "%fury%")
+        .not("title", "ilike", "%atv%")
         .order("title");
       if (error) throw error;
       return data ?? [];
     },
-    enabled: xcaretCatIds.length > 0,
+    enabled: xcaretOpIds.length > 0,
   });
 
   // Fetch promo packages + their tour ids
