@@ -1,40 +1,34 @@
 
 
-# Plan: Fix missing trigger + create Marina Mena's profile
+# Responsive + Actualización en celular (PWA)
 
-## Root Cause
-The `handle_new_user()` function exists but there is **no trigger** on `auth.users` that calls it. New signups never get a profile or role created.
+## Problema
+1. **Actualización en celular**: No hay Service Worker ni PWA configurado. El navegador del celular cachea la versión vieja y no muestra los cambios recientes.
+2. **Overflow horizontal**: Algunos elementos con anchos fijos (`w-[150px]`, tablas anchas) pueden desbordar en pantallas pequeñas.
 
-## Changes
+## Solución
 
-### 1. DB Migration — Create the trigger + backfill Marina Mena
+### 1. Instalar y configurar PWA con `vite-plugin-pwa`
+- Instalar `vite-plugin-pwa` como dependencia
+- Configurar en `vite.config.ts` con estrategia `autoUpdate` para que los usuarios siempre obtengan la versión más reciente sin cache viejo
+- Actualizar `public/manifest.json` con iconos PWA adecuados
+- Agregar lógica de detección de actualización para refrescar automáticamente cuando hay una nueva versión
 
-```sql
--- Create the trigger on auth.users
-CREATE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW
-  EXECUTE FUNCTION public.handle_new_user();
+### 2. Corregir overflow horizontal en páginas clave
+- **Reservas.tsx**: Los `SelectTrigger` con `w-[150px]` fijo pueden desbordar en móvil → cambiar a `w-full sm:w-[150px]`
+- **Reportes.tsx / Configuracion.tsx**: Mismos ajustes en selectores con ancho fijo
+- **Tablas**: Ya tienen `overflow-x-auto`, lo cual está correcto
 
--- Backfill the existing user who was missed
-INSERT INTO public.profiles (id, full_name, approval_status)
-VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'Marina Mena', 'pending')
-ON CONFLICT (id) DO NOTHING;
+### 3. Meta tags PWA en `index.html`
+- Agregar `<meta name="apple-mobile-web-app-capable">` y `<meta name="apple-mobile-web-app-status-bar-style">` para iOS
 
-INSERT INTO public.user_roles (user_id, role)
-VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'seller')
-ON CONFLICT (user_id, role) DO NOTHING;
-```
-
-### 2. No code changes needed
-The `AuthContext` and `Configuracion` page already handle the approval flow. Once Marina's profile exists with `pending` status, she'll appear in the user list on Configuracion and you can approve her from there.
-
-## Result
-- Marina Mena will appear in Configuracion with status "Pendiente"
-- You approve her and she can log in
-- Future signups will automatically get profile + seller role via the trigger
-
-| File | Change |
-|---|---|
-| SQL Migration | Attach trigger to auth.users + backfill Marina Mena |
+## Archivos a modificar
+- `vite.config.ts` — agregar plugin PWA
+- `package.json` — nueva dependencia `vite-plugin-pwa`
+- `public/manifest.json` — completar iconos y configuración
+- `index.html` — meta tags para iOS PWA
+- `src/pages/Reservas.tsx` — anchos responsivos en filtros
+- `src/pages/Reportes.tsx` — anchos responsivos en selectores
+- `src/pages/Configuracion.tsx` — anchos responsivos en selectores
+- `src/main.tsx` — registrar Service Worker con auto-update
 
