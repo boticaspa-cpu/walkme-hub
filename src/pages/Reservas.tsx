@@ -858,7 +858,7 @@ export default function Reservas() {
               </SelectContent>
             </Select>
             <Select value={filterPayment} onValueChange={setFilterPayment}>
-              <SelectTrigger className="h-9 w-[150px]">
+<SelectTrigger className="h-9 w-full sm:w-[150px]">
                 <SelectValue placeholder="Pago" />
               </SelectTrigger>
               <SelectContent>

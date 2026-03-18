@@ -153,7 +153,7 @@ export default function Reportes() {
           <CardHeader className="pb-2 flex flex-row items-center justify-between gap-2">
             <CardTitle className="text-base">Comisiones por Vendedor</CardTitle>
             <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-              <SelectTrigger className="w-[180px] h-8 text-sm">
+              <SelectTrigger className="w-full sm:w-[180px] h-8 text-sm">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
