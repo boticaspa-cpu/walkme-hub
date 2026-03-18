@@ -347,7 +347,7 @@ export default function Configuracion() {
 
       {/* Templates */}
       <Card>
-        <CardHeader className="flex-row items-center justify-between">
+        <CardHeader className="flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
           <CardTitle className="text-base">Plantillas de Mensajes</CardTitle>
           <Button size="sm" variant="outline" onClick={openCreateTemplate}><Plus className="mr-2 h-4 w-4" /> Nueva Plantilla</Button>
         </CardHeader>

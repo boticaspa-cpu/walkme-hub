@@ -164,7 +164,7 @@ export function FloatingChatWidget() {
   }
 
   return (
-    <div className="fixed bottom-16 right-0 sm:bottom-4 sm:right-4 z-[60] flex flex-col w-full sm:w-[380px] h-[calc(100dvh-4rem)] sm:h-[520px] sm:max-h-[80vh] sm:rounded-xl border border-border bg-card shadow-2xl overflow-hidden">
+    <div className="fixed inset-0 z-[70] flex flex-col bg-card sm:inset-auto sm:bottom-4 sm:right-4 sm:z-[60] sm:w-[380px] sm:h-[520px] sm:max-h-[80vh] sm:rounded-xl sm:border sm:border-border sm:shadow-2xl overflow-hidden">
       {/* Header */}
       <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-muted/50">
         <div className="flex items-center justify-center h-8 w-8 rounded-full bg-primary/10">

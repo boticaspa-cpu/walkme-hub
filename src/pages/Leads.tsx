@@ -133,7 +133,7 @@ export default function Leads() {
               <Input placeholder="Buscar por nombre o destino..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
             </div>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-40"><Filter className="mr-2 h-4 w-4" /><SelectValue placeholder="Estado" /></SelectTrigger>
+              <SelectTrigger className="w-full sm:w-40"><Filter className="mr-2 h-4 w-4" /><SelectValue placeholder="Estado" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos</SelectItem>
                 {Object.entries(statusLabels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}

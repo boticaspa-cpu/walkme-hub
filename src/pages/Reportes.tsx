@@ -150,7 +150,7 @@ export default function Reportes() {
 
         {/* Commissions by seller */}
         <Card className="lg:col-span-2">
-          <CardHeader className="pb-2 flex flex-row items-center justify-between gap-2">
+          <CardHeader className="pb-2 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
             <CardTitle className="text-base">Comisiones por Vendedor</CardTitle>
             <Select value={selectedMonth} onValueChange={setSelectedMonth}>
               <SelectTrigger className="w-full sm:w-[180px] h-8 text-sm">
