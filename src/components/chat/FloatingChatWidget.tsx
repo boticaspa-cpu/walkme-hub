@@ -151,7 +151,7 @@ export function FloatingChatWidget() {
 
   if (!isOpen) {
     return (
-      <div className="fixed bottom-20 sm:bottom-4 right-4 z-50">
+      <div className="fixed bottom-20 sm:bottom-4 right-4 z-[60]">
         <Button
           onClick={() => setIsOpen(true)}
           size="icon"
@@ -164,7 +164,7 @@ export function FloatingChatWidget() {
   }
 
   return (
-    <div className="fixed bottom-0 right-0 sm:bottom-4 sm:right-4 z-50 flex flex-col w-full sm:w-[380px] h-[100dvh] sm:h-[520px] sm:max-h-[80vh] sm:rounded-xl border border-border bg-card shadow-2xl overflow-hidden">
+    <div className="fixed bottom-16 right-0 sm:bottom-4 sm:right-4 z-[60] flex flex-col w-full sm:w-[380px] h-[calc(100dvh-4rem)] sm:h-[520px] sm:max-h-[80vh] sm:rounded-xl border border-border bg-card shadow-2xl overflow-hidden">
       {/* Header */}
       <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-muted/50">
         <div className="flex items-center justify-center h-8 w-8 rounded-full bg-primary/10">
@@ -252,7 +252,7 @@ export function FloatingChatWidget() {
       {/* Input */}
       <form
         onSubmit={(e) => { e.preventDefault(); send(input); }}
-        className="flex gap-2 px-3 py-2.5 border-t border-border"
+        className="flex gap-2 px-3 py-2.5 border-t border-border safe-area-pb"
       >
         <input
           value={input}

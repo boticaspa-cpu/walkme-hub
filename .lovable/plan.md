@@ -1,45 +1,40 @@
 
 
-# Arreglar chat IA y desbordamiento en móvil
+# Plan: Fix missing trigger + create Marina Mena's profile
 
-## Problemas identificados
+## Root Cause
+The `handle_new_user()` function exists but there is **no trigger** on `auth.users` that calls it. New signups never get a profile or role created.
 
-1. **Chat IA — input tapado por BottomNav**: El chat ocupa `h-[100dvh]` en móvil y el input queda detrás de la barra de navegación inferior (64px). El usuario no puede escribir.
+## Changes
 
-2. **Chat IA — z-index conflicto**: Tanto el chat como el BottomNav usan `z-50`. El BottomNav se pinta encima del input del chat.
+### 1. DB Migration — Create the trigger + backfill Marina Mena
 
-3. **Desbordamiento horizontal general**: Varias páginas tienen elementos con anchos fijos que no se adaptan en pantallas pequeñas (Configuracion, tablas, etc.).
+```sql
+-- Create the trigger on auth.users
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW
+  EXECUTE FUNCTION public.handle_new_user();
 
-## Cambios
+-- Backfill the existing user who was missed
+INSERT INTO public.profiles (id, full_name, approval_status)
+VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'Marina Mena', 'pending')
+ON CONFLICT (id) DO NOTHING;
 
-### 1. `FloatingChatWidget.tsx` — Ajustar para no chocar con BottomNav
+INSERT INTO public.user_roles (user_id, role)
+VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'seller')
+ON CONFLICT (user_id, role) DO NOTHING;
+```
 
-**Botón flotante**: Mover más arriba en móvil para que no se tape con BottomNav (`bottom-20` ya existe, OK).
+### 2. No code changes needed
+The `AuthContext` and `Configuracion` page already handle the approval flow. Once Marina's profile exists with `pending` status, she'll appear in the user list on Configuracion and you can approve her from there.
 
-**Chat abierto en móvil**:
-- Cambiar `h-[100dvh]` → `h-[calc(100dvh-4rem)]` para dejar espacio al BottomNav (64px = 4rem)
-- Subir z-index a `z-[60]` para quedar sobre el BottomNav
-- Agregar `pb-safe` (safe area) al formulario de input
+## Result
+- Marina Mena will appear in Configuracion with status "Pendiente"
+- You approve her and she can log in
+- Future signups will automatically get profile + seller role via the trigger
 
-### 2. `AppLayout.tsx` — Ocultar BottomNav cuando chat está abierto
-
-Pasar un estado o simplemente usar CSS: cuando el chat está abierto en móvil, elevar su z-index basta para cubrir el BottomNav.
-
-### 3. `index.css` — Overflow global
-
-Agregar `overflow-x: hidden` al `html` y `body` como respaldo.
-
-### 4. `Configuracion.tsx` — Anchos fijos responsivos
-
-- `w-[70px]` → `w-[70px]` (OK, es un input numérico pequeño)
-- `w-[110px]` → `w-full sm:w-[110px]` en el select de rol
-
-### 5. Tablas en general
-
-Verificar que los contenedores de tabla tienen `overflow-x-auto` (la mayoría ya lo tienen).
-
-## Archivos a modificar
-- `src/components/chat/FloatingChatWidget.tsx` — z-index, altura móvil, padding bottom
-- `src/pages/Configuracion.tsx` — anchos responsivos en selectores
-- `src/index.css` — overflow-x hidden global como respaldo
+| File | Change |
+|---|---|
+| SQL Migration | Attach trigger to auth.users + backfill Marina Mena |
 

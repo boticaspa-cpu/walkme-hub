@@ -260,7 +260,7 @@ export default function Configuracion() {
                     }}
                     disabled={isCurrentUser}
                   >
-                    <SelectTrigger className="h-8 w-[110px] text-xs">
+                    <SelectTrigger className="h-8 w-full sm:w-[110px] text-xs">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
