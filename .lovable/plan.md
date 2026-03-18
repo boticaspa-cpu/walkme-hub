@@ -1,26 +1,40 @@
 
 
-# Fix: Filtrar tours por operador Xcaret Blue Dreams y McSERI Tours
+# Plan: Fix missing trigger + create Marina Mena's profile
 
-## Datos encontrados
+## Root Cause
+The `handle_new_user()` function exists but there is **no trigger** on `auth.users` that calls it. New signups never get a profile or role created.
 
-Los tours Xcaret están distribuidos en **2 operadores**:
-- **Xcaret Blue Dreams** (8 tours): Xcaret, Xcaret Plus, Xcaret de Noche, Xel-Há All Inclusive, Xel-Há Light, ATV Xperience (x2)
-- **Xcaret McSERI Tours** (11 tours): Xplor Día, Xplor Fuego, Xenses, Xoximilco, Xenotes, Xichén Clásico/Deluxe, Xailing (x2), Ferry Cozumel, Fury Catamarán
+## Changes
 
-El código actual busca una categoría "xcaret" que no existe. La solución es filtrar por estos dos operadores y excluir Fury Catamarán y los ATVs.
+### 1. DB Migration — Create the trigger + backfill Marina Mena
 
-## Cambio
+```sql
+-- Create the trigger on auth.users
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW
+  EXECUTE FUNCTION public.handle_new_user();
 
-### `src/pages/PaquetesXcaret.tsx`
+-- Backfill the existing user who was missed
+INSERT INTO public.profiles (id, full_name, approval_status)
+VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'Marina Mena', 'pending')
+ON CONFLICT (id) DO NOTHING;
 
-Reemplazar la lógica de filtrado por categoría con filtrado por operador:
+INSERT INTO public.user_roles (user_id, role)
+VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'seller')
+ON CONFLICT (user_id, role) DO NOTHING;
+```
 
-1. **Eliminar** la query de `xcaret-categories` y la variable `xcaretCatIds`
-2. **Buscar operadores** cuyo nombre contenga "blue dream" o "mcseri": query a `operators` con `.or('name.ilike.%blue dream%,name.ilike.%mcseri%')`
-3. **Filtrar tours** por esos `operator_id`s con `.in("operator_id", operatorIds)`
-4. **Excluir** tours con título que contenga "fury" o "ATV" usando `.not('title', 'ilike', '%fury%')` y `.not('title', 'ilike', '%atv%')`
+### 2. No code changes needed
+The `AuthContext` and `Configuracion` page already handle the approval flow. Once Marina's profile exists with `pending` status, she'll appear in the user list on Configuracion and you can approve her from there.
 
-### Archivo a modificar
-- `src/pages/PaquetesXcaret.tsx` — cambiar queries de categoría → operador, excluir Fury y ATVs
+## Result
+- Marina Mena will appear in Configuracion with status "Pendiente"
+- You approve her and she can log in
+- Future signups will automatically get profile + seller role via the trigger
+
+| File | Change |
+|---|---|
+| SQL Migration | Attach trigger to auth.users + backfill Marina Mena |
 
