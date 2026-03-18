@@ -114,6 +114,7 @@ export default function PaquetesXcaret() {
         .from("tours")
         .select("id, title, public_price_adult_usd, public_price_child_usd, tax_adult_usd, tax_child_usd, exchange_rate_tour, active")
         .eq("active", true)
+        .eq("service_type", "with_transport")
         .in("operator_id", xcaretOpIds)
         .not("title", "ilike", "%fury%")
         .not("title", "ilike", "%atv%")
