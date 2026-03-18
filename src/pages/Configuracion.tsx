@@ -211,7 +211,7 @@ export default function Configuracion() {
 
       {/* Users */}
       <Card>
-        <CardHeader className="flex-row items-center justify-between">
+        <CardHeader className="flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
           <CardTitle className="text-base">Usuarios del Sistema</CardTitle>
           <Button size="sm" onClick={() => setInviteDialogOpen(true)}>
             <UserPlus className="mr-2 h-4 w-4" /> Invitar Vendedor
