@@ -1,47 +1,43 @@
 
 
-# Mejorar página de Comisiones
+# Fix CuentasPorPagar.tsx — Query and Display
 
-## Resumen
-Reescribir `src/pages/Comisiones.tsx` para usar la tabla `commissions` en lugar de `seller_commissions`, con KPIs, tabla mejorada, dialog de edición y dialog de pago.
+## Problem
+The current query references columns (`service_date`, `due_date`, `amount_mxn`, `amount_fx`, `currency_fx`, `reservation_id`) and joins (`reservations`, `operators`) that don't match the actual `operator_payables` table schema. The real columns are: `sale_date`, `amount_value`, `amount_currency`, `equivalent_mxn`, `operator_id`, `sale_id`, `notes`, `status`.
 
-## Cambios
+## Changes — `src/pages/CuentasPorPagar.tsx` only
 
-### `src/pages/Comisiones.tsx` — Reescritura completa
+### 1. Fix the Payable type
+Replace with fields matching actual schema: `id`, `operator_id`, `sale_id`, `sale_date`, `amount_value`, `amount_currency`, `equivalent_mxn`, `exchange_rate_used`, `status`, `paid_at`, `payment_method`, `notes`, `created_at`, plus `operator: { id, name }`.
 
-**1. Query**: Cambiar de `seller_commissions` a `commissions` con joins a `profiles` (seller + confirmed_by), `reservations` → `clients`.
+### 2. Fix the main query
+Use the user-provided query:
+```ts
+supabase.from('operator_payables')
+  .select('*, operator:operators(id, name)')
+  .order('created_at', { ascending: false })
+```
+Cast as `(supabase as any)` to avoid TS2589.
 
-**2. KPIs** (4 cards arriba): Pendientes de Pago, Pagadas Este Mes, Ganancia Agencia (Mes), Ganancia Total (Mes). Iconos: `Clock`, `CheckCircle`, `Building2`, `TrendingUp`.
+### 3. Update table columns
+- **Operador**: `p.operator?.name`
+- **Concepto/Tour**: `p.notes ?? "Sin concepto"`
+- **Folio**: `p.id.slice(0, 8)`
+- **Fecha Servicio**: `fmtDate(p.sale_date)`
+- **Vence**: calculate `sale_date + 15 days`
+- **Monto**: `${p.amount_value} ${p.amount_currency}`
+- **Estado**: pending=yellow, paid=green badges
+- **Acción**: "Pagar" button if pending
 
-**3. Tabla con columnas**:
-- Recibo (`receipt_number` o "Pendiente")
-- Fecha (`created_at`)
-- Vendedor (`seller.full_name`) — solo admin
-- Reserva (cliente)
-- Ganancia Bruta (`gross_profit`)
-- Fee Tarjeta (`card_fee_amount`) — hidden en móvil
-- Ganancia Neta (`net_profit`) — hidden en móvil
-- Comisión Vendedor (`commission_amount`)
-- Comisión Agencia (`agency_commission`) — hidden en móvil
-- Estado (badge)
-- Acciones (Editar + Pagar para admin en pending, Recibo para paid)
+### 4. Fix pay dialog
+Update summary info to show `operator?.name`, notes, folio (id slice), and `amount_value + amount_currency`. Update mutation to write correct columns.
 
-**4. EditCommissionDialog** (inline en el mismo archivo):
-- Campos: comisión vendedor (editable), comisión agencia (calculada = net_profit - comisión vendedor)
-- Mutation: update `commission_amount` y `agency_commission` en `commissions`
+### 5. Fix totalPending calculation
+Use `equivalent_mxn` instead of `amount_mxn`.
 
-**5. PayCommissionDialog** (inline en el mismo archivo):
-- Campos: método de pago (select), monto pagado (input)
-- Genera `receipt_number` = `COM-{timestamp}`
-- Mutation: update `status`, `paid_at`, `payment_method`, `payment_amount`, `receipt_number`, `confirmed_by`
+### 6. Fix filter logic
+Remove `getEffectiveStatus` overdue logic (no `due_date` column). Filter simply on `status` field.
 
-**6. Filtros**: Se mantienen estado + vendedor (admin).
-
-### Detalle técnico
-- La tabla `commissions` ya tiene todas las columnas necesarias: `gross_profit`, `net_profit`, `commission_amount`, `agency_commission`, `card_fee_amount`, `receipt_number`, `payment_method`, `payment_amount`, `confirmed_by`, `status`, `paid_at`
-- RLS: Admin tiene full access, seller solo SELECT de sus propias — no se necesitan cambios de DB
-- No se necesitan migraciones
-
-### Archivo a modificar
-- `src/pages/Comisiones.tsx` — reescritura completa
+### 7. Add "+ Nuevo Pago" button and dialog
+Add a button in the header area that opens a dialog to manually create a new `operator_payables` record with fields: operator (select), amount, currency, sale_date, notes. Insert via `(supabase as any).from('operator_payables').insert(...)`.
 
