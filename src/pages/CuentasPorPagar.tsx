@@ -144,7 +144,10 @@ export default function CuentasPorPagar() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const filtered = payables.filter((p) => {
+  if (!isAdmin) {
+    return <div className="p-8 text-muted-foreground">Acceso restringido a administradores.</div>;
+  }
+
     if (filterStatus !== "all" && p.status !== filterStatus) return false;
     if (filterOperator !== "all" && p.operator_id !== filterOperator) return false;
     return true;
