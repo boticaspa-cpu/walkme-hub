@@ -1,4 +1,4 @@
-import { Fragment, useState } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -16,33 +16,145 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { Clock, CheckCircle, Building2, TrendingUp, Pencil, DollarSign, FileText } from "lucide-react";
 import { toast } from "sonner";
+import { format, startOfMonth, endOfMonth } from "date-fns";
 
 const fmt = (n: number) => n.toLocaleString("es-MX", { style: "currency", currency: "MXN" });
 
+/* ── Edit Dialog ── */
+function EditCommissionDialog({ commission, open, onOpenChange, onSave }: {
+  commission: any; open: boolean; onOpenChange: (o: boolean) => void; onSave: () => void;
+}) {
+  const netProfit = Number(commission?.net_profit ?? 0);
+  const [sellerAmt, setSellerAmt] = useState(Number(commission?.commission_amount ?? 0));
+  const agencyAmt = netProfit - sellerAmt;
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase
+        .from("commissions")
+        .update({ commission_amount: sellerAmt, agency_commission: agencyAmt })
+        .eq("id", commission.id);
+      if (error) throw error;
+    },
+    onSuccess: () => { toast.success("Comisión actualizada"); onSave(); onOpenChange(false); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader><DialogTitle>Editar Comisión</DialogTitle></DialogHeader>
+        <div className="space-y-4 py-2">
+          <div className="rounded-lg bg-muted/40 p-3 text-sm space-y-1">
+            <p>Vendedor: <span className="font-medium">{commission?.seller?.full_name ?? "—"}</span></p>
+            <p>Ganancia Neta: <span className="font-semibold">{fmt(netProfit)}</span></p>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <Label>Comisión Vendedor (MXN)</Label>
+              <Input type="number" value={sellerAmt} onChange={e => setSellerAmt(parseFloat(e.target.value) || 0)} />
+            </div>
+            <div className="space-y-1">
+              <Label>Comisión Agencia (MXN)</Label>
+              <Input value={fmt(agencyAmt)} disabled />
+            </div>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+          <Button onClick={() => mutation.mutate()} disabled={mutation.isPending}>Guardar</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/* ── Pay Dialog ── */
+function PayCommissionDialog({ commission, open, onOpenChange, onPaid }: {
+  commission: any; open: boolean; onOpenChange: (o: boolean) => void; onPaid: () => void;
+}) {
+  const { user } = useAuth();
+  const [method, setMethod] = useState("");
+  const [amount, setAmount] = useState(Number(commission?.commission_amount ?? 0));
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      const receiptNumber = `COM-${Date.now().toString().slice(-8)}`;
+      const { error } = await supabase
+        .from("commissions")
+        .update({
+          status: "paid",
+          paid_at: new Date().toISOString(),
+          payment_method: method,
+          payment_amount: amount,
+          receipt_number: receiptNumber,
+          confirmed_by: user?.id,
+        })
+        .eq("id", commission.id);
+      if (error) throw error;
+    },
+    onSuccess: () => { toast.success("Comisión pagada correctamente"); onPaid(); onOpenChange(false); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader><DialogTitle>Pagar Comisión</DialogTitle></DialogHeader>
+        <div className="space-y-4 py-2">
+          <div className="flex items-center justify-between rounded-lg bg-muted/40 p-3">
+            <span className="text-sm font-medium">{commission?.seller?.full_name ?? "—"}</span>
+            <span className="text-lg font-bold text-primary">{fmt(Number(commission?.commission_amount ?? 0))}</span>
+          </div>
+          <div className="space-y-1">
+            <Label>Forma de Pago *</Label>
+            <Select value={method} onValueChange={setMethod}>
+              <SelectTrigger><SelectValue placeholder="Seleccionar método" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="cash_mxn">💵 Efectivo MXN</SelectItem>
+                <SelectItem value="cash_usd">💲 Efectivo USD</SelectItem>
+                <SelectItem value="transfer">🏦 Transferencia</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label>Monto Pagado</Label>
+            <Input type="number" value={amount} onChange={e => setAmount(parseFloat(e.target.value) || 0)} />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+          <Button onClick={() => mutation.mutate()} disabled={mutation.isPending || !method}>Confirmar Pago</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/* ── Main Page ── */
 export default function Comisiones() {
   const { user, role } = useAuth();
   const qc = useQueryClient();
   const isAdmin = role === "admin";
-  const today = new Date().toISOString().split("T")[0];
 
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterSeller, setFilterSeller] = useState("all");
-  const [expandedRow, setExpandedRow] = useState<string | null>(null);
-  const [payDialogItem, setPayDialogItem] = useState<any>(null);
-  const [payForm, setPayForm] = useState({
-    payment_method: "",
-    payment_reference: "",
-    payment_date: today,
-  });
+  const [editItem, setEditItem] = useState<any>(null);
+  const [payItem, setPayItem] = useState<any>(null);
 
   const { data: commissions = [], isLoading } = useQuery({
-    queryKey: ["seller-commissions", isAdmin, user?.id],
+    queryKey: ["commissions", isAdmin, user?.id],
     queryFn: async () => {
-      let q = (supabase as any)
-        .from("seller_commissions")
-        .select("*, reservations(folio), profiles!seller_commissions_seller_id_fkey(full_name)")
+      let q = supabase
+        .from("commissions")
+        .select(`
+          *,
+          seller:profiles!commissions_seller_id_fkey(id, full_name),
+          reservation:reservations!commissions_reservation_id_fkey(id, reservation_date, total_mxn, client:clients(name)),
+          confirmed_by_user:profiles!commissions_confirmed_by_fkey(full_name)
+        `)
         .order("created_at", { ascending: false });
       if (!isAdmin) q = q.eq("seller_id", user?.id);
       const { data, error } = await q;
@@ -52,39 +164,13 @@ export default function Comisiones() {
   });
 
   const { data: sellers = [] } = useQuery({
-    queryKey: ["profiles-for-comm-filter"],
+    queryKey: ["profiles-comm-filter"],
     enabled: isAdmin,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("id, full_name")
-        .order("full_name");
+      const { data, error } = await supabase.from("profiles").select("id, full_name").order("full_name");
       if (error) throw error;
       return data;
     },
-  });
-
-  const payMutation = useMutation({
-    mutationFn: async (item: any) => {
-      const { error } = await (supabase as any)
-        .from("seller_commissions")
-        .update({
-          status: "paid",
-          paid_at: new Date().toISOString(),
-          payment_method: payForm.payment_method,
-          payment_reference: payForm.payment_reference,
-          payment_date: payForm.payment_date,
-        })
-        .eq("id", item.id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["seller-commissions"] });
-      toast.success("Comisión marcada como pagada");
-      setPayDialogItem(null);
-      setPayForm({ payment_method: "", payment_reference: "", payment_date: today });
-    },
-    onError: (e: Error) => toast.error(e.message),
   });
 
   const filtered = commissions.filter((c: any) => {
@@ -93,262 +179,169 @@ export default function Comisiones() {
     return true;
   });
 
-  const totalComm = filtered.reduce(
-    (a: number, c: any) => a + Number(c.commission_amount_mxn ?? 0),
-    0
-  );
+  const now = new Date();
+  const monthStart = startOfMonth(now).toISOString();
+  const monthEnd = endOfMonth(now).toISOString();
+  const thisMonth = commissions.filter((c: any) => c.created_at >= monthStart && c.created_at <= monthEnd);
 
-  const statusBadge = (status: string) => {
-    if (status === "paid")
-      return <Badge className="bg-green-100 text-green-700 border-green-200 hover:bg-green-100">Pagado</Badge>;
-    return <Badge className="bg-yellow-100 text-yellow-700 border-yellow-200 hover:bg-yellow-100">Pendiente</Badge>;
-  };
+  const pendingItems = commissions.filter((c: any) => (c.status ?? "pending") === "pending");
+  const pendingTotal = pendingItems.reduce((a: number, c: any) => a + Number(c.commission_amount ?? 0), 0);
+  const paidThisMonth = thisMonth.filter((c: any) => c.status === "paid").reduce((a: number, c: any) => a + Number(c.commission_amount ?? 0), 0);
+  const agencyProfitMonth = thisMonth.reduce((a: number, c: any) => a + Number(c.agency_commission ?? 0), 0);
+  const totalProfitMonth = thisMonth.reduce((a: number, c: any) => a + Number(c.net_profit ?? 0), 0);
+
+  const invalidate = () => qc.invalidateQueries({ queryKey: ["commissions"] });
+
+  const statusBadge = (status: string) =>
+    status === "paid"
+      ? <Badge className="bg-green-100 text-green-700 border-green-200 hover:bg-green-100">Pagado</Badge>
+      : <Badge className="bg-yellow-100 text-yellow-700 border-yellow-200 hover:bg-yellow-100">Pendiente</Badge>;
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-2xl font-bold font-display">
-            {isAdmin ? "Comisiones" : "Mis Comisiones"}
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            {isAdmin
-              ? "Comisiones de todos los vendedores"
-              : "Comisiones generadas por tus ventas"}
-          </p>
-        </div>
-        <Card className="px-4 py-2">
-          <p className="text-xs text-muted-foreground">Total (filtrado)</p>
-          <p className="text-xl font-bold text-primary">{fmt(totalComm)}</p>
-        </Card>
+      <h1 className="text-2xl font-bold font-display">{isAdmin ? "Comisiones" : "Mis Comisiones"}</h1>
+
+      {/* KPIs */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {[
+          { label: "Pendientes de Pago", value: fmt(pendingTotal), sub: `${pendingItems.length} comisiones`, icon: Clock },
+          { label: "Pagadas Este Mes", value: fmt(paidThisMonth), icon: CheckCircle },
+          { label: "Ganancia Agencia (Mes)", value: fmt(agencyProfitMonth), icon: Building2 },
+          { label: "Ganancia Total (Mes)", value: fmt(totalProfitMonth), icon: TrendingUp },
+        ].map((k) => (
+          <Card key={k.label} className="shadow-sm">
+            <CardContent className="flex items-start gap-3 p-4">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                <k.icon className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">{k.label}</p>
+                <p className="text-lg font-bold tracking-tight">{k.value}</p>
+                {k.sub && <p className="text-xs text-muted-foreground">{k.sub}</p>}
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3">
         <Select value={filterStatus} onValueChange={setFilterStatus}>
-          <SelectTrigger className="w-36">
-            <SelectValue placeholder="Estado" />
-          </SelectTrigger>
+          <SelectTrigger className="w-36"><SelectValue placeholder="Estado" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos</SelectItem>
             <SelectItem value="pending">Pendiente</SelectItem>
             <SelectItem value="paid">Pagado</SelectItem>
           </SelectContent>
         </Select>
-
         {isAdmin && (
           <Select value={filterSeller} onValueChange={setFilterSeller}>
-            <SelectTrigger className="w-48">
-              <SelectValue placeholder="Vendedor" />
-            </SelectTrigger>
+            <SelectTrigger className="w-48"><SelectValue placeholder="Vendedor" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos los vendedores</SelectItem>
-              {(sellers as any[]).map((s) => (
-                <SelectItem key={s.id} value={s.id}>{s.full_name}</SelectItem>
-              ))}
+              {(sellers as any[]).map(s => <SelectItem key={s.id} value={s.id}>{s.full_name}</SelectItem>)}
             </SelectContent>
           </Select>
         )}
       </div>
 
+      {/* Table */}
       <Card>
         <CardContent className="p-0">
           {isLoading ? (
             <p className="p-6 text-sm text-muted-foreground">Cargando…</p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-8" />
-                  {isAdmin && <TableHead>Vendedor</TableHead>}
-                  <TableHead>Folio</TableHead>
-                  <TableHead className="hidden sm:table-cell text-right">Venta</TableHead>
-                  <TableHead className="hidden md:table-cell text-right">Costo Op.</TableHead>
-                  <TableHead className="hidden md:table-cell text-right">Fee Tarjeta</TableHead>
-                  <TableHead className="text-right">Comisión</TableHead>
-                  <TableHead>Estado</TableHead>
-                  <TableHead />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filtered.length === 0 ? (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell
-                      colSpan={isAdmin ? 9 : 8}
-                      className="text-center text-muted-foreground py-8"
-                    >
-                      Sin comisiones registradas
-                    </TableCell>
+                    <TableHead># Recibo</TableHead>
+                    <TableHead>Fecha</TableHead>
+                    {isAdmin && <TableHead>Vendedor</TableHead>}
+                    <TableHead>Cliente</TableHead>
+                    <TableHead className="hidden md:table-cell text-right">Gan. Bruta</TableHead>
+                    <TableHead className="hidden md:table-cell text-right">Fee 4%</TableHead>
+                    <TableHead className="hidden md:table-cell text-right">Gan. Neta</TableHead>
+                    <TableHead className="text-right">Com. Vendedor</TableHead>
+                    <TableHead className="hidden md:table-cell text-right">Com. Agencia</TableHead>
+                    <TableHead>Estado</TableHead>
+                    <TableHead />
                   </TableRow>
-                ) : (
-                  filtered.map((c: any) => (
-                    <Fragment key={c.id}>
-                      <TableRow
-                        className="cursor-pointer hover:bg-muted/30"
-                        onClick={() => setExpandedRow(expandedRow === c.id ? null : c.id)}
-                      >
-                        <TableCell>
-                          {expandedRow === c.id ? (
-                            <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-                          ) : (
-                            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
-                          )}
+                </TableHeader>
+                <TableBody>
+                  {filtered.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={isAdmin ? 11 : 10} className="text-center text-muted-foreground py-8">
+                        Sin comisiones registradas
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filtered.map((c: any) => (
+                      <TableRow key={c.id}>
+                        <TableCell className="font-mono text-xs">
+                          {c.receipt_number ?? <span className="text-muted-foreground">Pendiente</span>}
+                        </TableCell>
+                        <TableCell className="text-sm">
+                          {c.created_at ? format(new Date(c.created_at), "dd/MM/yy") : "—"}
                         </TableCell>
                         {isAdmin && (
-                          <TableCell className="font-medium text-sm">
-                            {c.profiles?.full_name ?? "—"}
-                          </TableCell>
+                          <TableCell className="text-sm font-medium">{c.seller?.full_name ?? "—"}</TableCell>
                         )}
-                        <TableCell className="font-mono text-sm">
-                          {c.reservations?.folio ?? "—"}
+                        <TableCell className="text-sm">
+                          {c.reservation?.client?.name ?? "—"}
                         </TableCell>
-                        <TableCell className="hidden sm:table-cell text-right text-sm">
-                          {fmt(Number(c.sale_total_mxn ?? 0))}
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell text-right text-sm text-muted-foreground">
-                          {fmt(Number(c.operator_cost_mxn ?? 0))}
+                        <TableCell className="hidden md:table-cell text-right text-sm">
+                          {fmt(Number(c.gross_profit ?? 0))}
                         </TableCell>
                         <TableCell className="hidden md:table-cell text-right text-sm text-muted-foreground">
-                          {Number(c.card_fee_mxn) > 0 ? fmt(Number(c.card_fee_mxn)) : "—"}
+                          {Number(c.card_fee_amount) > 0 ? fmt(Number(c.card_fee_amount)) : "—"}
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell text-right text-sm">
+                          {fmt(Number(c.net_profit ?? 0))}
                         </TableCell>
                         <TableCell className="text-right font-semibold text-primary">
-                          {fmt(Number(c.commission_amount_mxn ?? 0))}
+                          {fmt(Number(c.commission_amount ?? 0))}
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell text-right text-sm">
+                          {fmt(Number(c.agency_commission ?? 0))}
                         </TableCell>
                         <TableCell>{statusBadge(c.status ?? "pending")}</TableCell>
                         <TableCell>
-                          {isAdmin && (c.status === "pending" || !c.status) && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setPayDialogItem(c);
-                                setPayForm({
-                                  payment_method: "",
-                                  payment_reference: "",
-                                  payment_date: today,
-                                });
-                              }}
-                            >
-                              Pagar
-                            </Button>
-                          )}
+                          {c.status === "pending" && isAdmin ? (
+                            <div className="flex gap-1">
+                              <Button size="icon" variant="ghost" onClick={() => setEditItem(c)}>
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button size="sm" variant="outline" onClick={() => setPayItem(c)}>
+                                <DollarSign className="h-4 w-4 mr-1" />Pagar
+                              </Button>
+                            </div>
+                          ) : c.status === "paid" ? (
+                            <div className="flex items-center gap-1">
+                              <span className="text-xs text-green-600 font-medium">Pagada</span>
+                              <Button size="icon" variant="ghost" onClick={() => toast.info(`Recibo: ${c.receipt_number ?? "N/A"}`)}>
+                                <FileText className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ) : null}
                         </TableCell>
                       </TableRow>
-
-                      {expandedRow === c.id && (
-                        <TableRow>
-                          <TableCell colSpan={isAdmin ? 9 : 8} className="bg-muted/20 p-0">
-                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 p-4 text-sm">
-                              <div>
-                                <p className="text-xs text-muted-foreground mb-0.5">Venta Total</p>
-                                <p className="font-semibold">{fmt(Number(c.sale_total_mxn ?? 0))}</p>
-                              </div>
-                              <div>
-                                <p className="text-xs text-muted-foreground mb-0.5">Costo Operador</p>
-                                <p className="font-semibold">− {fmt(Number(c.operator_cost_mxn ?? 0))}</p>
-                              </div>
-                              <div>
-                                <p className="text-xs text-muted-foreground mb-0.5">
-                                  Fee Tarjeta ({c.card_fee_percentage ?? 4}%)
-                                </p>
-                                <p className="font-semibold">− {fmt(Number(c.card_fee_mxn ?? 0))}</p>
-                              </div>
-                              <div>
-                                <p className="text-xs text-muted-foreground mb-0.5">Utilidad</p>
-                                <p className="font-semibold">{fmt(Number(c.profit_mxn ?? 0))}</p>
-                              </div>
-                              <div>
-                                <p className="text-xs text-muted-foreground mb-0.5">
-                                  Comisión ({c.commission_percentage ?? 0}%)
-                                </p>
-                                <p className="font-semibold text-primary">
-                                  {fmt(Number(c.commission_amount_mxn ?? 0))}
-                                </p>
-                              </div>
-                              <div>
-                                <p className="text-xs text-muted-foreground mb-0.5">Para la agencia</p>
-                                <p className="font-semibold">{fmt(Number(c.agency_amount_mxn ?? 0))}</p>
-                              </div>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </Fragment>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Pay Commission Dialog */}
-      <Dialog open={!!payDialogItem} onOpenChange={(o) => { if (!o) setPayDialogItem(null); }}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Pagar Comisión</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="grid grid-cols-2 gap-2 text-sm bg-muted/40 rounded-lg p-3">
-              <span className="text-muted-foreground">Vendedor:</span>
-              <span className="font-medium">{payDialogItem?.profiles?.full_name ?? "—"}</span>
-              <span className="text-muted-foreground">Folio:</span>
-              <span className="font-mono">{payDialogItem?.reservations?.folio ?? "—"}</span>
-              <span className="text-muted-foreground">Comisión:</span>
-              <span className="font-semibold text-primary">
-                {fmt(Number(payDialogItem?.commission_amount_mxn ?? 0))}
-              </span>
-            </div>
-
-            <div className="space-y-1">
-              <Label>Método de pago</Label>
-              <Select
-                value={payForm.payment_method}
-                onValueChange={(v) => setPayForm((p) => ({ ...p, payment_method: v }))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar método" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="cash_mxn">Efectivo MXN</SelectItem>
-                  <SelectItem value="transfer">Transferencia</SelectItem>
-                  <SelectItem value="cash_usd">Efectivo USD</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-1">
-              <Label>Referencia</Label>
-              <Input
-                value={payForm.payment_reference}
-                onChange={(e) => setPayForm((p) => ({ ...p, payment_reference: e.target.value }))}
-                placeholder="Número de comprobante..."
-              />
-            </div>
-
-            <div className="space-y-1">
-              <Label>Fecha de pago</Label>
-              <Input
-                type="date"
-                value={payForm.payment_date}
-                onChange={(e) => setPayForm((p) => ({ ...p, payment_date: e.target.value }))}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setPayDialogItem(null)}>
-              Cancelar
-            </Button>
-            <Button
-              onClick={() => payDialogItem && payMutation.mutate(payDialogItem)}
-              disabled={payMutation.isPending}
-            >
-              Confirmar Pago
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Dialogs */}
+      {editItem && (
+        <EditCommissionDialog commission={editItem} open={!!editItem} onOpenChange={o => { if (!o) setEditItem(null); }} onSave={invalidate} />
+      )}
+      {payItem && (
+        <PayCommissionDialog commission={payItem} open={!!payItem} onOpenChange={o => { if (!o) setPayItem(null); }} onPaid={invalidate} />
+      )}
     </div>
   );
 }
