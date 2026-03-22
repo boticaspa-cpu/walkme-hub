@@ -224,7 +224,7 @@ export type Database = {
           payment_method: string | null
           receipt_number: string | null
           reservation_id: string | null
-          sale_id: string
+          sale_id: string | null
           seller_id: string
           status: string
           tour_id: string | null
@@ -247,7 +247,7 @@ export type Database = {
           payment_method?: string | null
           receipt_number?: string | null
           reservation_id?: string | null
-          sale_id: string
+          sale_id?: string | null
           seller_id: string
           status?: string
           tour_id?: string | null
@@ -270,7 +270,7 @@ export type Database = {
           payment_method?: string | null
           receipt_number?: string | null
           reservation_id?: string | null
-          sale_id?: string
+          sale_id?: string | null
           seller_id?: string
           status?: string
           tour_id?: string | null
