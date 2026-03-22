@@ -148,6 +148,7 @@ export default function CuentasPorPagar() {
     return <div className="p-8 text-muted-foreground">Acceso restringido a administradores.</div>;
   }
 
+  const filtered = payables.filter((p) => {
     if (filterStatus !== "all" && p.status !== filterStatus) return false;
     if (filterOperator !== "all" && p.operator_id !== filterOperator) return false;
     return true;
