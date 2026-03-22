@@ -622,7 +622,7 @@ export type Database = {
           paid_at: string | null
           payment_method: string | null
           sale_date: string
-          sale_id: string
+          sale_id: string | null
           status: string
           updated_at: string | null
         }
@@ -638,7 +638,7 @@ export type Database = {
           paid_at?: string | null
           payment_method?: string | null
           sale_date: string
-          sale_id: string
+          sale_id?: string | null
           status?: string
           updated_at?: string | null
         }
@@ -654,7 +654,7 @@ export type Database = {
           paid_at?: string | null
           payment_method?: string | null
           sale_date?: string
-          sale_id?: string
+          sale_id?: string | null
           status?: string
           updated_at?: string | null
         }
