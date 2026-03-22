@@ -1,40 +1,47 @@
 
 
-# Plan: Fix missing trigger + create Marina Mena's profile
+# Mejorar página de Comisiones
 
-## Root Cause
-The `handle_new_user()` function exists but there is **no trigger** on `auth.users` that calls it. New signups never get a profile or role created.
+## Resumen
+Reescribir `src/pages/Comisiones.tsx` para usar la tabla `commissions` en lugar de `seller_commissions`, con KPIs, tabla mejorada, dialog de edición y dialog de pago.
 
-## Changes
+## Cambios
 
-### 1. DB Migration — Create the trigger + backfill Marina Mena
+### `src/pages/Comisiones.tsx` — Reescritura completa
 
-```sql
--- Create the trigger on auth.users
-CREATE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW
-  EXECUTE FUNCTION public.handle_new_user();
+**1. Query**: Cambiar de `seller_commissions` a `commissions` con joins a `profiles` (seller + confirmed_by), `reservations` → `clients`.
 
--- Backfill the existing user who was missed
-INSERT INTO public.profiles (id, full_name, approval_status)
-VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'Marina Mena', 'pending')
-ON CONFLICT (id) DO NOTHING;
+**2. KPIs** (4 cards arriba): Pendientes de Pago, Pagadas Este Mes, Ganancia Agencia (Mes), Ganancia Total (Mes). Iconos: `Clock`, `CheckCircle`, `Building2`, `TrendingUp`.
 
-INSERT INTO public.user_roles (user_id, role)
-VALUES ('d1c13d2e-a503-4d8c-a38d-f211f65547da', 'seller')
-ON CONFLICT (user_id, role) DO NOTHING;
-```
+**3. Tabla con columnas**:
+- Recibo (`receipt_number` o "Pendiente")
+- Fecha (`created_at`)
+- Vendedor (`seller.full_name`) — solo admin
+- Reserva (cliente)
+- Ganancia Bruta (`gross_profit`)
+- Fee Tarjeta (`card_fee_amount`) — hidden en móvil
+- Ganancia Neta (`net_profit`) — hidden en móvil
+- Comisión Vendedor (`commission_amount`)
+- Comisión Agencia (`agency_commission`) — hidden en móvil
+- Estado (badge)
+- Acciones (Editar + Pagar para admin en pending, Recibo para paid)
 
-### 2. No code changes needed
-The `AuthContext` and `Configuracion` page already handle the approval flow. Once Marina's profile exists with `pending` status, she'll appear in the user list on Configuracion and you can approve her from there.
+**4. EditCommissionDialog** (inline en el mismo archivo):
+- Campos: comisión vendedor (editable), comisión agencia (calculada = net_profit - comisión vendedor)
+- Mutation: update `commission_amount` y `agency_commission` en `commissions`
 
-## Result
-- Marina Mena will appear in Configuracion with status "Pendiente"
-- You approve her and she can log in
-- Future signups will automatically get profile + seller role via the trigger
+**5. PayCommissionDialog** (inline en el mismo archivo):
+- Campos: método de pago (select), monto pagado (input)
+- Genera `receipt_number` = `COM-{timestamp}`
+- Mutation: update `status`, `paid_at`, `payment_method`, `payment_amount`, `receipt_number`, `confirmed_by`
 
-| File | Change |
-|---|---|
-| SQL Migration | Attach trigger to auth.users + backfill Marina Mena |
+**6. Filtros**: Se mantienen estado + vendedor (admin).
+
+### Detalle técnico
+- La tabla `commissions` ya tiene todas las columnas necesarias: `gross_profit`, `net_profit`, `commission_amount`, `agency_commission`, `card_fee_amount`, `receipt_number`, `payment_method`, `payment_amount`, `confirmed_by`, `status`, `paid_at`
+- RLS: Admin tiene full access, seller solo SELECT de sus propias — no se necesitan cambios de DB
+- No se necesitan migraciones
+
+### Archivo a modificar
+- `src/pages/Comisiones.tsx` — reescritura completa
 
