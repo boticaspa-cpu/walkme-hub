@@ -49,6 +49,7 @@ export default function CuentasPorPagar() {
   const { role } = useAuth();
   const qc = useQueryClient();
   const today = new Date().toISOString().split("T")[0];
+  const isAdmin = role === "admin";
 
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterOperator, setFilterOperator] = useState("all");
@@ -60,7 +61,6 @@ export default function CuentasPorPagar() {
     payment_amount: "",
   });
 
-  // New payment dialog state
   const [newDialogOpen, setNewDialogOpen] = useState(false);
   const [newForm, setNewForm] = useState({
     operator_id: "",
@@ -69,10 +69,6 @@ export default function CuentasPorPagar() {
     sale_date: today,
     notes: "",
   });
-
-  if (role !== "admin") {
-    return <div className="p-8 text-muted-foreground">Acceso restringido a administradores.</div>;
-  }
 
   const { data: payables = [], isLoading } = useQuery<Payable[]>({
     queryKey: ["operator-payables"],
