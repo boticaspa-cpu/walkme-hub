@@ -208,33 +208,89 @@ export type Database = {
       }
       commissions: {
         Row: {
-          amount_mxn: number
-          card_fee_mxn: number
-          created_at: string
+          agency_commission: number | null
+          card_fee_amount: number | null
+          card_fee_applied: boolean | null
+          commission_amount: number
+          commission_rate: number
+          confirmed_by: string | null
+          created_at: string | null
+          gross_profit: number | null
           id: string
-          rate: number
-          sale_id: string | null
+          net_profit: number | null
+          notes: string | null
+          paid_at: string | null
+          payment_amount: number | null
+          payment_method: string | null
+          receipt_number: string | null
+          reservation_id: string | null
+          sale_id: string
           seller_id: string
+          status: string
+          tour_id: string | null
+          updated_at: string | null
         }
         Insert: {
-          amount_mxn?: number
-          card_fee_mxn?: number
-          created_at?: string
+          agency_commission?: number | null
+          card_fee_amount?: number | null
+          card_fee_applied?: boolean | null
+          commission_amount: number
+          commission_rate?: number
+          confirmed_by?: string | null
+          created_at?: string | null
+          gross_profit?: number | null
           id?: string
-          rate?: number
-          sale_id?: string | null
+          net_profit?: number | null
+          notes?: string | null
+          paid_at?: string | null
+          payment_amount?: number | null
+          payment_method?: string | null
+          receipt_number?: string | null
+          reservation_id?: string | null
+          sale_id: string
           seller_id: string
+          status?: string
+          tour_id?: string | null
+          updated_at?: string | null
         }
         Update: {
-          amount_mxn?: number
-          card_fee_mxn?: number
-          created_at?: string
+          agency_commission?: number | null
+          card_fee_amount?: number | null
+          card_fee_applied?: boolean | null
+          commission_amount?: number
+          commission_rate?: number
+          confirmed_by?: string | null
+          created_at?: string | null
+          gross_profit?: number | null
           id?: string
-          rate?: number
-          sale_id?: string | null
+          net_profit?: number | null
+          notes?: string | null
+          paid_at?: string | null
+          payment_amount?: number | null
+          payment_method?: string | null
+          receipt_number?: string | null
+          reservation_id?: string | null
+          sale_id?: string
           seller_id?: string
+          status?: string
+          tour_id?: string | null
+          updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "commissions_confirmed_by_fkey"
+            columns: ["confirmed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commissions_reservation_id_fkey"
+            columns: ["reservation_id"]
+            isOneToOne: false
+            referencedRelation: "reservations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "commissions_sale_id_fkey"
             columns: ["sale_id"]
@@ -247,6 +303,13 @@ export type Database = {
             columns: ["seller_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commissions_tour_id_fkey"
+            columns: ["tour_id"]
+            isOneToOne: false
+            referencedRelation: "tours"
             referencedColumns: ["id"]
           },
         ]
@@ -548,52 +611,52 @@ export type Database = {
       }
       operator_payables: {
         Row: {
-          amount_fx: number | null
-          amount_mxn: number
-          created_at: string
-          currency_fx: string | null
-          due_date: string
+          amount_currency: string
+          amount_value: number
+          created_at: string | null
+          equivalent_mxn: number | null
+          exchange_rate_used: number | null
           id: string
           notes: string | null
           operator_id: string
           paid_at: string | null
-          payable_month: string | null
-          payment_rule_snapshot: string
-          reservation_id: string
-          service_date: string
+          payment_method: string | null
+          sale_date: string
+          sale_id: string
           status: string
+          updated_at: string | null
         }
         Insert: {
-          amount_fx?: number | null
-          amount_mxn?: number
-          created_at?: string
-          currency_fx?: string | null
-          due_date: string
+          amount_currency: string
+          amount_value: number
+          created_at?: string | null
+          equivalent_mxn?: number | null
+          exchange_rate_used?: number | null
           id?: string
           notes?: string | null
           operator_id: string
           paid_at?: string | null
-          payable_month?: string | null
-          payment_rule_snapshot?: string
-          reservation_id: string
-          service_date: string
+          payment_method?: string | null
+          sale_date: string
+          sale_id: string
           status?: string
+          updated_at?: string | null
         }
         Update: {
-          amount_fx?: number | null
-          amount_mxn?: number
-          created_at?: string
-          currency_fx?: string | null
-          due_date?: string
+          amount_currency?: string
+          amount_value?: number
+          created_at?: string | null
+          equivalent_mxn?: number | null
+          exchange_rate_used?: number | null
           id?: string
           notes?: string | null
           operator_id?: string
           paid_at?: string | null
-          payable_month?: string | null
-          payment_rule_snapshot?: string
-          reservation_id?: string
-          service_date?: string
+          payment_method?: string | null
+          sale_date?: string
+          sale_id?: string
           status?: string
+          updated_at?: string | null
         }
         Relationships: [
           {
@@ -604,10 +667,10 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "operator_payables_reservation_id_fkey"
-            columns: ["reservation_id"]
+            foreignKeyName: "operator_payables_sale_id_fkey"
+            columns: ["sale_id"]
             isOneToOne: false
-            referencedRelation: "reservations"
+            referencedRelation: "sales"
             referencedColumns: ["id"]
           },
         ]
