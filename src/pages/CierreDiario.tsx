@@ -135,9 +135,9 @@ export default function CierreDiario() {
     queryKey: ["cierre-payables", todayStr],
     enabled: isAdmin,
     queryFn: async () => {
-      const { data, error } = await supabase.from("operator_payables")
-        .select("amount_mxn, operators(name)")
-        .eq("service_date", todayStr);
+      const { data, error } = await (supabase as any).from("operator_payables")
+        .select("equivalent_mxn, operators(name)")
+        .eq("sale_date", todayStr);
       if (error) throw error;
       return data ?? [];
     },
