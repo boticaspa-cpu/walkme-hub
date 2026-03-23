@@ -414,6 +414,14 @@ export default function Operadores() {
           operator={priceListOp}
         />
       )}
+
+      {exportOp && (
+        <PriceListExportDialog
+          open={!!exportOp}
+          onOpenChange={(v) => { if (!v) setExportOp(null); }}
+          operator={exportOp}
+        />
+      )}
     </div>
   );
 }
