@@ -509,23 +509,23 @@ export default function Cotizaciones() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Folio</TableHead>
+                  <TableHead className="hidden sm:table-cell">Folio</TableHead>
                   <TableHead>Cliente</TableHead>
                   <TableHead>Total</TableHead>
                   <TableHead>Estado</TableHead>
-                  <TableHead className="text-right">Acciones</TableHead>
+                  <TableHead className="text-right sticky right-0 bg-background">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filtered.map((q: any) => (
                   <TableRow key={q.id}>
-                    <TableCell className="font-mono text-xs font-bold">{q.folio ?? "—"}</TableCell>
-                    <TableCell className="text-sm font-medium">{q.clients?.name ?? q.client_name}</TableCell>
+                    <TableCell className="hidden sm:table-cell font-mono text-xs font-bold">{q.folio ?? "—"}</TableCell>
+                    <TableCell className="text-sm font-medium truncate max-w-[150px]">{q.clients?.name ?? q.client_name}</TableCell>
                     <TableCell className="text-sm font-semibold">{fmt(q.total_mxn)}</TableCell>
                     <TableCell>
                       <Badge className={`${statusStyles[q.status] ?? ""} border-0 text-xs`}>{statusLabels[q.status] ?? q.status}</Badge>
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right sticky right-0 bg-background">
                       {/* Desktop */}
                       <div className="hidden sm:flex justify-end gap-1">
                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(q)}><Pencil className="h-3.5 w-3.5" /></Button>

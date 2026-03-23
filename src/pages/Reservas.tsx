@@ -884,14 +884,14 @@ export default function Reservas() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Folio</TableHead>
+                  <TableHead className="hidden sm:table-cell">Folio</TableHead>
                   <TableHead className="hidden lg:table-cell">Folio Op.</TableHead>
                   <TableHead>Tour</TableHead>
                   <TableHead className="hidden sm:table-cell">Cliente</TableHead>
                   <TableHead className="hidden md:table-cell">Fecha</TableHead>
                   <TableHead>Estado</TableHead>
-                  <TableHead>Pago</TableHead>
-                  <TableHead className="text-right">Acciones</TableHead>
+                  <TableHead className="hidden sm:table-cell">Pago</TableHead>
+                  <TableHead className="text-right sticky right-0 bg-background">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -901,9 +901,9 @@ export default function Reservas() {
                     const pStatus = paymentStatus(r);
                     return (
                       <TableRow key={r.id} id={`res-row-${r.id}`} className={highlightId === r.id ? "bg-green-50 transition-colors" : ""}>
-                        <TableCell className="font-mono text-xs font-bold">{r.folio ?? "—"}</TableCell>
+                        <TableCell className="hidden sm:table-cell font-mono text-xs font-bold">{r.folio ?? "—"}</TableCell>
                         <TableCell className="hidden lg:table-cell text-xs font-mono text-muted-foreground">{(r as any).operator_folio ?? "—"}</TableCell>
-                        <TableCell className="text-sm font-medium">{r.tours?.title ?? "—"}</TableCell>
+                        <TableCell className="text-sm font-medium truncate max-w-[150px]">{r.tours?.title ?? "—"}</TableCell>
                         <TableCell className="hidden sm:table-cell text-sm">{r.clients?.name ?? "—"}</TableCell>
                         <TableCell className="hidden md:table-cell text-sm">{r.reservation_date} {r.reservation_time}</TableCell>
                         <TableCell>
@@ -911,12 +911,12 @@ export default function Reservas() {
                             {statusLabels[cStatus] ?? statusLabels[r.status] ?? r.status}
                           </Badge>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="hidden sm:table-cell">
                           <Badge className={`${paymentStyles[pStatus] ?? ""} border-0 text-xs`}>
                             {paymentLabels[pStatus] ?? pStatus}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-right sticky right-0 bg-background">
                           {/* Desktop: botones individuales */}
                           <div className="hidden sm:flex justify-end gap-1">
                             {pStatus !== "paid" && cStatus !== "cancelled" && (

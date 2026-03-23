@@ -120,18 +120,18 @@ export default function POS() {
                   <TableHead className="hidden sm:table-cell">Cliente</TableHead>
                   <TableHead className="hidden md:table-cell">Fecha Tour</TableHead>
                   <TableHead className="text-right">Total</TableHead>
-                  <TableHead className="text-right">Acción</TableHead>
+                  <TableHead className="text-right sticky right-0 bg-background">Acción</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filtered.map((r: any) => (
                   <TableRow key={r.id}>
                     <TableCell className="font-mono text-xs font-bold">{r.folio ?? "—"}</TableCell>
-                    <TableCell className="text-sm font-medium">{r.tours?.title ?? "—"}</TableCell>
+                    <TableCell className="text-sm font-medium truncate max-w-[150px]">{r.tours?.title ?? "—"}</TableCell>
                     <TableCell className="hidden sm:table-cell text-sm">{r.clients?.name ?? "—"}</TableCell>
                     <TableCell className="hidden md:table-cell text-sm">{r.reservation_date}</TableCell>
                     <TableCell className="text-right text-sm font-semibold">{fmt(r.total_mxn)}</TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right sticky right-0 bg-background">
                       <Button
                         size="sm"
                         className="h-7 text-xs"
