@@ -71,7 +71,7 @@ export default function Dashboard() {
     },
   });
 
-  const { data: recentSales = [] } = useQuery({
+  const { data: recentSales = [], isLoading: loadingRecentSales } = useQuery({
     queryKey: ["dashboard-recent-sales"],
     queryFn: async () => {
       const { data, error } = await supabase.from("sales")
@@ -82,6 +82,8 @@ export default function Dashboard() {
       return data;
     },
   });
+
+  const kpiLoading = loadingSales || loadingRes || loadingLeads;
 
   // Admin-only financial KPIs
   const { data: pendingPayables = 0 } = useQuery({
