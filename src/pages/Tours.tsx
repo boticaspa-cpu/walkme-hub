@@ -395,14 +395,14 @@ export default function Tours() {
     },
   });
 
+  const isMXN = form.supplier_currency === "MXN";
+
   // Auto-calc: commission net cost + MXN prices for adult & child
   useEffect(() => {
     if (!dialogOpen) return;
     const pubAdult = parseFloat(form.public_price_adult_usd) || 0;
     const pubChild = parseFloat(form.public_price_child_usd) || 0;
     const commPct = parseFloat(form.commission_percentage) || 0;
-    const taxAdult = parseFloat(form.tax_adult_usd) || 0;
-    const taxChild = parseFloat(form.tax_child_usd) || 0;
     const tcTour = parseFloat(form.exchange_rate_tour) || exchangeRateUsd;
 
     const updates: Partial<TourForm> = {};
@@ -415,13 +415,17 @@ export default function Tours() {
       updates.price_child_usd = netChild > 0 ? netChild.toFixed(2) : "";
     }
 
-    // Adulto MXN = Público Adulto × T.C. Tour (tax stays in USD, paid at tour)
-    const adultoMxn = pubAdult * tcTour;
-    updates.price_mxn = adultoMxn > 0 ? adultoMxn.toFixed(2) : "0";
-
-    // Menor MXN = Público Niño × T.C. Tour
-    const menorMxn = pubChild * tcTour;
-    updates.suggested_price_mxn = menorMxn > 0 ? menorMxn.toFixed(2) : "0";
+    if (isMXN) {
+      // MXN supplier: public prices are already in MXN, no conversion needed
+      updates.price_mxn = pubAdult > 0 ? String(pubAdult) : "0";
+      updates.suggested_price_mxn = pubChild > 0 ? String(pubChild) : "0";
+    } else {
+      // USD supplier: multiply by exchange rate
+      const adultoMxn = pubAdult * tcTour;
+      updates.price_mxn = adultoMxn > 0 ? adultoMxn.toFixed(2) : "0";
+      const menorMxn = pubChild * tcTour;
+      updates.suggested_price_mxn = menorMxn > 0 ? menorMxn.toFixed(2) : "0";
+    }
 
     if (Object.keys(updates).length > 0) {
       setForm(prev => ({ ...prev, ...updates }));
@@ -430,7 +434,7 @@ export default function Tours() {
     form.public_price_adult_usd, form.public_price_child_usd,
     form.tax_adult_usd, form.tax_child_usd,
     form.commission_percentage, form.calculation_mode,
-    form.exchange_rate_tour, exchangeRateUsd, dialogOpen,
+    form.exchange_rate_tour, exchangeRateUsd, dialogOpen, isMXN,
   ]);
 
   // ── Filters ──
@@ -514,6 +518,7 @@ export default function Tours() {
       recommendations: tour.recommendations ?? "",
       tags: tour.tags.join(", "),
       service_type: (tour as any).service_type || "with_transport",
+      supplier_currency: (tour as any).supplier_currency || "USD",
     });
     setShowTaxFields((tour.tax_adult_usd || 0) > 0 || (tour.tax_child_usd || 0) > 0);
     setImageFiles([]);
@@ -1061,6 +1066,7 @@ export default function Tours() {
         tags: csvToArray(form.tags),
         image_urls: finalImageUrls,
         service_type: form.service_type,
+        supplier_currency: form.supplier_currency,
       };
 
       if (editingId) {
