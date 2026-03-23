@@ -846,16 +846,19 @@ export type Database = {
       promotion_tours: {
         Row: {
           id: string
+          package_name: string | null
           promotion_id: string
           tour_id: string
         }
         Insert: {
           id?: string
+          package_name?: string | null
           promotion_id: string
           tour_id: string
         }
         Update: {
           id?: string
+          package_name?: string | null
           promotion_id?: string
           tour_id?: string
         }
