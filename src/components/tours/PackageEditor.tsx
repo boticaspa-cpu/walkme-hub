@@ -1,5 +1,6 @@
-import { useState, useRef } from "react";
-import { Plus, Trash2, ChevronDown, ChevronRight, Package, Info, FileText, Loader2, Table2 } from "lucide-react";
+import { useState } from "react";
+import { Plus, Trash2, ChevronDown, ChevronRight, Package, Info } from "lucide-react";
+import MappingCards from "./MappingCards";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";

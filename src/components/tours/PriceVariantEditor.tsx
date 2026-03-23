@@ -1,5 +1,5 @@
-import { useRef } from "react";
-import { Plus, Trash2, Grid3X3, Wand2, FileText, Loader2, Table2 } from "lucide-react";
+import { Plus, Trash2, Grid3X3, Wand2 } from "lucide-react";
+import MappingCards from "./MappingCards";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
