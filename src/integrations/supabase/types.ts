@@ -1116,12 +1116,15 @@ export type Database = {
       }
       reservations: {
         Row: {
+          balance_currency: string
+          balance_mxn: number
           cancellation_folio: string | null
           client_id: string | null
           confirmation_status: string
           confirmed_at: string | null
           created_at: string
           created_by: string | null
+          deposit_mxn: number
           discount_mxn: number
           folio: string | null
           hotel_name: string
@@ -1150,12 +1153,15 @@ export type Database = {
           zone: string
         }
         Insert: {
+          balance_currency?: string
+          balance_mxn?: number
           cancellation_folio?: string | null
           client_id?: string | null
           confirmation_status?: string
           confirmed_at?: string | null
           created_at?: string
           created_by?: string | null
+          deposit_mxn?: number
           discount_mxn?: number
           folio?: string | null
           hotel_name?: string
@@ -1184,12 +1190,15 @@ export type Database = {
           zone?: string
         }
         Update: {
+          balance_currency?: string
+          balance_mxn?: number
           cancellation_folio?: string | null
           client_id?: string | null
           confirmation_status?: string
           confirmed_at?: string | null
           created_at?: string
           created_by?: string | null
+          deposit_mxn?: number
           discount_mxn?: number
           folio?: string | null
           hotel_name?: string
