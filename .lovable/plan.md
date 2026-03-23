@@ -1,52 +1,33 @@
 
 
-# Loading States & Empty States — All Main Pages
+# Fix Horizontal Scroll on Mobile Tables
 
-## 1. New reusable component: `src/components/ui/empty-state.tsx`
+## Current State
+Most pages already use `hidden sm:table-cell` on secondary columns. The main gaps:
+- **Cotizaciones**: All 5 columns visible on mobile (Folio, Cliente, Total, Estado, Acciones) — Folio should hide
+- **Sticky actions column**: Not implemented anywhere
+- **Text truncation**: Missing on long tour/client names
 
-A centered, visually appealing empty state component:
+## Changes
 
-```tsx
-interface EmptyStateProps {
-  icon: LucideIcon;
-  title: string;
-  description?: string;
-  action?: { label: string; onClick: () => void };
-}
-```
+### 1. Cotizaciones.tsx — Hide Folio on mobile
+- Add `hidden sm:table-cell` to the Folio `<TableHead>` and `<TableCell>`
+- Mobile shows: Cliente, Total, Estado, Acciones (4 columns)
 
-Styled with a large muted icon (48px), bold title, subtle description, and optional primary action button. Uses the app's primary/tropical color palette.
+### 2. All 5 pages — Sticky action column
+Add `sticky right-0 bg-background` to the Actions `<TableHead>` and `<TableCell>` so action buttons are always reachable without scrolling:
+- Cotizaciones, Reservas, Clientes, Leads, POS
 
-## 2. New helper component: `src/components/ui/table-skeleton.tsx`
+### 3. Text truncation on long columns
+Add `truncate max-w-[150px]` to tour title and client name cells across Cotizaciones, Reservas, POS to prevent wide cells.
 
-A reusable table skeleton that accepts `columns` (number) and `rows` (default 5) and renders animated Skeleton bars matching typical column widths.
-
-## 3. Dashboard (`src/pages/Dashboard.tsx`)
-
-- Wrap KPI cards grid in a loading check; show 4 Skeleton cards (same height as KpiCard) while any KPI query is loading.
-- Show Skeleton blocks for the "Próximas Reservas" and "Ventas Recientes" cards while loading.
-
-## 4. Page-by-page updates
-
-Each page replaces the plain `<p>Cargando…</p>` and `<p>No se encontraron…</p>` with the new components:
-
-| Page | Loading → | Empty State (icon, title, description, action) |
-|---|---|---|
-| **Cotizaciones** | TableSkeleton (5 cols) | FileText, "No hay cotizaciones aún", "Crea tu primera cotización", → open create dialog |
-| **Reservas** | TableSkeleton (6 cols) | Calendar, "No hay reservas aún", "Crea tu primera reserva", → open create dialog |
-| **Clientes** | TableSkeleton (5 cols) | Users, "No hay clientes aún", "Agrega tu primer cliente", → openCreate |
-| **Tours** | Grid of 6 card Skeletons | MapPin, "No hay tours aún", "Agrega tu primer tour", → open create |
-| **POS/Ventas** | TableSkeleton (5 cols) | Receipt, "No hay ventas pendientes", descriptive text |
-| **Leads** | TableSkeleton (8 cols) | Users, "No hay leads aún", "Captura tu primer lead" |
+### 4. POS.tsx — Consolidate action column header
+The "Acción" column already works well. Just add sticky styling.
 
 ## Files modified
-- `src/components/ui/empty-state.tsx` (new)
-- `src/components/ui/table-skeleton.tsx` (new)
-- `src/pages/Dashboard.tsx`
 - `src/pages/Cotizaciones.tsx`
 - `src/pages/Reservas.tsx`
 - `src/pages/Clientes.tsx`
-- `src/pages/Tours.tsx`
-- `src/pages/POS.tsx`
 - `src/pages/Leads.tsx`
+- `src/pages/POS.tsx`
 
