@@ -501,7 +501,9 @@ export default function Cotizaciones() {
           </div>
         </CardHeader>
         <CardContent className="p-0 overflow-x-auto">
-          {isLoading ? <p className="p-6 text-sm text-muted-foreground">Cargando…</p> : (
+          {isLoading ? <TableSkeleton columns={5} /> : filtered.length === 0 ? (
+            <EmptyState icon={FileText} title="No hay cotizaciones aún" description="Crea tu primera cotización para empezar" action={{ label: "Nueva Cotización", onClick: openCreate }} />
+          ) : (
             <Table>
               <TableHeader>
                 <TableRow>
@@ -513,9 +515,7 @@ export default function Cotizaciones() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.length === 0 ? (
-                  <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">No se encontraron cotizaciones</TableCell></TableRow>
-                ) : filtered.map((q: any) => (
+                {filtered.map((q: any) => (
                   <TableRow key={q.id}>
                     <TableCell className="font-mono text-xs font-bold">{q.folio ?? "—"}</TableCell>
                     <TableCell className="text-sm font-medium">{q.clients?.name ?? q.client_name}</TableCell>
