@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Plus, Search, FileText, Printer, Send, Pencil, DollarSign, CheckCircle, MoreVertical, Trash2, Tag } from "lucide-react";
+import { Plus, Search, FileText, Printer, Send, Pencil, DollarSign, CheckCircle, MoreVertical, Trash2, Tag, Calendar } from "lucide-react";
+import { TableSkeleton } from "@/components/ui/table-skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
 import DateRangeFilter from "@/components/shared/DateRangeFilter";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
