@@ -104,6 +104,7 @@ interface TourForm {
   recommendations: string;
   tags: string;
   service_type: string;
+  supplier_currency: string;
 }
 
 const emptyForm: TourForm = {
@@ -118,6 +119,7 @@ const emptyForm: TourForm = {
   days: [], short_description: "", itinerary: "",
   includes: "", excludes: "", meeting_point: "", what_to_bring: "",
   recommendations: "", tags: "", service_type: "with_transport",
+  supplier_currency: "USD",
 };
 
 function formatPrice(n: number) {
@@ -395,14 +397,14 @@ export default function Tours() {
     },
   });
 
+  const isMXN = form.supplier_currency === "MXN";
+
   // Auto-calc: commission net cost + MXN prices for adult & child
   useEffect(() => {
     if (!dialogOpen) return;
     const pubAdult = parseFloat(form.public_price_adult_usd) || 0;
     const pubChild = parseFloat(form.public_price_child_usd) || 0;
     const commPct = parseFloat(form.commission_percentage) || 0;
-    const taxAdult = parseFloat(form.tax_adult_usd) || 0;
-    const taxChild = parseFloat(form.tax_child_usd) || 0;
     const tcTour = parseFloat(form.exchange_rate_tour) || exchangeRateUsd;
 
     const updates: Partial<TourForm> = {};
@@ -415,13 +417,17 @@ export default function Tours() {
       updates.price_child_usd = netChild > 0 ? netChild.toFixed(2) : "";
     }
 
-    // Adulto MXN = Público Adulto × T.C. Tour (tax stays in USD, paid at tour)
-    const adultoMxn = pubAdult * tcTour;
-    updates.price_mxn = adultoMxn > 0 ? adultoMxn.toFixed(2) : "0";
-
-    // Menor MXN = Público Niño × T.C. Tour
-    const menorMxn = pubChild * tcTour;
-    updates.suggested_price_mxn = menorMxn > 0 ? menorMxn.toFixed(2) : "0";
+    if (isMXN) {
+      // MXN supplier: public prices are already in MXN, no conversion needed
+      updates.price_mxn = pubAdult > 0 ? String(pubAdult) : "0";
+      updates.suggested_price_mxn = pubChild > 0 ? String(pubChild) : "0";
+    } else {
+      // USD supplier: multiply by exchange rate
+      const adultoMxn = pubAdult * tcTour;
+      updates.price_mxn = adultoMxn > 0 ? adultoMxn.toFixed(2) : "0";
+      const menorMxn = pubChild * tcTour;
+      updates.suggested_price_mxn = menorMxn > 0 ? menorMxn.toFixed(2) : "0";
+    }
 
     if (Object.keys(updates).length > 0) {
       setForm(prev => ({ ...prev, ...updates }));
@@ -430,7 +436,7 @@ export default function Tours() {
     form.public_price_adult_usd, form.public_price_child_usd,
     form.tax_adult_usd, form.tax_child_usd,
     form.commission_percentage, form.calculation_mode,
-    form.exchange_rate_tour, exchangeRateUsd, dialogOpen,
+    form.exchange_rate_tour, exchangeRateUsd, dialogOpen, isMXN,
   ]);
 
   // ── Filters ──
@@ -514,6 +520,7 @@ export default function Tours() {
       recommendations: tour.recommendations ?? "",
       tags: tour.tags.join(", "),
       service_type: (tour as any).service_type || "with_transport",
+      supplier_currency: (tour as any).supplier_currency || "USD",
     });
     setShowTaxFields((tour.tax_adult_usd || 0) > 0 || (tour.tax_child_usd || 0) > 0);
     setImageFiles([]);
@@ -1061,6 +1068,7 @@ export default function Tours() {
         tags: csvToArray(form.tags),
         image_urls: finalImageUrls,
         service_type: form.service_type,
+        supplier_currency: form.supplier_currency,
       };
 
       if (editingId) {
@@ -1318,28 +1326,43 @@ export default function Tours() {
             {/* ── Tipo de Cambio y Precios Finales (MXN) ── */}
             <Separator />
             <p className="text-sm font-semibold">💱 Tipo de Cambio y Precios Finales (MXN)</p>
-            <div className="space-y-1.5">
-              <Label>T.C. del Tour</Label>
-              <Input type="number" value={form.exchange_rate_tour} onChange={(e) => setForm({ ...form, exchange_rate_tour: e.target.value })} placeholder={String(exchangeRateUsd)} />
-              <p className="text-xs text-muted-foreground">Se usa el global ${exchangeRateUsd} si se deja vacío</p>
-            </div>
+            {!isMXN && (
+              <div className="space-y-1.5">
+                <Label>T.C. del Tour</Label>
+                <Input type="number" value={form.exchange_rate_tour} onChange={(e) => setForm({ ...form, exchange_rate_tour: e.target.value })} placeholder={String(exchangeRateUsd)} />
+                <p className="text-xs text-muted-foreground">Se usa el global ${exchangeRateUsd} si se deja vacío</p>
+              </div>
+            )}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Precio Público Adulto (MXN)</Label>
                 <Input type="number" value={form.price_mxn} disabled className="bg-muted" />
-                <p className="text-[10px] text-muted-foreground">= (Pub USD + Tax USD) × T.C.</p>
+                {!isMXN && <p className="text-[10px] text-muted-foreground">= Pub USD × T.C.</p>}
+                {isMXN && <p className="text-[10px] text-muted-foreground">= Precio Público directo (moneda MXN)</p>}
               </div>
               <div className="space-y-1.5">
                 <Label>Precio Público Menor (MXN)</Label>
                 <Input type="number" value={form.suggested_price_mxn} disabled className="bg-muted" />
-                <p className="text-[10px] text-muted-foreground">= (Pub USD + Tax USD) × T.C.</p>
+                {!isMXN && <p className="text-[10px] text-muted-foreground">= Pub USD × T.C.</p>}
+                {isMXN && <p className="text-[10px] text-muted-foreground">= Precio Público directo (moneda MXN)</p>}
               </div>
             </div>
 
             {/* ── Precios Operador (USD) — Calculadora Dual ── */}
             <Separator />
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold flex items-center gap-1.5"><DollarSign className="h-4 w-4" /> Precios Operador (USD)</p>
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-semibold flex items-center gap-1.5"><DollarSign className="h-4 w-4" /> Precios Operador</p>
+                <Select value={form.supplier_currency} onValueChange={(v) => setForm({ ...form, supplier_currency: v })}>
+                  <SelectTrigger className="h-7 w-20 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="USD">USD</SelectItem>
+                    <SelectItem value="MXN">MXN</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="flex items-center gap-2">
                 <span className="text-xs text-muted-foreground">{isCommissionMode ? "Modo Comisión" : "Modo Costo Neto"}</span>
                 <Switch
@@ -1354,7 +1377,7 @@ export default function Tours() {
                 {/* Commission Mode */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <Label>Precio Público Adulto USD</Label>
+                    <Label>Precio Público Adulto {form.supplier_currency}</Label>
                     <Input type="number" value={form.public_price_adult_usd} onChange={(e) => setForm({ ...form, public_price_adult_usd: e.target.value })} placeholder="0" />
                   </div>
                   <div className="space-y-1.5">
@@ -1364,18 +1387,18 @@ export default function Tours() {
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <Label>Costo Neto Adulto USD</Label>
+                    <Label>Costo Neto Adulto {form.supplier_currency}</Label>
                     <Input type="number" value={form.price_adult_usd} disabled className="bg-muted" placeholder="Auto" />
                     <p className="text-[10px] text-muted-foreground">= Público − (Público × %)</p>
                   </div>
                   <div className="space-y-1.5">
-                    <Label>Precio Público Niño USD</Label>
+                    <Label>Precio Público Niño {form.supplier_currency}</Label>
                     <Input type="number" value={form.public_price_child_usd} onChange={(e) => setForm({ ...form, public_price_child_usd: e.target.value })} placeholder="0" />
                   </div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <Label>Costo Neto Niño USD</Label>
+                    <Label>Costo Neto Niño {form.supplier_currency}</Label>
                     <Input type="number" value={form.price_child_usd} disabled className="bg-muted" placeholder="Auto" />
                   </div>
                   <div />
@@ -1386,11 +1409,11 @@ export default function Tours() {
                 {/* Net Cost Mode */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <Label>Costo Neto Adulto USD</Label>
+                    <Label>Costo Neto Adulto {form.supplier_currency}</Label>
                     <Input type="number" value={form.price_adult_usd} onChange={(e) => setForm({ ...form, price_adult_usd: e.target.value })} placeholder="0" />
                   </div>
                   <div className="space-y-1.5">
-                    <Label>Precio Público Adulto USD</Label>
+                    <Label>Precio Público Adulto {form.supplier_currency}</Label>
                     <Input type="number" value={form.public_price_adult_usd} onChange={(e) => setForm({ ...form, public_price_adult_usd: e.target.value })} placeholder="0" />
                   </div>
                 </div>
@@ -1399,11 +1422,11 @@ export default function Tours() {
                 )}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <Label>Costo Neto Niño USD</Label>
+                    <Label>Costo Neto Niño {form.supplier_currency}</Label>
                     <Input type="number" value={form.price_child_usd} onChange={(e) => setForm({ ...form, price_child_usd: e.target.value })} placeholder="0" />
                   </div>
                   <div className="space-y-1.5">
-                    <Label>Precio Público Niño USD</Label>
+                    <Label>Precio Público Niño {form.supplier_currency}</Label>
                     <Input type="number" value={form.public_price_child_usd} onChange={(e) => setForm({ ...form, public_price_child_usd: e.target.value })} placeholder="0" />
                   </div>
                 </div>
