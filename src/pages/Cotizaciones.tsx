@@ -525,7 +525,7 @@ export default function Cotizaciones() {
                     <TableCell>
                       <Badge className={`${statusStyles[q.status] ?? ""} border-0 text-xs`}>{statusLabels[q.status] ?? q.status}</Badge>
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right sticky right-0 bg-background">
                       {/* Desktop */}
                       <div className="hidden sm:flex justify-end gap-1">
                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(q)}><Pencil className="h-3.5 w-3.5" /></Button>

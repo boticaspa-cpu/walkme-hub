@@ -177,7 +177,7 @@ export default function Leads() {
                       <Badge className={`${statusColors[lead.status] ?? ""} border-0 text-xs`}>{statusLabels[lead.status] ?? lead.status}</Badge>
                     </TableCell>
                     <TableCell className="hidden md:table-cell text-sm text-muted-foreground">{lead.profiles?.full_name ?? "—"}</TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right sticky right-0 bg-background">
                       <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(lead)}><Pencil className="h-3.5 w-3.5" /></Button>
                     </TableCell>
                   </TableRow>

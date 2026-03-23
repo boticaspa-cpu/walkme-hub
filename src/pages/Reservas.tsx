@@ -916,7 +916,7 @@ export default function Reservas() {
                             {paymentLabels[pStatus] ?? pStatus}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-right sticky right-0 bg-background">
                           {/* Desktop: botones individuales */}
                           <div className="hidden sm:flex justify-end gap-1">
                             {pStatus !== "paid" && cStatus !== "cancelled" && (
