@@ -57,6 +57,7 @@ export default function Operadores() {
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [priceListOp, setPriceListOp] = useState<{ id: string; name: string } | null>(null);
+  const [exportOp, setExportOp] = useState<{ id: string; name: string; exchange_rate?: number; base_currency?: string } | null>(null);
 
   const { data: operators = [], isLoading } = useQuery({
     queryKey: ["operators"],
