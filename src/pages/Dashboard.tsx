@@ -138,10 +138,26 @@ export default function Dashboard() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard title="Ventas del Día" value={fmt(totalSalesToday)} subtitle="MXN" icon={DollarSign} />
-        <KpiCard title="Reservas Hoy" value={reservationsToday.length} subtitle={`${resConfirmed} programadas`} icon={CalendarCheck} />
-        <KpiCard title="Leads Activos" value={activeLeads.length} subtitle="sin cerrar" icon={Users} />
-        
+        {kpiLoading ? (
+          Array.from({ length: 3 }).map((_, i) => (
+            <Card key={i} className="shadow-sm">
+              <CardContent className="flex items-start gap-4 p-5">
+                <Skeleton className="h-11 w-11 rounded-lg shrink-0" />
+                <div className="flex flex-col gap-1.5 flex-1">
+                  <Skeleton className="h-3 w-20" />
+                  <Skeleton className="h-7 w-24" />
+                  <Skeleton className="h-3 w-16" />
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        ) : (
+          <>
+            <KpiCard title="Ventas del Día" value={fmt(totalSalesToday)} subtitle="MXN" icon={DollarSign} />
+            <KpiCard title="Reservas Hoy" value={reservationsToday.length} subtitle={`${resConfirmed} programadas`} icon={CalendarCheck} />
+            <KpiCard title="Leads Activos" value={activeLeads.length} subtitle="sin cerrar" icon={Users} />
+          </>
+        )}
       </div>
 
       {/* Admin-only financial KPIs */}
