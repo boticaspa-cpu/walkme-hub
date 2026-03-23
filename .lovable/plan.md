@@ -1,38 +1,44 @@
 
 
-# Add KPI Cards to POS Page
+# Rediseño Visual del Mapeo Inteligente — Cards con Iconos
 
-## Summary
-Add 4 KPI cards above the pending reservations table in POS, using the same `KpiCard` component from the Dashboard.
+## Resumen
+Cambiar las secciones de "Mapeo Inteligente" en los 3 lugares (Generales, Paquetes, Matriz) de botones inline a cards visuales con iconos grandes, siguiendo el diseño de referencia.
 
-## Data Queries (3 new queries)
+## Cambios
 
-### 1. Today's Sales (for current session)
-Query `sales` table filtered by `cash_session_id = activeSession.id`. Derive count and total MXN.
+### 1. Sección "Mapeo Inteligente — Generales" (`src/pages/Tours.tsx`)
+Reemplazar los dos botones inline ("Mapear PDF" y "Importar Sheet") por un grid de 3 cards:
 
-### 2. Commission estimate
-Use the same sales data, multiply total by the seller's `commission_percentage` from `profiles` (fetched via `useAuth` user id). Fall back to 30% default.
+```text
+┌─────────────┐  ┌─────────────┐  ┌─────────────┐
+│   📄 (icon) │  │   📊 (icon) │  │   📷 (icon) │
+│    PDF      │  │   Sheets    │  │    Foto     │
+└─────────────┘  └─────────────┘  └─────────────┘
+```
 
-### 3. Cash in register
-Query `sales` where `cash_session_id = activeSession.id` AND `payment_method = 'cash'`, group by `currency`. Add the session's `opening_float_mxn`. Also sum cash movements for the session.
+- **PDF**: abre file input para PDF/imagen (igual que "Mapear PDF" actual)
+- **Sheets**: abre SheetImportDialog (igual que "Importar Sheet" actual)
+- **Foto**: abre file input para imagen (cámara/galería) — mismo handler que PDF pero con accept="image/*"
 
-### Pending reservations
-Already available from `pendingReservations` — just derive count and sum.
+Cada card: borde redondeado, hover sutil, icono centrado grande (Lucide: `FileText`, `Sheet`, `Camera`), label debajo.
 
-## UI Changes — `src/pages/POS.tsx`
+### 2. Sección Paquetes (`src/components/tours/PackageEditor.tsx`)
+Reemplazar los botones "Mapear PDF" e "Importar Sheet" en el header por el mismo grid de cards debajo del título, con los mismos 3 opciones (PDF, Sheets, Foto).
 
-1. Import `KpiCard`, `Skeleton`, `useAuth`, and icons (`Receipt`, `Clock`, `Coins`, `Wallet`).
+### 3. Sección Matriz de Precios (`src/components/tours/PriceVariantEditor.tsx`)
+Mismo cambio que Paquetes — cards en lugar de botones inline.
 
-2. Add 3 queries (session sales, profile commission rate, cash breakdown) — all enabled only when `activeSession` exists.
+### Estilo de las cards
+- Grid de 3 columnas
+- Border rounded-xl, hover:bg-muted/50, cursor-pointer
+- Icono de 24px centrado con color distinto por tipo (verde para Excel/Sheets, azul para Sheets, morado para Foto)
+- Texto sm debajo del icono
+- Disabled state con opacity-50 cuando `isMapping` es true
+- Loading spinner reemplaza icono cuando está procesando
 
-3. Insert a responsive grid (`grid-cols-1 sm:grid-cols-2 lg:grid-cols-4`) between the header and the table card with:
-   - **Ventas del Día**: count + total MXN from session sales
-   - **Reservas Pendientes**: `pendingReservations.length` + sum of `total_mxn`
-   - **Mi Comisión**: session sales total × commission % from profile
-   - **Efectivo en Caja**: opening float + cash sales MXN (show USD subtotal if any)
-
-4. Show skeleton cards while loading (same pattern as Dashboard).
-
-## Files Modified
-- `src/pages/POS.tsx`
+## Archivos modificados
+- `src/pages/Tours.tsx` (sección Generales)
+- `src/components/tours/PackageEditor.tsx`
+- `src/components/tours/PriceVariantEditor.tsx`
 
