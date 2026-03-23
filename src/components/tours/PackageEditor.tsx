@@ -65,7 +65,6 @@ function calcMxn(pubUsd: string, taxUsd: number, tc: number): string {
 
 export default function PackageEditor({ packages, onChange, tourExchangeRate, tourTaxAdultUsd, tourTaxChildUsd, onDocUpload, isMapping, onSheetImport }: Props) {
   const [openIndexes, setOpenIndexes] = useState<Set<number>>(new Set());
-  const docInputRef = useRef<HTMLInputElement>(null);
 
   const toggle = (i: number) => {
     setOpenIndexes(prev => {
