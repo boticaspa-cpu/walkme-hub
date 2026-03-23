@@ -911,7 +911,7 @@ export default function Reservas() {
                             {statusLabels[cStatus] ?? statusLabels[r.status] ?? r.status}
                           </Badge>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="hidden sm:table-cell">
                           <Badge className={`${paymentStyles[pStatus] ?? ""} border-0 text-xs`}>
                             {paymentLabels[pStatus] ?? pStatus}
                           </Badge>
