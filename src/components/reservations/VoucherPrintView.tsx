@@ -26,6 +26,9 @@ interface VoucherProps {
     pax_adults: number;
     pax_children: number;
     total_mxn: number;
+    deposit_mxn?: number;
+    balance_mxn?: number;
+    balance_currency?: string;
     unit_price_mxn?: number;
     unit_price_child_mxn?: number;
     modality: string;
