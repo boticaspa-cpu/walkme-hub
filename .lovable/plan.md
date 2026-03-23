@@ -1,16 +1,23 @@
 
+# Cobro Parcial: Depósito + Balance al Operador ✅
 
-# Reducir tamaño de MappingCards
+Implementado el flujo de cobro parcial para operadores con `fee_collection_mode = "on_site"`.
 
-Hacer las cards de mapeo más compactas: reducir padding, tamaño de iconos y texto.
+## Cambios realizados
 
-## Cambios en `src/components/tours/MappingCards.tsx`
+### Migración SQL
+- Agregados campos `deposit_mxn`, `balance_mxn`, `balance_currency` a la tabla `reservations`
 
-- Padding: `py-5 px-3` → `py-3 px-2`
-- Iconos: `h-6 w-6` → `h-5 w-5`
-- Texto: `text-xs` → `text-[11px]`
-- Gap entre icono y texto: `gap-2` → `gap-1`
-- Gap entre cards: `gap-3` → `gap-2`
+### ReservationCheckout.tsx
+- Detecta operadores con `fee_collection_mode = "on_site"`
+- Calcula automáticamente depósito (margen) y balance (costo neto)
+- Campos editables para ajustar montos
+- Solo cobra el depósito como venta
+- Marca reserva como `payment_status = "partial"`
+- Comisión calculada sobre el depósito (no el total)
+- No genera `operator_payable` para on_site (el cliente paga directo)
 
-Resultado: cards ~50% más compactas, misma funcionalidad.
-
+### VoucherPrintView.tsx
+- Muestra desglose "Depósito pagado" / "Pendiente al abordar" cuando hay balance > 0
+- Soporta moneda del operador (MXN/USD) en el balance
+- Bilingüe (ES/EN)
