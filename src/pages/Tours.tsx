@@ -3,6 +3,8 @@ import { parseCSV, parseCSVPreview, getCol, parseNum, collectAliasKeys, PKG_ALIA
 import ColumnMappingDialog from "@/components/tours/ColumnMappingDialog";
 import { useNavigate } from "react-router-dom";
 import { Search, Filter, MapPin, Clock, Plus, Pencil, Upload, DollarSign, Table2, Trash2 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
 import SheetImportDialog from "@/components/tours/SheetImportDialog";
 import SheetPreviewDialog from "@/components/tours/SheetPreviewDialog";
 import PackageEditor, { PackageForm, emptyPackage } from "@/components/tours/PackageEditor";
@@ -1138,9 +1140,20 @@ export default function Tours() {
 
       {/* Tour grid */}
       {isLoading ? (
-        <p className="text-center text-muted-foreground py-8">Cargando…</p>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="rounded-lg border bg-card p-0 overflow-hidden">
+              <Skeleton className="h-40 w-full rounded-none" />
+              <div className="p-4 space-y-2">
+                <Skeleton className="h-5 w-3/4" />
+                <Skeleton className="h-4 w-1/2" />
+                <Skeleton className="h-4 w-1/3" />
+              </div>
+            </div>
+          ))}
+        </div>
       ) : filtered.length === 0 ? (
-        <p className="text-center text-muted-foreground py-8">No se encontraron tours</p>
+        <EmptyState icon={MapPin} title="No hay tours aún" description="Agrega tu primer tour al catálogo" action={isAdmin ? { label: "Nuevo Tour", onClick: () => { setForm(emptyForm); setEditingId(null); setDialogOpen(true); } } : undefined} />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((tour) => (

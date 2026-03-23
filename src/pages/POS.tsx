@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Lock, ShoppingCart, DollarSign } from "lucide-react";
+import { Search, Lock, ShoppingCart, DollarSign, Receipt } from "lucide-react";
+import { TableSkeleton } from "@/components/ui/table-skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
 import DateRangeFilter from "@/components/shared/DateRangeFilter";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -106,9 +108,9 @@ export default function POS() {
         </CardHeader>
         <CardContent className="p-0">
           {isLoading ? (
-            <p className="p-6 text-sm text-muted-foreground">Cargando reservas…</p>
+            <TableSkeleton columns={6} />
           ) : filtered.length === 0 ? (
-            <p className="p-6 text-sm text-muted-foreground text-center">No hay reservas pendientes de cobro</p>
+            <EmptyState icon={Receipt} title="No hay ventas pendientes" description="Todas las reservas han sido cobradas" />
           ) : (
             <Table>
               <TableHeader>

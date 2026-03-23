@@ -4,6 +4,7 @@ import {
   DollarSign, CalendarCheck, Users, TrendingUp, Map, FileText, ArrowRight,
   Wallet, Percent, Receipt, Tag, Package,
 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -25,7 +26,7 @@ export default function Dashboard() {
   })();
   const currentMonth = todayStr.slice(0, 7);
 
-  const { data: salesToday = [] } = useQuery({
+  const { data: salesToday = [], isLoading: loadingSales } = useQuery({
     queryKey: ["dashboard-sales-today", todayStr],
     queryFn: async () => {
       const { data, error } = await supabase.from("sales").select("total_mxn")
@@ -35,7 +36,7 @@ export default function Dashboard() {
     },
   });
 
-  const { data: reservationsToday = [] } = useQuery({
+  const { data: reservationsToday = [], isLoading: loadingRes } = useQuery({
     queryKey: ["dashboard-res-today", todayStr],
     queryFn: async () => {
       const { data, error } = await supabase.from("reservations").select("id, status")
@@ -45,7 +46,7 @@ export default function Dashboard() {
     },
   });
 
-  const { data: activeLeads = [] } = useQuery({
+  const { data: activeLeads = [], isLoading: loadingLeads } = useQuery({
     queryKey: ["dashboard-active-leads"],
     queryFn: async () => {
       const { data, error } = await supabase.from("leads").select("id")
@@ -55,7 +56,7 @@ export default function Dashboard() {
     },
   });
 
-  const { data: upcomingRes = [] } = useQuery({
+  const { data: upcomingRes = [], isLoading: loadingUpcoming } = useQuery({
     queryKey: ["dashboard-upcoming"],
     queryFn: async () => {
       const { data, error } = await supabase.from("reservations")
@@ -70,7 +71,7 @@ export default function Dashboard() {
     },
   });
 
-  const { data: recentSales = [] } = useQuery({
+  const { data: recentSales = [], isLoading: loadingRecentSales } = useQuery({
     queryKey: ["dashboard-recent-sales"],
     queryFn: async () => {
       const { data, error } = await supabase.from("sales")
@@ -81,6 +82,8 @@ export default function Dashboard() {
       return data;
     },
   });
+
+  const kpiLoading = loadingSales || loadingRes || loadingLeads;
 
   // Admin-only financial KPIs
   const { data: pendingPayables = 0 } = useQuery({
@@ -135,10 +138,26 @@ export default function Dashboard() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard title="Ventas del Día" value={fmt(totalSalesToday)} subtitle="MXN" icon={DollarSign} />
-        <KpiCard title="Reservas Hoy" value={reservationsToday.length} subtitle={`${resConfirmed} programadas`} icon={CalendarCheck} />
-        <KpiCard title="Leads Activos" value={activeLeads.length} subtitle="sin cerrar" icon={Users} />
-        
+        {kpiLoading ? (
+          Array.from({ length: 3 }).map((_, i) => (
+            <Card key={i} className="shadow-sm">
+              <CardContent className="flex items-start gap-4 p-5">
+                <Skeleton className="h-11 w-11 rounded-lg shrink-0" />
+                <div className="flex flex-col gap-1.5 flex-1">
+                  <Skeleton className="h-3 w-20" />
+                  <Skeleton className="h-7 w-24" />
+                  <Skeleton className="h-3 w-16" />
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        ) : (
+          <>
+            <KpiCard title="Ventas del Día" value={fmt(totalSalesToday)} subtitle="MXN" icon={DollarSign} />
+            <KpiCard title="Reservas Hoy" value={reservationsToday.length} subtitle={`${resConfirmed} programadas`} icon={CalendarCheck} />
+            <KpiCard title="Leads Activos" value={activeLeads.length} subtitle="sin cerrar" icon={Users} />
+          </>
+        )}
       </div>
 
       {/* Admin-only financial KPIs */}
@@ -205,7 +224,14 @@ export default function Dashboard() {
             <Link to="/calendario"><Button variant="ghost" size="sm" className="text-xs">Ver todas <ArrowRight className="ml-1 h-3 w-3" /></Button></Link>
           </CardHeader>
           <CardContent className="space-y-3">
-            {upcomingRes.length === 0 ? <p className="text-sm text-muted-foreground text-center py-4">Sin reservas próximas</p> : upcomingRes.map((r: any) => (
+            {loadingUpcoming ? (
+              Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="flex items-center justify-between rounded-lg border p-3">
+                  <div className="space-y-1.5"><Skeleton className="h-4 w-32" /><Skeleton className="h-3 w-20" /></div>
+                  <Skeleton className="h-5 w-24 rounded-full" />
+                </div>
+              ))
+            ) : upcomingRes.length === 0 ? <p className="text-sm text-muted-foreground text-center py-4">Sin reservas próximas</p> : upcomingRes.map((r: any) => (
               <div key={r.id} className="flex items-center justify-between rounded-lg border p-3">
                 <div>
                   <p className="text-sm font-medium">{r.tours?.title ?? "—"}</p>
@@ -223,7 +249,14 @@ export default function Dashboard() {
             <Link to="/pos"><Button variant="ghost" size="sm" className="text-xs">Ver todas <ArrowRight className="ml-1 h-3 w-3" /></Button></Link>
           </CardHeader>
           <CardContent className="space-y-3">
-            {recentSales.length === 0 ? <p className="text-sm text-muted-foreground text-center py-4">Sin ventas recientes</p> : recentSales.map((s: any) => (
+            {loadingRecentSales ? (
+              Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="flex items-center justify-between rounded-lg border p-3">
+                  <div className="space-y-1.5"><Skeleton className="h-4 w-24" /><Skeleton className="h-3 w-16" /></div>
+                  <Skeleton className="h-5 w-20 rounded-full" />
+                </div>
+              ))
+            ) : recentSales.length === 0 ? <p className="text-sm text-muted-foreground text-center py-4">Sin ventas recientes</p> : recentSales.map((s: any) => (
               <div key={s.id} className="flex items-center justify-between rounded-lg border p-3">
                 <div>
                   <p className="text-sm font-medium">{fmt(Number(s.total_mxn))}</p>
