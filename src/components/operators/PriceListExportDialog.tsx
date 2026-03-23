@@ -33,7 +33,7 @@ async function fetchData(operatorId: string): Promise<VariantRow[]> {
   // Get tours for this operator
   const { data: tours, error: tErr } = await supabase
     .from("tours")
-    .select("id, title")
+    .select("id, title, price_mxn, suggested_price_mxn, public_price_adult_usd, public_price_child_usd, tax_adult_usd, tax_child_usd, exchange_rate_tour")
     .eq("operator_id", operatorId)
     .eq("active", true)
     .order("title");
@@ -41,7 +41,7 @@ async function fetchData(operatorId: string): Promise<VariantRow[]> {
   if (!tours?.length) return [];
 
   const tourIds = tours.map((t) => t.id);
-  const tourMap = Object.fromEntries(tours.map((t) => [t.id, t.title]));
+  const tourMap = Object.fromEntries(tours.map((t) => [t.id, t]));
 
   // Get price variants
   const { data: variants, error: vErr } = await supabase
@@ -51,9 +51,13 @@ async function fetchData(operatorId: string): Promise<VariantRow[]> {
     .eq("active", true);
   if (vErr) throw vErr;
 
+  const rows: VariantRow[] = [];
+  const toursWithVariants = new Set<string>();
+
   // Group variants by tour+zone+nationality+package to pair adult/child
   const grouped = new Map<string, { adult?: typeof variants[0]; child?: typeof variants[0] }>();
   for (const v of variants ?? []) {
+    toursWithVariants.add(v.tour_id);
     const key = `${v.tour_id}|${v.zone}|${v.nationality}|${v.package_name ?? ""}`;
     if (!grouped.has(key)) grouped.set(key, {});
     const g = grouped.get(key)!;
@@ -61,11 +65,10 @@ async function fetchData(operatorId: string): Promise<VariantRow[]> {
     else g.child = v;
   }
 
-  const rows: VariantRow[] = [];
   for (const [key, g] of grouped) {
     const [tourId, zone, nationality, pkg] = key.split("|");
     rows.push({
-      tour_title: tourMap[tourId] ?? "—",
+      tour_title: tourMap[tourId]?.title ?? "—",
       zone,
       nationality,
       package_name: pkg || null,
@@ -75,6 +78,28 @@ async function fetchData(operatorId: string): Promise<VariantRow[]> {
       net_cost_child: g.child?.net_cost ?? 0,
       tax_adult: g.adult?.tax_fee ?? 0,
       tax_child: g.child?.tax_fee ?? 0,
+    });
+  }
+
+  // Fallback: tours without variants use base prices
+  for (const tour of tours) {
+    if (toursWithVariants.has(tour.id)) continue;
+    const priceMxn = tour.price_mxn ?? 0;
+    const childMxn = tour.suggested_price_mxn ?? 0;
+    const adultUsd = tour.public_price_adult_usd ?? 0;
+    const tc = tour.exchange_rate_tour && tour.exchange_rate_tour > 0 ? tour.exchange_rate_tour : 1;
+
+    rows.push({
+      tour_title: tour.title,
+      zone: "General",
+      nationality: "General",
+      package_name: null,
+      sale_price_adult: priceMxn > 0 ? priceMxn : Math.round(adultUsd * tc * 100) / 100,
+      sale_price_child: childMxn > 0 ? childMxn : Math.round((tour.public_price_child_usd ?? 0) * tc * 100) / 100,
+      net_cost_adult: 0,
+      net_cost_child: 0,
+      tax_adult: tour.tax_adult_usd ?? 0,
+      tax_child: tour.tax_child_usd ?? 0,
     });
   }
 
