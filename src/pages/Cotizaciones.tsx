@@ -373,22 +373,24 @@ export default function Cotizaciones() {
 
         const { data: links, error: e2 } = await supabase
           .from("promotion_tours")
-          .select("tour_id")
+          .select("tour_id, package_name")
           .eq("promotion_id", promoId);
         if (e2 || !links?.length) return;
 
-        const tourIds = links.map((l: any) => l.tour_id);
-        const toursInPromo = tourIds.map((tid: string) => tours.find((t: any) => t.id === tid)).filter(Boolean);
-        const sumBase = toursInPromo.reduce((acc: number, t: any) => acc + ((t as any).price_mxn || 0), 0);
+        const promoItems = links.map((l: any) => ({ tour_id: l.tour_id, package_name: l.package_name }));
+        const sumBase = promoItems.reduce((acc: number, item: any) => {
+          const t = tours.find((x: any) => x.id === item.tour_id);
+          return acc + ((t as any)?.price_mxn || 0);
+        }, 0);
 
-        const newItems: QuoteItem[] = tourIds.map((tid: string) => {
-          const t = tours.find((x: any) => x.id === tid);
+        const newItems: QuoteItem[] = promoItems.map((item: any) => {
+          const t = tours.find((x: any) => x.id === item.tour_id);
           const basePrice = (t as any)?.price_mxn ?? 0;
-          const ratio = sumBase > 0 ? basePrice / sumBase : 1 / tourIds.length;
+          const ratio = sumBase > 0 ? basePrice / sumBase : 1 / promoItems.length;
           const adultPrice = Math.round((promo as any).total_mxn * ratio * 100) / 100;
 
           return {
-            tour_id: tid,
+            tour_id: item.tour_id,
             tour_date: "",
             qty_adults: 1,
             qty_children: 0,
@@ -396,7 +398,7 @@ export default function Cotizaciones() {
             unit_price_child_mxn: 0,
             zone: "",
             nationality: "",
-            package_name: "",
+            package_name: item.package_name ?? "",
           };
         });
 
