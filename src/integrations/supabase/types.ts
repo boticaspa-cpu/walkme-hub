@@ -1670,6 +1670,7 @@ export type Database = {
           service_type: string
           short_description: string
           suggested_price_mxn: number
+          supplier_currency: string
           tags: string[]
           tax_adult_usd: number
           tax_child_usd: number
@@ -1706,6 +1707,7 @@ export type Database = {
           service_type?: string
           short_description?: string
           suggested_price_mxn?: number
+          supplier_currency?: string
           tags?: string[]
           tax_adult_usd?: number
           tax_child_usd?: number
@@ -1742,6 +1744,7 @@ export type Database = {
           service_type?: string
           short_description?: string
           suggested_price_mxn?: number
+          supplier_currency?: string
           tags?: string[]
           tax_adult_usd?: number
           tax_child_usd?: number

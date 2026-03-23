@@ -1,0 +1,1 @@
+ALTER TABLE public.tours ADD COLUMN supplier_currency text NOT NULL DEFAULT 'USD';
