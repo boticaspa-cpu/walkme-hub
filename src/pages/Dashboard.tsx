@@ -4,6 +4,7 @@ import {
   DollarSign, CalendarCheck, Users, TrendingUp, Map, FileText, ArrowRight,
   Wallet, Percent, Receipt, Tag, Package,
 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
