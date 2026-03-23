@@ -1,39 +1,48 @@
 
-# Cobro Parcial: Depósito + Balance al Operador ✅
 
-Implementado el flujo de cobro parcial para operadores con `fee_collection_mode = "on_site"`.
+# Lista de Precios por Operador — Excel + PDF
 
-## Cambios realizados
+## Qué se construirá
+Un botón "Descargar Lista de Precios" en la tabla de operadores (junto al botón existente de "Mapear Lista de Precios") que genera dos archivos descargables:
 
-### Migración SQL
-- Agregados campos `deposit_mxn`, `balance_mxn`, `balance_currency` a la tabla `reservations`
+1. **Excel (.xlsx)**: Tabla con todos los tours del operador, precio público adulto/menor, costo neto, impuestos, y precio final MXN.
+2. **PDF**: Versión visual estilo la imagen que subiste, lista para imprimir o enviar al operador.
 
-### ReservationCheckout.tsx
-- Detecta operadores con `fee_collection_mode = "on_site"`
-- Calcula automáticamente depósito (margen) y balance (costo neto)
-- Campos editables para ajustar montos
-- Solo cobra el depósito como venta
-- Marca reserva como `payment_status = "partial"`
-- Comisión calculada sobre el depósito (no el total)
-- No genera `operator_payable` para on_site (el cliente paga directo)
+## Flujo del usuario
+1. En la página de Operadores, el admin hace clic en un nuevo ícono de descarga junto al operador.
+2. Se consulta la base de datos para obtener todos los tours de ese operador con sus precios.
+3. Se genera un Excel y un PDF en el cliente, y se descargan automáticamente (o se muestran en un diálogo para elegir formato).
 
-### VoucherPrintView.tsx
-- Muestra desglose "Depósito pagado" / "Pendiente al abordar" cuando hay balance > 0
-- Soporta moneda del operador (MXN/USD) en el balance
-- Bilingüe (ES/EN)
+## Cambios técnicos
 
----
+### 1. Nueva página/componente: `PriceListExportDialog.tsx`
+- Recibe `operator: { id, name, exchange_rate, base_currency }`.
+- Al abrirse, consulta `tours` filtrados por `operator_id` con sus campos de precios.
+- Opcionalmente consulta `tour_price_variants` para incluir desglose por zona/nacionalidad.
+- Genera Excel con `xlsx` (SheetJS) y PDF con `jspdf` + `jspdf-autotable`.
+- Ambos archivos se descargan con un clic.
 
-# Moneda del Proveedor: Soporte USD / MXN en Ficha del Tour ✅
+### 2. Estructura del Excel
+| Tour | Precio Público Adulto | Precio Público Menor | Tax Adulto USD | Tax Menor USD | Costo Neto Adulto | Costo Neto Menor | Precio Venta Adulto MXN | Precio Venta Menor MXN |
+|------|----------------------|---------------------|----------------|---------------|-------------------|-----------------|------------------------|----------------------|
 
-## Cambios realizados
+- Header con nombre del operador, moneda base, T.C., fecha de generación.
 
-### Migración SQL
-- Agregado campo `supplier_currency` (text, default 'USD') a la tabla `tours`
+### 3. Estructura del PDF
+- Encabezado: Logo de la empresa + "Lista de Precios al Público" + nombre del operador.
+- Tabla con las mismas columnas del Excel, estilizada similar a la imagen de referencia.
+- Pie de página con fecha de generación y notas.
 
-### Tours.tsx
-- Selector USD/MXN junto a "Precios Operador" en la ficha del tour
-- Labels dinámicos según moneda seleccionada
-- Cuando es MXN: T.C. se oculta, precios MXN se toman directamente
-- Cuando es USD: funciona igual que antes (conversión × T.C.)
-- Se guarda `supplier_currency` en el upsert
+### 4. Integración en `Operadores.tsx`
+- Agregar un nuevo botón con ícono `Download` en la fila de cada operador.
+- Estado para controlar el diálogo de exportación.
+
+### 5. Dependencias
+- `xlsx` (SheetJS) para generar el Excel en el cliente.
+- `jspdf` + `jspdf-autotable` para generar el PDF en el cliente.
+
+## Archivos a crear/modificar
+- **Crear**: `src/components/operators/PriceListExportDialog.tsx`
+- **Modificar**: `src/pages/Operadores.tsx` (agregar botón y estado)
+- **package.json**: agregar `xlsx`, `jspdf`, `jspdf-autotable`
+
