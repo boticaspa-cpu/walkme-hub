@@ -26,7 +26,7 @@ export default function Dashboard() {
   })();
   const currentMonth = todayStr.slice(0, 7);
 
-  const { data: salesToday = [] } = useQuery({
+  const { data: salesToday = [], isLoading: loadingSales } = useQuery({
     queryKey: ["dashboard-sales-today", todayStr],
     queryFn: async () => {
       const { data, error } = await supabase.from("sales").select("total_mxn")
