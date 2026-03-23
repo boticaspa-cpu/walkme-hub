@@ -1,60 +1,52 @@
 
 
-# Add Package Selection to Promotions
+# Loading States & Empty States — All Main Pages
 
-## Summary
-Allow promotions to target specific tour packages instead of only whole tours. Add a `package_name` column to `promotion_tours` and update the UI to show package selection after choosing a tour.
+## 1. New reusable component: `src/components/ui/empty-state.tsx`
 
-## Database Change
-Add nullable `package_name text` column to `promotion_tours`:
-```sql
-ALTER TABLE public.promotion_tours ADD COLUMN package_name text DEFAULT NULL;
+A centered, visually appealing empty state component:
+
+```tsx
+interface EmptyStateProps {
+  icon: LucideIcon;
+  title: string;
+  description?: string;
+  action?: { label: string; onClick: () => void };
+}
 ```
-- `NULL` means "all packages" (current behavior preserved)
-- A value like `'Plus'` means the promo only applies to that specific package
 
-## Changes — `src/pages/Promociones.tsx`
+Styled with a large muted icon (48px), bold title, subtle description, and optional primary action button. Uses the app's primary/tropical color palette.
 
-### 1. Fetch tour_packages
-Add a query to load all active tour_packages (id, tour_id, name, price_adult_mxn). This populates the package dropdown per tour.
+## 2. New helper component: `src/components/ui/table-skeleton.tsx`
 
-### 2. Track selected packages per tour
-Change from `selectedTourIds: string[]` to a structure like `Map<tourId, packageNames[]>` where empty array means "all packages". Or simpler: store `selectedItems: { tour_id, package_name | null }[]`.
+A reusable table skeleton that accepts `columns` (number) and `rows` (default 5) and renders animated Skeleton bars matching typical column widths.
 
-### 3. Tour selector UI update
-After each tour checkbox is checked, show the available packages for that tour inline:
-- "Todos los paquetes" checkbox (default, selected when no specific packages chosen)
-- Individual package checkboxes with their MXN price
-- When a specific package is selected, use its `price_adult_mxn` for subtotal calculation instead of the tour's base price
+## 3. Dashboard (`src/pages/Dashboard.tsx`)
 
-### 4. Subtotal calculation
-Update the `subtotal` memo to sum prices from the selected packages (using `tour_packages.price_adult_mxn`) when specific packages are chosen, or the tour base price when "all packages" is selected.
+- Wrap KPI cards grid in a loading check; show 4 Skeleton cards (same height as KpiCard) while any KPI query is loading.
+- Show Skeleton blocks for the "Próximas Reservas" and "Ventas Recientes" cards while loading.
 
-### 5. Save mutation update
-When inserting into `promotion_tours`, include the `package_name` field:
-```ts
-selectedItems.map(item => ({
-  promotion_id: promoId,
-  tour_id: item.tour_id,
-  package_name: item.package_name // null = all packages
-}))
-```
-Use `(supabase as any)` cast since the types won't have the new column yet.
+## 4. Page-by-page updates
 
-### 6. Load existing package_name on edit
-Update the promotions query to also select `package_name` from `promotion_tours`, and populate the form state when editing.
+Each page replaces the plain `<p>Cargando…</p>` and `<p>No se encontraron…</p>` with the new components:
 
-### 7. Display in table
-Show package badges alongside tour badges in the promotions list (e.g. "Tour Xcaret → Plus").
+| Page | Loading → | Empty State (icon, title, description, action) |
+|---|---|---|
+| **Cotizaciones** | TableSkeleton (5 cols) | FileText, "No hay cotizaciones aún", "Crea tu primera cotización", → open create dialog |
+| **Reservas** | TableSkeleton (6 cols) | Calendar, "No hay reservas aún", "Crea tu primera reserva", → open create dialog |
+| **Clientes** | TableSkeleton (5 cols) | Users, "No hay clientes aún", "Agrega tu primer cliente", → openCreate |
+| **Tours** | Grid of 6 card Skeletons | MapPin, "No hay tours aún", "Agrega tu primer tour", → open create |
+| **POS/Ventas** | TableSkeleton (5 cols) | Receipt, "No hay ventas pendientes", descriptive text |
+| **Leads** | TableSkeleton (8 cols) | Users, "No hay leads aún", "Captura tu primer lead" |
 
-## Changes — `src/pages/Cotizaciones.tsx` and `src/pages/Reservas.tsx`
-
-### 8. Read package_name from promotion_tours
-When loading a promotion's tours, also fetch `package_name` and pass it to the created quote/reservation items so the correct package is pre-selected.
-
-## Files Modified
-- `src/pages/Promociones.tsx` (main changes)
-- `src/pages/Cotizaciones.tsx` (minor: read package_name when applying promo)
-- `src/pages/Reservas.tsx` (minor: read package_name when applying promo)
-- Migration: add `package_name` column to `promotion_tours`
+## Files modified
+- `src/components/ui/empty-state.tsx` (new)
+- `src/components/ui/table-skeleton.tsx` (new)
+- `src/pages/Dashboard.tsx`
+- `src/pages/Cotizaciones.tsx`
+- `src/pages/Reservas.tsx`
+- `src/pages/Clientes.tsx`
+- `src/pages/Tours.tsx`
+- `src/pages/POS.tsx`
+- `src/pages/Leads.tsx`
 
