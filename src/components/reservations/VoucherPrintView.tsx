@@ -82,9 +82,11 @@ const t = {
     cancelled: "CANCELADA",
     pending: "PENDIENTE",
     important: "IMPORTANTE",
-    taxNote: "se paga al abordar en efectivo",
+  taxNote: "se paga al abordar en efectivo",
     perAdult: "por adulto",
     perChild: "por menor",
+    deposit: "DEPÓSITO PAGADO",
+    balanceDue: "PENDIENTE AL ABORDAR",
   },
   en: {
     title: "RESERVATION VOUCHER",
@@ -114,9 +116,11 @@ const t = {
     cancelled: "CANCELLED",
     pending: "PENDING",
     important: "IMPORTANT",
-    taxNote: "payable at boarding in cash",
+  taxNote: "payable at boarding in cash",
     perAdult: "per adult",
     perChild: "per minor",
+    deposit: "DEPOSIT PAID",
+    balanceDue: "BALANCE DUE AT BOARDING",
   },
 };
 
