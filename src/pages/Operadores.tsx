@@ -272,6 +272,14 @@ export default function Operadores() {
                           >
                             <FileSpreadsheet className="h-4 w-4" />
                           </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title="Descargar Lista de Precios"
+                            onClick={() => setExportOp({ id: op.id, name: op.name, exchange_rate: op.exchange_rate, base_currency: op.base_currency })}
+                          >
+                            <Download className="h-4 w-4" />
+                          </Button>
                           {role === "admin" && (
                             <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => { if (window.confirm("¿Eliminar este operador?")) deleteMutation.mutate(op.id); }}><Trash2 className="h-3.5 w-3.5" /></Button>
                           )}
