@@ -8,6 +8,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import SheetImportDialog from "@/components/tours/SheetImportDialog";
 import SheetPreviewDialog from "@/components/tours/SheetPreviewDialog";
 import PackageEditor, { PackageForm, emptyPackage } from "@/components/tours/PackageEditor";
+import MappingCards from "@/components/tours/MappingCards";
 import PriceVariantEditor, { VariantForm, emptyVariant, GENERAL_PACKAGE } from "@/components/tours/PriceVariantEditor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1578,16 +1579,15 @@ export default function Tours() {
             {isAdmin && (
               <div className="space-y-1.5">
                 <Label>Mapeo Inteligente — Generales</Label>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button type="button" variant="outline" size="sm" onClick={() => docInputRef.current?.click()} disabled={parsingDoc}>
-                    {parsingDoc ? "Analizando…" : "📄 Mapear PDF"}
-                  </Button>
-                  <Button type="button" variant="outline" size="sm" onClick={() => setSheetImportMode("generales")} disabled={parsingDoc}>
-                    <Table2 className="mr-1 h-3 w-3" /> Importar Sheet
-                  </Button>
-                  <p className="text-[11px] text-muted-foreground">Pre-llena los campos descriptivos del tour.</p>
-                </div>
-                <input ref={docInputRef} type="file" accept="image/*,.pdf" className="hidden" onChange={handleDocUpload} />
+                <p className="text-[11px] text-muted-foreground">Pre-llena los campos descriptivos del tour.</p>
+                <MappingCards
+                  onDocUpload={async (file) => {
+                    const event = { target: { files: [file], value: "" } } as unknown as React.ChangeEvent<HTMLInputElement>;
+                    await handleDocUpload(event);
+                  }}
+                  onSheetImport={() => setSheetImportMode("generales")}
+                  isMapping={parsingDoc}
+                />
               </div>
             )}
           </div>

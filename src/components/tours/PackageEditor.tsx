@@ -1,5 +1,6 @@
-import { useState, useRef } from "react";
-import { Plus, Trash2, ChevronDown, ChevronRight, Package, Info, FileText, Loader2, Table2 } from "lucide-react";
+import { useState } from "react";
+import { Plus, Trash2, ChevronDown, ChevronRight, Package, Info } from "lucide-react";
+import MappingCards from "./MappingCards";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -64,7 +65,6 @@ function calcMxn(pubUsd: string, taxUsd: number, tc: number): string {
 
 export default function PackageEditor({ packages, onChange, tourExchangeRate, tourTaxAdultUsd, tourTaxChildUsd, onDocUpload, isMapping, onSheetImport }: Props) {
   const [openIndexes, setOpenIndexes] = useState<Set<number>>(new Set());
-  const docInputRef = useRef<HTMLInputElement>(null);
 
   const toggle = (i: number) => {
     setOpenIndexes(prev => {
@@ -113,42 +113,14 @@ export default function PackageEditor({ packages, onChange, tourExchangeRate, to
         <p className="text-sm font-semibold flex items-center gap-1.5">
           <Package className="h-4 w-4" /> Paquetes del Tour
         </p>
-        <div className="flex gap-2">
-          {onDocUpload && (
-            <>
-              <input
-                ref={docInputRef}
-                type="file"
-                accept="image/*,.pdf"
-                className="hidden"
-                onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  if (file && onDocUpload) await onDocUpload(file);
-                  if (e.target) e.target.value = "";
-                }}
-              />
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => docInputRef.current?.click()}
-                disabled={isMapping}
-              >
-                {isMapping ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <FileText className="mr-1 h-3 w-3" />}
-                Mapear PDF
-              </Button>
-            </>
-          )}
-          {onSheetImport && (
-            <Button type="button" variant="outline" size="sm" onClick={onSheetImport} disabled={isMapping}>
-              <Table2 className="mr-1 h-3 w-3" /> Importar Sheet
-            </Button>
-          )}
-          <Button type="button" variant="outline" size="sm" onClick={add} disabled={packages.length >= 6}>
-            <Plus className="mr-1 h-3 w-3" /> Agregar Paquete
-          </Button>
-        </div>
+        <Button type="button" variant="outline" size="sm" onClick={add} disabled={packages.length >= 6}>
+          <Plus className="mr-1 h-3 w-3" /> Agregar Paquete
+        </Button>
       </div>
+
+      {onDocUpload && onSheetImport && (
+        <MappingCards onDocUpload={onDocUpload} onSheetImport={onSheetImport} isMapping={isMapping} />
+      )}
 
       {packages.length === 0 && (
         <p className="text-xs text-muted-foreground text-center py-3 border border-dashed rounded-lg">

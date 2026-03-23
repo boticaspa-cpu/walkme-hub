@@ -1,5 +1,5 @@
-import { useRef } from "react";
-import { Plus, Trash2, Grid3X3, Wand2, FileText, Loader2, Table2 } from "lucide-react";
+import { Plus, Trash2, Grid3X3, Wand2 } from "lucide-react";
+import MappingCards from "./MappingCards";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -48,7 +48,6 @@ interface Props {
 }
 
 export default function PriceVariantEditor({ variants, onChange, packages, isAdmin, onDocUpload, isMapping, onSheetImport }: Props) {
-  const docInputRef = useRef<HTMLInputElement>(null);
   const add = () => {
     onChange([...variants, { ...emptyVariant }]);
   };
@@ -93,36 +92,6 @@ export default function PriceVariantEditor({ variants, onChange, packages, isAdm
           <Grid3X3 className="h-4 w-4" /> Matriz de Precios v2
         </p>
         <div className="flex gap-2">
-          {onDocUpload && (
-            <>
-              <input
-                ref={docInputRef}
-                type="file"
-                accept="image/*,.pdf"
-                className="hidden"
-                onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  if (file && onDocUpload) await onDocUpload(file);
-                  if (e.target) e.target.value = "";
-                }}
-              />
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => docInputRef.current?.click()}
-                disabled={isMapping}
-              >
-                {isMapping ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <FileText className="mr-1 h-3 w-3" />}
-                Mapear PDF
-              </Button>
-            </>
-          )}
-          {onSheetImport && (
-            <Button type="button" variant="outline" size="sm" onClick={onSheetImport} disabled={isMapping}>
-              <Table2 className="mr-1 h-3 w-3" /> Importar Sheet
-            </Button>
-          )}
           <Button type="button" variant="outline" size="sm" onClick={generateAll}>
             <Wand2 className="mr-1 h-3 w-3" /> Generar Combinaciones
           </Button>
@@ -131,6 +100,10 @@ export default function PriceVariantEditor({ variants, onChange, packages, isAdm
           </Button>
         </div>
       </div>
+
+      {onDocUpload && onSheetImport && (
+        <MappingCards onDocUpload={onDocUpload} onSheetImport={onSheetImport} isMapping={isMapping} />
+      )}
 
       <p className="text-[11px] text-muted-foreground">
         Cada fila = 1 precio para una combinación de zona + nacionalidad + tipo de pasajero.
