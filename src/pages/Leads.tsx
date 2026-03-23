@@ -144,7 +144,9 @@ export default function Leads() {
           </div>
         </CardHeader>
         <CardContent className="p-0">
-          {isLoading ? <p className="p-6 text-sm text-muted-foreground">Cargando…</p> : (
+          {isLoading ? <TableSkeleton columns={8} /> : filtered.length === 0 ? (
+            <EmptyState icon={Users} title="No hay leads aún" description="Captura tu primer lead para empezar" action={{ label: "Nuevo Lead", onClick: openCreate }} />
+          ) : (
             <Table>
               <TableHeader>
                 <TableRow>
@@ -159,9 +161,7 @@ export default function Leads() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.length === 0 ? (
-                  <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">No se encontraron leads</TableCell></TableRow>
-                ) : filtered.map((lead: any) => (
+                {filtered.map((lead: any) => (
                   <TableRow key={lead.id} className="cursor-pointer hover:bg-muted/50">
                     <TableCell>
                       <div>

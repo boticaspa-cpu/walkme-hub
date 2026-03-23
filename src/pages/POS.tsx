@@ -108,9 +108,9 @@ export default function POS() {
         </CardHeader>
         <CardContent className="p-0">
           {isLoading ? (
-            <p className="p-6 text-sm text-muted-foreground">Cargando reservas…</p>
+            <TableSkeleton columns={6} />
           ) : filtered.length === 0 ? (
-            <p className="p-6 text-sm text-muted-foreground text-center">No hay reservas pendientes de cobro</p>
+            <EmptyState icon={Receipt} title="No hay ventas pendientes" description="Todas las reservas han sido cobradas" />
           ) : (
             <Table>
               <TableHeader>

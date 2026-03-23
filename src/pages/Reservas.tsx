@@ -877,7 +877,9 @@ export default function Reservas() {
         </CardHeader>
         <CardContent className="p-0 overflow-x-auto">
           {isLoading ? (
-            <p className="p-6 text-sm text-muted-foreground">Cargando reservas…</p>
+            <TableSkeleton columns={8} />
+          ) : filtered.length === 0 ? (
+            <EmptyState icon={Calendar} title="No hay reservas aún" description="Crea tu primera reserva para empezar" action={{ label: "Nueva Reserva", onClick: openCreate }} />
           ) : (
             <Table>
               <TableHeader>
@@ -893,13 +895,7 @@ export default function Reservas() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
-                      No se encontraron reservas
-                    </TableCell>
-                  </TableRow>
-                ) : (
+                {(
                   filtered.map((r: any) => {
                     const cStatus = confirmationStatus(r);
                     const pStatus = paymentStatus(r);

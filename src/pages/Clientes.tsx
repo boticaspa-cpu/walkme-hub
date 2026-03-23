@@ -119,7 +119,9 @@ export default function Clientes() {
         </CardHeader>
         <CardContent className="p-0">
           {isLoading ? (
-            <p className="p-6 text-sm text-muted-foreground">Cargando…</p>
+            <TableSkeleton columns={5} />
+          ) : filtered.length === 0 ? (
+            <EmptyState icon={Users} title="No hay clientes aún" description="Agrega tu primer cliente para empezar" action={{ label: "Nuevo Cliente", onClick: openCreate }} />
           ) : (
             <Table>
               <TableHeader>
@@ -132,9 +134,7 @@ export default function Clientes() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.length === 0 ? (
-                  <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">No se encontraron clientes</TableCell></TableRow>
-                ) : filtered.map((c: any) => (
+                {filtered.map((c: any) => (
                   <TableRow key={c.id} className="cursor-pointer hover:bg-muted/50">
                     <TableCell className="font-medium">{c.name}</TableCell>
                     <TableCell className="hidden sm:table-cell text-sm">{c.phone || "—"}</TableCell>
