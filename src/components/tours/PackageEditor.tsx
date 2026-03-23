@@ -114,39 +114,10 @@ export default function PackageEditor({ packages, onChange, tourExchangeRate, to
           <Package className="h-4 w-4" /> Paquetes del Tour
         </p>
         <div className="flex gap-2">
-          {onDocUpload && (
-            <>
-              <input
-                ref={docInputRef}
-                type="file"
-                accept="image/*,.pdf"
-                className="hidden"
-                onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  if (file && onDocUpload) await onDocUpload(file);
-                  if (e.target) e.target.value = "";
-                }}
-              />
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => docInputRef.current?.click()}
-                disabled={isMapping}
-              >
-                {isMapping ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <FileText className="mr-1 h-3 w-3" />}
-                Mapear PDF
-              </Button>
-            </>
-          )}
-          {onSheetImport && (
-            <Button type="button" variant="outline" size="sm" onClick={onSheetImport} disabled={isMapping}>
-              <Table2 className="mr-1 h-3 w-3" /> Importar Sheet
-            </Button>
-          )}
           <Button type="button" variant="outline" size="sm" onClick={add} disabled={packages.length >= 6}>
             <Plus className="mr-1 h-3 w-3" /> Agregar Paquete
           </Button>
+        </div>
         </div>
       </div>
 

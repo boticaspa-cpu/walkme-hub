@@ -8,6 +8,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import SheetImportDialog from "@/components/tours/SheetImportDialog";
 import SheetPreviewDialog from "@/components/tours/SheetPreviewDialog";
 import PackageEditor, { PackageForm, emptyPackage } from "@/components/tours/PackageEditor";
+import MappingCards from "@/components/tours/MappingCards";
 import PriceVariantEditor, { VariantForm, emptyVariant, GENERAL_PACKAGE } from "@/components/tours/PriceVariantEditor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
