@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
-import { Plus, Search, Upload, Pencil, FileSpreadsheet, Trash2 } from "lucide-react";
+import { Plus, Search, Upload, Pencil, FileSpreadsheet, Trash2, Download } from "lucide-react";
 import PriceListImportDialog from "@/components/operators/PriceListImportDialog";
+import PriceListExportDialog from "@/components/operators/PriceListExportDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -56,6 +57,7 @@ export default function Operadores() {
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [priceListOp, setPriceListOp] = useState<{ id: string; name: string } | null>(null);
+  const [exportOp, setExportOp] = useState<{ id: string; name: string; exchange_rate?: number; base_currency?: string } | null>(null);
 
   const { data: operators = [], isLoading } = useQuery({
     queryKey: ["operators"],
@@ -270,6 +272,14 @@ export default function Operadores() {
                           >
                             <FileSpreadsheet className="h-4 w-4" />
                           </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title="Descargar Lista de Precios"
+                            onClick={() => setExportOp({ id: op.id, name: op.name, exchange_rate: op.exchange_rate, base_currency: op.base_currency })}
+                          >
+                            <Download className="h-4 w-4" />
+                          </Button>
                           {role === "admin" && (
                             <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => { if (window.confirm("¿Eliminar este operador?")) deleteMutation.mutate(op.id); }}><Trash2 className="h-3.5 w-3.5" /></Button>
                           )}
@@ -402,6 +412,14 @@ export default function Operadores() {
           open={!!priceListOp}
           onOpenChange={(v) => { if (!v) setPriceListOp(null); }}
           operator={priceListOp}
+        />
+      )}
+
+      {exportOp && (
+        <PriceListExportDialog
+          open={!!exportOp}
+          onOpenChange={(v) => { if (!v) setExportOp(null); }}
+          operator={exportOp}
         />
       )}
     </div>
