@@ -130,7 +130,7 @@ export default function Clientes() {
                   <TableHead className="hidden sm:table-cell">Teléfono</TableHead>
                   <TableHead className="hidden md:table-cell">Email</TableHead>
                   <TableHead className="hidden lg:table-cell">Notas</TableHead>
-                  {isAdmin && <TableHead className="text-right">Acciones</TableHead>}
+                  {isAdmin && <TableHead className="text-right sticky right-0 bg-background">Acciones</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
