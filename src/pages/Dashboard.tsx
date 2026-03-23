@@ -46,7 +46,7 @@ export default function Dashboard() {
     },
   });
 
-  const { data: activeLeads = [] } = useQuery({
+  const { data: activeLeads = [], isLoading: loadingLeads } = useQuery({
     queryKey: ["dashboard-active-leads"],
     queryFn: async () => {
       const { data, error } = await supabase.from("leads").select("id")
