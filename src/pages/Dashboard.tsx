@@ -249,7 +249,14 @@ export default function Dashboard() {
             <Link to="/pos"><Button variant="ghost" size="sm" className="text-xs">Ver todas <ArrowRight className="ml-1 h-3 w-3" /></Button></Link>
           </CardHeader>
           <CardContent className="space-y-3">
-            {recentSales.length === 0 ? <p className="text-sm text-muted-foreground text-center py-4">Sin ventas recientes</p> : recentSales.map((s: any) => (
+            {loadingRecentSales ? (
+              Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="flex items-center justify-between rounded-lg border p-3">
+                  <div className="space-y-1.5"><Skeleton className="h-4 w-24" /><Skeleton className="h-3 w-16" /></div>
+                  <Skeleton className="h-5 w-20 rounded-full" />
+                </div>
+              ))
+            ) : recentSales.length === 0 ? <p className="text-sm text-muted-foreground text-center py-4">Sin ventas recientes</p> : recentSales.map((s: any) => (
               <div key={s.id} className="flex items-center justify-between rounded-lg border p-3">
                 <div>
                   <p className="text-sm font-medium">{fmt(Number(s.total_mxn))}</p>
