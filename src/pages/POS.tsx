@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Lock, ShoppingCart, DollarSign } from "lucide-react";
+import { Search, Lock, ShoppingCart, DollarSign, Receipt } from "lucide-react";
+import { TableSkeleton } from "@/components/ui/table-skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
 import DateRangeFilter from "@/components/shared/DateRangeFilter";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
