@@ -1,16 +1,18 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Lock, ShoppingCart, DollarSign, Receipt } from "lucide-react";
+import { Search, Lock, ShoppingCart, DollarSign, Receipt, Clock, Coins, Wallet } from "lucide-react";
 import { TableSkeleton } from "@/components/ui/table-skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import DateRangeFilter from "@/components/shared/DateRangeFilter";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useCashSession } from "@/hooks/useCashSession";
+import { useAuth } from "@/contexts/AuthContext";
 import ReservationCheckout from "@/components/reservations/ReservationCheckout";
+import { KpiCard } from "@/components/dashboard/KpiCard";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -18,14 +20,15 @@ import {
 
 export default function POS() {
   const navigate = useNavigate();
-  const { activeSession, isSessionOpen, isLoadingSession } = useCashSession();
+  const { user } = useAuth();
+  const { activeSession, isSessionOpen, isLoadingSession, movements } = useCashSession();
 
   const [search, setSearch] = useState("");
   const [dateFrom, setDateFrom] = useState<Date | undefined>();
   const [dateTo, setDateTo] = useState<Date | undefined>();
   const [checkoutReservation, setCheckoutReservation] = useState<any>(null);
 
-  // Fetch pending reservations (scheduled/unpaid)
+  // Fetch pending reservations
   const { data: pendingReservations = [], isLoading } = useQuery({
     queryKey: ["pending-reservations"],
     queryFn: async () => {
@@ -39,7 +42,62 @@ export default function POS() {
     },
   });
 
+  // Fetch session sales
+  const { data: sessionSales = [], isLoading: isLoadingSales } = useQuery({
+    queryKey: ["pos-session-sales", activeSession?.id],
+    enabled: !!activeSession?.id,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("sales")
+        .select("*")
+        .eq("cash_session_id", activeSession!.id);
+      if (error) throw error;
+      return data as any[];
+    },
+  });
+
+  // Fetch seller's commission percentage
+  const { data: profile } = useQuery({
+    queryKey: ["pos-profile-commission", user?.id],
+    enabled: !!user?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("commission_percentage")
+        .eq("id", user!.id)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const fmt = (n: number) => n.toLocaleString("es-MX", { style: "currency", currency: "MXN" });
+
+  // KPI calculations
+  const salesTotalMxn = sessionSales.reduce((s: number, sale: any) => s + (sale.total_mxn || 0), 0);
+  const salesCount = sessionSales.length;
+
+  const pendingTotal = pendingReservations.reduce((s: number, r: any) => s + (r.total_mxn || 0), 0);
+  const pendingCount = pendingReservations.length;
+
+  const commissionPct = profile?.commission_percentage ?? 30;
+  const mySalesToday = sessionSales.filter((s: any) => s.sold_by === user?.id);
+  const mySalesTotal = mySalesToday.reduce((s: number, sale: any) => s + (sale.total_mxn || 0), 0);
+  const myCommission = mySalesTotal * (commissionPct / 100);
+
+  const cashSalesMxn = sessionSales
+    .filter((s: any) => s.payment_method === "cash" && s.currency === "MXN")
+    .reduce((s: number, sale: any) => s + (sale.total_mxn || 0), 0);
+  const cashSalesUsd = sessionSales
+    .filter((s: any) => s.payment_method === "cash" && s.currency === "USD")
+    .reduce((s: number, sale: any) => s + (sale.total_mxn || 0), 0);
+  const cashMovementsNet = movements.reduce((s: number, m: any) => {
+    if (m.type === "in_cash") return s + (m.amount_mxn || 0);
+    if (m.type === "out_cash" || m.type === "withdrawal") return s - (m.amount_mxn || 0);
+    return s;
+  }, 0);
+  const expectedCash = (activeSession?.opening_float_mxn || 0) + cashSalesMxn + cashMovementsNet;
+  const usdSubtitle = cashSalesUsd > 0 ? `+ ${fmt(cashSalesUsd)} (USD equiv.)` : undefined;
 
   // Filter
   const filtered = pendingReservations.filter((r: any) => {
@@ -58,7 +116,7 @@ export default function POS() {
     );
   });
 
-  // POS gate: block if no cash session open
+  // POS gate
   if (!isLoadingSession && !isSessionOpen) {
     return (
       <div className="flex flex-col items-center justify-center py-20 space-y-4">
@@ -74,6 +132,8 @@ export default function POS() {
     );
   }
 
+  const kpiLoading = isLoadingSession || isLoadingSales;
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -87,6 +147,51 @@ export default function POS() {
             <span className="hidden sm:inline">Caja abierta desde </span>
             {new Date(activeSession.opened_at).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })}
           </Button>
+        )}
+      </div>
+
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {kpiLoading ? (
+          Array.from({ length: 4 }).map((_, i) => (
+            <Card key={i} className="shadow-sm">
+              <CardContent className="flex items-start gap-4 p-5">
+                <Skeleton className="h-11 w-11 rounded-lg shrink-0" />
+                <div className="flex flex-col gap-2 flex-1">
+                  <Skeleton className="h-3 w-20" />
+                  <Skeleton className="h-7 w-28" />
+                  <Skeleton className="h-3 w-16" />
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        ) : (
+          <>
+            <KpiCard
+              title="Ventas del Día"
+              value={fmt(salesTotalMxn)}
+              subtitle={`${salesCount} venta${salesCount !== 1 ? "s" : ""}`}
+              icon={Receipt}
+            />
+            <KpiCard
+              title="Reservas Pendientes"
+              value={pendingCount}
+              subtitle={fmt(pendingTotal)}
+              icon={Clock}
+            />
+            <KpiCard
+              title="Mi Comisión"
+              value={fmt(myCommission)}
+              subtitle={`${commissionPct}% de ${fmt(mySalesTotal)}`}
+              icon={Coins}
+            />
+            <KpiCard
+              title="Efectivo en Caja"
+              value={fmt(expectedCash)}
+              subtitle={usdSubtitle}
+              icon={Wallet}
+            />
+          </>
         )}
       </div>
 
@@ -149,7 +254,6 @@ export default function POS() {
         </CardContent>
       </Card>
 
-      {/* Checkout Dialog */}
       {checkoutReservation && (
         <ReservationCheckout
           reservation={checkoutReservation}
