@@ -1,33 +1,38 @@
 
 
-# Fix Horizontal Scroll on Mobile Tables
+# Add KPI Cards to POS Page
 
-## Current State
-Most pages already use `hidden sm:table-cell` on secondary columns. The main gaps:
-- **Cotizaciones**: All 5 columns visible on mobile (Folio, Cliente, Total, Estado, Acciones) — Folio should hide
-- **Sticky actions column**: Not implemented anywhere
-- **Text truncation**: Missing on long tour/client names
+## Summary
+Add 4 KPI cards above the pending reservations table in POS, using the same `KpiCard` component from the Dashboard.
 
-## Changes
+## Data Queries (3 new queries)
 
-### 1. Cotizaciones.tsx — Hide Folio on mobile
-- Add `hidden sm:table-cell` to the Folio `<TableHead>` and `<TableCell>`
-- Mobile shows: Cliente, Total, Estado, Acciones (4 columns)
+### 1. Today's Sales (for current session)
+Query `sales` table filtered by `cash_session_id = activeSession.id`. Derive count and total MXN.
 
-### 2. All 5 pages — Sticky action column
-Add `sticky right-0 bg-background` to the Actions `<TableHead>` and `<TableCell>` so action buttons are always reachable without scrolling:
-- Cotizaciones, Reservas, Clientes, Leads, POS
+### 2. Commission estimate
+Use the same sales data, multiply total by the seller's `commission_percentage` from `profiles` (fetched via `useAuth` user id). Fall back to 30% default.
 
-### 3. Text truncation on long columns
-Add `truncate max-w-[150px]` to tour title and client name cells across Cotizaciones, Reservas, POS to prevent wide cells.
+### 3. Cash in register
+Query `sales` where `cash_session_id = activeSession.id` AND `payment_method = 'cash'`, group by `currency`. Add the session's `opening_float_mxn`. Also sum cash movements for the session.
 
-### 4. POS.tsx — Consolidate action column header
-The "Acción" column already works well. Just add sticky styling.
+### Pending reservations
+Already available from `pendingReservations` — just derive count and sum.
 
-## Files modified
-- `src/pages/Cotizaciones.tsx`
-- `src/pages/Reservas.tsx`
-- `src/pages/Clientes.tsx`
-- `src/pages/Leads.tsx`
+## UI Changes — `src/pages/POS.tsx`
+
+1. Import `KpiCard`, `Skeleton`, `useAuth`, and icons (`Receipt`, `Clock`, `Coins`, `Wallet`).
+
+2. Add 3 queries (session sales, profile commission rate, cash breakdown) — all enabled only when `activeSession` exists.
+
+3. Insert a responsive grid (`grid-cols-1 sm:grid-cols-2 lg:grid-cols-4`) between the header and the table card with:
+   - **Ventas del Día**: count + total MXN from session sales
+   - **Reservas Pendientes**: `pendingReservations.length` + sum of `total_mxn`
+   - **Mi Comisión**: session sales total × commission % from profile
+   - **Efectivo en Caja**: opening float + cash sales MXN (show USD subtotal if any)
+
+4. Show skeleton cards while loading (same pattern as Dashboard).
+
+## Files Modified
 - `src/pages/POS.tsx`
 
