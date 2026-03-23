@@ -56,7 +56,7 @@ export default function Dashboard() {
     },
   });
 
-  const { data: upcomingRes = [] } = useQuery({
+  const { data: upcomingRes = [], isLoading: loadingUpcoming } = useQuery({
     queryKey: ["dashboard-upcoming"],
     queryFn: async () => {
       const { data, error } = await supabase.from("reservations")
