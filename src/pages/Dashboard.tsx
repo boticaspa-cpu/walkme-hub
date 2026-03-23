@@ -36,7 +36,7 @@ export default function Dashboard() {
     },
   });
 
-  const { data: reservationsToday = [] } = useQuery({
+  const { data: reservationsToday = [], isLoading: loadingRes } = useQuery({
     queryKey: ["dashboard-res-today", todayStr],
     queryFn: async () => {
       const { data, error } = await supabase.from("reservations").select("id, status")
