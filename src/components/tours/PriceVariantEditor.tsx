@@ -48,7 +48,6 @@ interface Props {
 }
 
 export default function PriceVariantEditor({ variants, onChange, packages, isAdmin, onDocUpload, isMapping, onSheetImport }: Props) {
-  const docInputRef = useRef<HTMLInputElement>(null);
   const add = () => {
     onChange([...variants, { ...emptyVariant }]);
   };
