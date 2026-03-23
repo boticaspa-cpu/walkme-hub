@@ -224,7 +224,14 @@ export default function Dashboard() {
             <Link to="/calendario"><Button variant="ghost" size="sm" className="text-xs">Ver todas <ArrowRight className="ml-1 h-3 w-3" /></Button></Link>
           </CardHeader>
           <CardContent className="space-y-3">
-            {upcomingRes.length === 0 ? <p className="text-sm text-muted-foreground text-center py-4">Sin reservas próximas</p> : upcomingRes.map((r: any) => (
+            {loadingUpcoming ? (
+              Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="flex items-center justify-between rounded-lg border p-3">
+                  <div className="space-y-1.5"><Skeleton className="h-4 w-32" /><Skeleton className="h-3 w-20" /></div>
+                  <Skeleton className="h-5 w-24 rounded-full" />
+                </div>
+              ))
+            ) : upcomingRes.length === 0 ? <p className="text-sm text-muted-foreground text-center py-4">Sin reservas próximas</p> : upcomingRes.map((r: any) => (
               <div key={r.id} className="flex items-center justify-between rounded-lg border p-3">
                 <div>
                   <p className="text-sm font-medium">{r.tours?.title ?? "—"}</p>
