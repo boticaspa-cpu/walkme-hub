@@ -1326,28 +1326,43 @@ export default function Tours() {
             {/* ── Tipo de Cambio y Precios Finales (MXN) ── */}
             <Separator />
             <p className="text-sm font-semibold">💱 Tipo de Cambio y Precios Finales (MXN)</p>
-            <div className="space-y-1.5">
-              <Label>T.C. del Tour</Label>
-              <Input type="number" value={form.exchange_rate_tour} onChange={(e) => setForm({ ...form, exchange_rate_tour: e.target.value })} placeholder={String(exchangeRateUsd)} />
-              <p className="text-xs text-muted-foreground">Se usa el global ${exchangeRateUsd} si se deja vacío</p>
-            </div>
+            {!isMXN && (
+              <div className="space-y-1.5">
+                <Label>T.C. del Tour</Label>
+                <Input type="number" value={form.exchange_rate_tour} onChange={(e) => setForm({ ...form, exchange_rate_tour: e.target.value })} placeholder={String(exchangeRateUsd)} />
+                <p className="text-xs text-muted-foreground">Se usa el global ${exchangeRateUsd} si se deja vacío</p>
+              </div>
+            )}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Precio Público Adulto (MXN)</Label>
                 <Input type="number" value={form.price_mxn} disabled className="bg-muted" />
-                <p className="text-[10px] text-muted-foreground">= (Pub USD + Tax USD) × T.C.</p>
+                {!isMXN && <p className="text-[10px] text-muted-foreground">= Pub USD × T.C.</p>}
+                {isMXN && <p className="text-[10px] text-muted-foreground">= Precio Público directo (moneda MXN)</p>}
               </div>
               <div className="space-y-1.5">
                 <Label>Precio Público Menor (MXN)</Label>
                 <Input type="number" value={form.suggested_price_mxn} disabled className="bg-muted" />
-                <p className="text-[10px] text-muted-foreground">= (Pub USD + Tax USD) × T.C.</p>
+                {!isMXN && <p className="text-[10px] text-muted-foreground">= Pub USD × T.C.</p>}
+                {isMXN && <p className="text-[10px] text-muted-foreground">= Precio Público directo (moneda MXN)</p>}
               </div>
             </div>
 
             {/* ── Precios Operador (USD) — Calculadora Dual ── */}
             <Separator />
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold flex items-center gap-1.5"><DollarSign className="h-4 w-4" /> Precios Operador (USD)</p>
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-semibold flex items-center gap-1.5"><DollarSign className="h-4 w-4" /> Precios Operador</p>
+                <Select value={form.supplier_currency} onValueChange={(v) => setForm({ ...form, supplier_currency: v })}>
+                  <SelectTrigger className="h-7 w-20 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="USD">USD</SelectItem>
+                    <SelectItem value="MXN">MXN</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="flex items-center gap-2">
                 <span className="text-xs text-muted-foreground">{isCommissionMode ? "Modo Comisión" : "Modo Costo Neto"}</span>
                 <Switch
