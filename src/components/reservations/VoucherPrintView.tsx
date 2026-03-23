@@ -26,6 +26,9 @@ interface VoucherProps {
     pax_adults: number;
     pax_children: number;
     total_mxn: number;
+    deposit_mxn?: number;
+    balance_mxn?: number;
+    balance_currency?: string;
     unit_price_mxn?: number;
     unit_price_child_mxn?: number;
     modality: string;
@@ -82,9 +85,11 @@ const t = {
     cancelled: "CANCELADA",
     pending: "PENDIENTE",
     important: "IMPORTANTE",
-    taxNote: "se paga al abordar en efectivo",
+  taxNote: "se paga al abordar en efectivo",
     perAdult: "por adulto",
     perChild: "por menor",
+    deposit: "DEPÓSITO PAGADO",
+    balanceDue: "PENDIENTE AL ABORDAR",
   },
   en: {
     title: "RESERVATION VOUCHER",
@@ -114,9 +119,11 @@ const t = {
     cancelled: "CANCELLED",
     pending: "PENDING",
     important: "IMPORTANT",
-    taxNote: "payable at boarding in cash",
+  taxNote: "payable at boarding in cash",
     perAdult: "per adult",
     perChild: "per minor",
+    deposit: "DEPOSIT PAID",
+    balanceDue: "BALANCE DUE AT BOARDING",
   },
 };
 
@@ -554,6 +561,50 @@ export default function VoucherPrintView({
             {fmtMXN(r.total_mxn)}
           </span>
         </div>
+
+        {/* ── DEPOSIT / BALANCE BREAKDOWN ── */}
+        {r.deposit_mxn != null && r.deposit_mxn > 0 && r.balance_mxn != null && r.balance_mxn > 0 && (
+          <div style={{ padding: "0" }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                padding: "5px 12px",
+                backgroundColor: "#ECFDF5",
+                borderBottom: "1px solid #a7f3d0",
+                fontSize: "11px",
+              }}
+            >
+              <span style={{ color: "#065f46", fontWeight: "600" }}>✓ {l.deposit}</span>
+              <span style={{ color: "#065f46", fontWeight: "bold", fontFamily: "monospace" }}>
+                {fmtMXN(r.deposit_mxn)}
+              </span>
+            </div>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                padding: "5px 12px",
+                backgroundColor: LIGHT_RED,
+                borderBottom: "1px solid #fecaca",
+                fontSize: "11px",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                <AlertTriangle size={10} color="#b91c1c" />
+                <span style={{ color: "#991b1b", fontWeight: "600" }}>{l.balanceDue}</span>
+              </div>
+              <span style={{ color: "#991b1b", fontWeight: "bold", fontFamily: "monospace" }}>
+                {r.balance_currency && r.balance_currency !== "MXN"
+                  ? `$${r.balance_mxn.toLocaleString("es-MX", { minimumFractionDigits: 2 })} ${r.balance_currency}`
+                  : fmtMXN(r.balance_mxn)
+                }
+              </span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── TAX / ON-SITE FEES SECTION ── */}
