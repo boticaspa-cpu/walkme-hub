@@ -113,13 +113,14 @@ export default function PackageEditor({ packages, onChange, tourExchangeRate, to
         <p className="text-sm font-semibold flex items-center gap-1.5">
           <Package className="h-4 w-4" /> Paquetes del Tour
         </p>
-        <div className="flex gap-2">
-          <Button type="button" variant="outline" size="sm" onClick={add} disabled={packages.length >= 6}>
-            <Plus className="mr-1 h-3 w-3" /> Agregar Paquete
-          </Button>
-        </div>
-        </div>
+        <Button type="button" variant="outline" size="sm" onClick={add} disabled={packages.length >= 6}>
+          <Plus className="mr-1 h-3 w-3" /> Agregar Paquete
+        </Button>
       </div>
+
+      {onDocUpload && onSheetImport && (
+        <MappingCards onDocUpload={onDocUpload} onSheetImport={onSheetImport} isMapping={isMapping} />
+      )}
 
       {packages.length === 0 && (
         <p className="text-xs text-muted-foreground text-center py-3 border border-dashed rounded-lg">

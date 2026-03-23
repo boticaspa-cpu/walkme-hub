@@ -99,9 +99,11 @@ export default function PriceVariantEditor({ variants, onChange, packages, isAdm
             <Plus className="mr-1 h-3 w-3" /> Agregar
           </Button>
         </div>
-          </Button>
-        </div>
       </div>
+
+      {onDocUpload && onSheetImport && (
+        <MappingCards onDocUpload={onDocUpload} onSheetImport={onSheetImport} isMapping={isMapping} />
+      )}
 
       <p className="text-[11px] text-muted-foreground">
         Cada fila = 1 precio para una combinación de zona + nacionalidad + tipo de pasajero.
