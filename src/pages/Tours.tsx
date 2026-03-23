@@ -104,6 +104,7 @@ interface TourForm {
   recommendations: string;
   tags: string;
   service_type: string;
+  supplier_currency: string;
 }
 
 const emptyForm: TourForm = {
@@ -118,6 +119,7 @@ const emptyForm: TourForm = {
   days: [], short_description: "", itinerary: "",
   includes: "", excludes: "", meeting_point: "", what_to_bring: "",
   recommendations: "", tags: "", service_type: "with_transport",
+  supplier_currency: "USD",
 };
 
 function formatPrice(n: number) {
