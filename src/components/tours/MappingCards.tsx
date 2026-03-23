@@ -46,7 +46,7 @@ export default function MappingCards({
 
   return (
     <div className="space-y-2">
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 gap-2">
         {cards.map((card) => (
           <button
             key={card.label}
@@ -54,17 +54,17 @@ export default function MappingCards({
             disabled={isMapping}
             onClick={card.onClick}
             className={cn(
-              "flex flex-col items-center justify-center gap-2 rounded-xl border border-border py-5 px-3 transition-colors cursor-pointer",
+              "flex flex-col items-center justify-center gap-1 rounded-xl border border-border py-3 px-2 transition-colors cursor-pointer",
               "hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring",
               isMapping && "opacity-50 cursor-not-allowed"
             )}
           >
             {isMapping ? (
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             ) : (
-              <card.icon className={cn("h-6 w-6", card.color)} />
+              <card.icon className={cn("h-5 w-5", card.color)} />
             )}
-            <span className="text-xs font-medium text-foreground">{card.label}</span>
+            <span className="text-[11px] font-medium text-foreground">{card.label}</span>
           </button>
         ))}
       </div>
