@@ -157,7 +157,7 @@ export default function Leads() {
                   <TableHead className="hidden lg:table-cell">Presupuesto</TableHead>
                   <TableHead>Estado</TableHead>
                   <TableHead className="hidden md:table-cell">Asignado</TableHead>
-                  <TableHead className="text-right">Acciones</TableHead>
+                  <TableHead className="text-right sticky right-0 bg-background">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
