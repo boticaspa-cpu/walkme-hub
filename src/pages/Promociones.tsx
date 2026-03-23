@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { Plus, Trash2, Tag, FileText, CalendarCheck, Pencil, MoreHorizontal } from "lucide-react";
+import { Plus, Trash2, FileText, CalendarCheck, Pencil, MoreHorizontal, ChevronDown } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
@@ -22,11 +22,18 @@ import {
   Table, TableHeader, TableBody, TableRow, TableHead, TableCell,
 } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Textarea } from "@/components/ui/textarea";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Collapsible, CollapsibleContent, CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+
+interface PromoItem {
+  tour_id: string;
+  package_name: string | null; // null = all packages
+}
 
 interface Promotion {
   id: string;
@@ -39,7 +46,7 @@ interface Promotion {
   total_mxn: number;
   active: boolean;
   created_at: string;
-  tour_ids?: string[];
+  items: PromoItem[];
 }
 
 interface Tour {
@@ -47,6 +54,14 @@ interface Tour {
   title: string;
   price_mxn: number;
   suggested_price_mxn: number;
+  active: boolean;
+}
+
+interface TourPackage {
+  id: string;
+  tour_id: string;
+  name: string;
+  price_adult_mxn: number;
   active: boolean;
 }
 
@@ -67,7 +82,7 @@ export default function Promociones() {
   // Form state
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [selectedTourIds, setSelectedTourIds] = useState<string[]>([]);
+  const [selectedItems, setSelectedItems] = useState<PromoItem[]>([]);
   const [discountMxn, setDiscountMxn] = useState(0);
   const [discountMode, setDiscountMode] = useState<"percent" | "amount">("percent");
   const [discountValue, setDiscountValue] = useState(0);
@@ -86,7 +101,21 @@ export default function Promociones() {
     },
   });
 
-  // Fetch promotions with their tours
+  // Fetch all active tour_packages
+  const { data: packages = [] } = useQuery({
+    queryKey: ["tour-packages-for-promos"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("tour_packages")
+        .select("id, tour_id, name, price_adult_mxn, active")
+        .eq("active", true)
+        .order("sort_order");
+      if (error) throw error;
+      return (data ?? []) as TourPackage[];
+    },
+  });
+
+  // Fetch promotions with their items
   const { data: promotions = [], isLoading } = useQuery({
     queryKey: ["promotions"],
     queryFn: async () => {
@@ -98,40 +127,92 @@ export default function Promociones() {
 
       const { data: links, error: e2 } = await supabase
         .from("promotion_tours")
-        .select("promotion_id, tour_id");
+        .select("promotion_id, tour_id, package_name");
       if (e2) throw e2;
 
       return (promos ?? []).map((p: any) => ({
         ...p,
-        tour_ids: (links ?? [])
+        items: (links ?? [])
           .filter((l: any) => l.promotion_id === p.id)
-          .map((l: any) => l.tour_id),
+          .map((l: any) => ({ tour_id: l.tour_id, package_name: l.package_name })),
       })) as Promotion[];
     },
   });
 
-  // Calculate subtotal from selected tours
+  // Get packages for a given tour
+  const getPackagesForTour = (tourId: string) => packages.filter((p) => p.tour_id === tourId);
+
+  // Check if a tour is selected (has at least one item)
+  const isTourSelected = (tourId: string) => selectedItems.some((i) => i.tour_id === tourId);
+
+  // Get selected items for a tour
+  const getSelectedForTour = (tourId: string) => selectedItems.filter((i) => i.tour_id === tourId);
+
+  // Check if "all packages" is selected for a tour
+  const isAllPackages = (tourId: string) => {
+    const items = getSelectedForTour(tourId);
+    return items.length === 1 && items[0].package_name === null;
+  };
+
+  // Toggle entire tour (adds as "all packages" or removes all)
+  const toggleTour = (tourId: string) => {
+    if (isTourSelected(tourId)) {
+      setSelectedItems((prev) => prev.filter((i) => i.tour_id !== tourId));
+    } else {
+      setSelectedItems((prev) => [...prev, { tour_id: tourId, package_name: null }]);
+    }
+  };
+
+  // Toggle a specific package for a tour
+  const togglePackage = (tourId: string, pkgName: string) => {
+    const current = getSelectedForTour(tourId);
+    const hasThisPackage = current.some((i) => i.package_name === pkgName);
+
+    if (hasThisPackage) {
+      // Remove this package
+      const remaining = selectedItems.filter((i) => !(i.tour_id === tourId && i.package_name === pkgName));
+      // If no packages left for this tour, remove the tour entirely
+      setSelectedItems(remaining);
+    } else {
+      // If currently "all packages", switch to specific
+      const withoutTour = selectedItems.filter((i) => i.tour_id !== tourId);
+      const existingSpecific = current.filter((i) => i.package_name !== null);
+      setSelectedItems([...withoutTour, ...existingSpecific, { tour_id: tourId, package_name: pkgName }]);
+    }
+  };
+
+  // Toggle "all packages" for a tour
+  const toggleAllPackages = (tourId: string) => {
+    const withoutTour = selectedItems.filter((i) => i.tour_id !== tourId);
+    if (isAllPackages(tourId)) {
+      // Already all → remove tour
+      setSelectedItems(withoutTour);
+    } else {
+      // Switch to all
+      setSelectedItems([...withoutTour, { tour_id: tourId, package_name: null }]);
+    }
+  };
+
+  // Calculate subtotal from selected items
   const subtotal = useMemo(() => {
-    return selectedTourIds.reduce((acc, tid) => {
-      const t = tours.find((x) => x.id === tid);
-      return acc + (t ? (t.price_mxn || t.suggested_price_mxn || 0) : 0);
+    return selectedItems.reduce((acc, item) => {
+      if (item.package_name) {
+        const pkg = packages.find((p) => p.tour_id === item.tour_id && p.name === item.package_name);
+        return acc + (pkg?.price_adult_mxn ?? 0);
+      } else {
+        const t = tours.find((x) => x.id === item.tour_id);
+        return acc + (t ? (t.price_mxn || t.suggested_price_mxn || 0) : 0);
+      }
     }, 0);
-  }, [selectedTourIds, tours]);
+  }, [selectedItems, tours, packages]);
 
   const total = Math.max(0, subtotal - discountMxn);
-
-  // Toggle tour selection
-  const toggleTour = (tourId: string) => {
-    setSelectedTourIds((prev) =>
-      prev.includes(tourId) ? prev.filter((id) => id !== tourId) : [...prev, tourId]
-    );
-  };
 
   // Reset form
   const resetForm = () => {
     setName("");
     setDescription("");
-    setSelectedTourIds([]);
+    setSelectedItems([]);
     setDiscountMxn(0);
     setDiscountMode("percent");
     setDiscountValue(0);
@@ -143,7 +224,7 @@ export default function Promociones() {
     setEditingId(promo.id);
     setName(promo.name);
     setDescription(promo.description || "");
-    setSelectedTourIds(promo.tour_ids ?? []);
+    setSelectedItems(promo.items);
     setDiscountMxn(promo.discount_mxn);
     setDiscountMode(promo.discount_mode as "percent" | "amount");
     setDiscountValue(promo.discount_value);
@@ -154,7 +235,7 @@ export default function Promociones() {
   const saveMutation = useMutation({
     mutationFn: async () => {
       if (!name.trim()) throw new Error("Nombre requerido");
-      if (selectedTourIds.length === 0) throw new Error("Selecciona al menos un tour");
+      if (selectedItems.length === 0) throw new Error("Selecciona al menos un tour");
 
       const payload = {
         name: name.trim(),
@@ -170,11 +251,14 @@ export default function Promociones() {
         const { error: e1 } = await supabase.from("promotions").update(payload).eq("id", editingId);
         if (e1) throw e1;
 
-        // re-sync tours
         await supabase.from("promotion_tours").delete().eq("promotion_id", editingId);
-        if (selectedTourIds.length) {
-          const { error: e2 } = await supabase.from("promotion_tours").insert(
-            selectedTourIds.map((tid) => ({ promotion_id: editingId, tour_id: tid }))
+        if (selectedItems.length) {
+          const { error: e2 } = await (supabase as any).from("promotion_tours").insert(
+            selectedItems.map((item) => ({
+              promotion_id: editingId,
+              tour_id: item.tour_id,
+              package_name: item.package_name,
+            }))
           );
           if (e2) throw e2;
         }
@@ -186,9 +270,13 @@ export default function Promociones() {
           .single();
         if (e1 || !promo) throw e1 || new Error("Error al crear");
 
-        if (selectedTourIds.length) {
-          const { error: e2 } = await supabase.from("promotion_tours").insert(
-            selectedTourIds.map((tid) => ({ promotion_id: promo.id, tour_id: tid }))
+        if (selectedItems.length) {
+          const { error: e2 } = await (supabase as any).from("promotion_tours").insert(
+            selectedItems.map((item) => ({
+              promotion_id: promo.id,
+              tour_id: item.tour_id,
+              package_name: item.package_name,
+            }))
           );
           if (e2) throw e2;
         }
@@ -230,12 +318,19 @@ export default function Promociones() {
   // Handle discount change from DiscountInput
   const handleDiscountChange = (mxn: number) => {
     setDiscountMxn(mxn);
-    // Track the value for save
     if (discountMode === "percent" && subtotal > 0) {
       setDiscountValue(Math.round((mxn / subtotal) * 100 * 100) / 100);
     } else {
       setDiscountValue(mxn);
     }
+  };
+
+  // Build display label for a promo item
+  const itemLabel = (item: PromoItem) => {
+    const tour = tours.find((t) => t.id === item.tour_id);
+    const tourName = tour?.title ?? "Tour";
+    if (item.package_name) return `${tourName} → ${item.package_name}`;
+    return tourName;
   };
 
   return (
@@ -260,7 +355,7 @@ export default function Promociones() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Nombre</TableHead>
-                  <TableHead className="hidden sm:table-cell">Tours</TableHead>
+                  <TableHead className="hidden sm:table-cell">Tours / Paquetes</TableHead>
                   <TableHead className="text-right hidden sm:table-cell">Subtotal</TableHead>
                   <TableHead className="text-right hidden sm:table-cell">Descuento</TableHead>
                   <TableHead className="text-right hidden sm:table-cell">Total</TableHead>
@@ -275,9 +370,7 @@ export default function Promociones() {
                   <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No hay promociones</TableCell></TableRow>
                 ) : (
                   promotions.map((promo) => {
-                    const tourNames = (promo.tour_ids ?? [])
-                      .map((tid) => tours.find((t) => t.id === tid)?.title)
-                      .filter(Boolean);
+                    const labels = promo.items.map((item) => itemLabel(item));
                     return (
                       <TableRow key={promo.id}>
                         <TableCell>
@@ -286,7 +379,7 @@ export default function Promociones() {
                             <div className="text-xs text-muted-foreground line-clamp-1">{promo.description}</div>
                           )}
                           <div className="sm:hidden text-xs text-muted-foreground mt-1 space-y-0.5">
-                            <span>{tourNames.length} tour(s)</span>
+                            <span>{labels.length} item(s)</span>
                             <div className="flex gap-2">
                               <span>{fmt(promo.subtotal_mxn)}</span>
                               <span className="text-destructive">-{fmt(promo.discount_mxn)}</span>
@@ -296,11 +389,11 @@ export default function Promociones() {
                         </TableCell>
                         <TableCell className="hidden sm:table-cell">
                           <div className="flex flex-wrap gap-1">
-                            {tourNames.slice(0, 3).map((n, i) => (
+                            {labels.slice(0, 3).map((n, i) => (
                               <Badge key={i} variant="secondary" className="text-xs">{n}</Badge>
                             ))}
-                            {tourNames.length > 3 && (
-                              <Badge variant="outline" className="text-xs">+{tourNames.length - 3}</Badge>
+                            {labels.length > 3 && (
+                              <Badge variant="outline" className="text-xs">+{labels.length - 3}</Badge>
                             )}
                           </div>
                         </TableCell>
@@ -388,7 +481,7 @@ export default function Promociones() {
         <DialogContent className="sm:max-w-2xl max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingId ? "Editar Promoción" : "Nueva Promoción"}</DialogTitle>
-            <DialogDescription>Combina tours y aplica un descuento global</DialogDescription>
+            <DialogDescription>Combina tours y paquetes con un descuento global</DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
@@ -404,39 +497,82 @@ export default function Promociones() {
               </div>
             </div>
 
-            {/* Tour selector */}
+            {/* Tour + Package selector */}
             <div className="space-y-1.5">
-              <Label>Tours incluidos *</Label>
-              <div className="border rounded-md max-h-48 overflow-y-auto">
-                {tours.map((t) => (
-                  <label
-                    key={t.id}
-                    className="flex items-center gap-3 px-3 py-2 hover:bg-muted/50 cursor-pointer border-b last:border-b-0"
-                  >
-                    <Checkbox
-                      checked={selectedTourIds.includes(t.id)}
-                      onCheckedChange={() => toggleTour(t.id)}
-                    />
-                    <span className="flex-1 text-sm">{t.title}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {fmt(t.price_mxn || t.suggested_price_mxn || 0)}
-                    </span>
-                  </label>
-                ))}
+              <Label>Tours y paquetes incluidos *</Label>
+              <div className="border rounded-md max-h-64 overflow-y-auto">
+                {tours.map((t) => {
+                  const tourPkgs = getPackagesForTour(t.id);
+                  const selected = isTourSelected(t.id);
+                  const hasPkgs = tourPkgs.length > 0;
+
+                  return (
+                    <div key={t.id} className="border-b last:border-b-0">
+                      {/* Tour row */}
+                      <label className="flex items-center gap-3 px-3 py-2 hover:bg-muted/50 cursor-pointer">
+                        <Checkbox
+                          checked={selected}
+                          onCheckedChange={() => toggleTour(t.id)}
+                        />
+                        <span className="flex-1 text-sm font-medium">{t.title}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {fmt(t.price_mxn || t.suggested_price_mxn || 0)}
+                        </span>
+                      </label>
+
+                      {/* Package sub-options (only when tour is selected and has packages) */}
+                      {selected && hasPkgs && (
+                        <div className="pl-10 pr-3 pb-2 space-y-1">
+                          {/* All packages option */}
+                          <label className="flex items-center gap-2 py-1 cursor-pointer hover:bg-muted/30 rounded px-2">
+                            <Checkbox
+                              checked={isAllPackages(t.id)}
+                              onCheckedChange={() => toggleAllPackages(t.id)}
+                            />
+                            <span className="text-xs text-muted-foreground">Todos los paquetes</span>
+                          </label>
+                          {/* Individual packages */}
+                          {tourPkgs.map((pkg) => {
+                            const isChecked = getSelectedForTour(t.id).some((i) => i.package_name === pkg.name);
+                            return (
+                              <label key={pkg.id} className="flex items-center gap-2 py-1 cursor-pointer hover:bg-muted/30 rounded px-2">
+                                <Checkbox
+                                  checked={isChecked}
+                                  onCheckedChange={() => togglePackage(t.id, pkg.name)}
+                                />
+                                <span className="flex-1 text-xs">{pkg.name}</span>
+                                <span className="text-xs text-muted-foreground">{fmt(pkg.price_adult_mxn)}</span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
-            {/* Selected tours summary */}
-            {selectedTourIds.length > 0 && (
+            {/* Selected items summary */}
+            {selectedItems.length > 0 && (
               <Card>
                 <CardContent className="p-3 space-y-2">
-                  {selectedTourIds.map((tid) => {
-                    const t = tours.find((x) => x.id === tid);
-                    if (!t) return null;
-                    const price = t.price_mxn || t.suggested_price_mxn || 0;
+                  {selectedItems.map((item, idx) => {
+                    let price = 0;
+                    let label = "";
+                    if (item.package_name) {
+                      const pkg = packages.find((p) => p.tour_id === item.tour_id && p.name === item.package_name);
+                      price = pkg?.price_adult_mxn ?? 0;
+                      const tour = tours.find((t) => t.id === item.tour_id);
+                      label = `${tour?.title ?? "Tour"} → ${item.package_name}`;
+                    } else {
+                      const t = tours.find((x) => x.id === item.tour_id);
+                      price = t ? (t.price_mxn || t.suggested_price_mxn || 0) : 0;
+                      label = t?.title ?? "Tour";
+                    }
                     return (
-                      <div key={tid} className="flex justify-between text-sm">
-                        <span>{t.title}</span>
+                      <div key={idx} className="flex justify-between text-sm">
+                        <span>{label}</span>
                         <span className="text-muted-foreground">{fmt(price)}</span>
                       </div>
                     );
