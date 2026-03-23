@@ -33,7 +33,7 @@ async function fetchData(operatorId: string): Promise<VariantRow[]> {
   // Get tours for this operator
   const { data: tours, error: tErr } = await supabase
     .from("tours")
-    .select("id, title, price_mxn, suggested_price_mxn, public_price_adult_usd, public_price_child_usd, tax_adult_usd, tax_child_usd, exchange_rate_tour")
+    .select("id, title, price_mxn, suggested_price_mxn, public_price_adult_usd, public_price_child_usd, tax_adult_usd, tax_child_usd, exchange_rate_tour, price_adult_usd, price_child_usd")
     .eq("operator_id", operatorId)
     .eq("active", true)
     .order("title");
@@ -43,20 +43,24 @@ async function fetchData(operatorId: string): Promise<VariantRow[]> {
   const tourIds = tours.map((t) => t.id);
   const tourMap = Object.fromEntries(tours.map((t) => [t.id, t]));
 
-  // Get price variants
-  const { data: variants, error: vErr } = await supabase
-    .from("tour_price_variants")
-    .select("*")
-    .in("tour_id", tourIds)
-    .eq("active", true);
-  if (vErr) throw vErr;
+  // Get price variants (matrix) and tour_packages in parallel
+  const [variantsRes, packagesRes] = await Promise.all([
+    supabase.from("tour_price_variants").select("*").in("tour_id", tourIds).eq("active", true),
+    supabase.from("tour_packages").select("*").in("tour_id", tourIds).eq("active", true),
+  ]);
+  if (variantsRes.error) throw variantsRes.error;
+  if (packagesRes.error) throw packagesRes.error;
+
+  const variants = variantsRes.data ?? [];
+  const packages = packagesRes.data ?? [];
 
   const rows: VariantRow[] = [];
   const toursWithVariants = new Set<string>();
+  const toursWithPackages = new Set<string>();
 
-  // Group variants by tour+zone+nationality+package to pair adult/child
+  // --- 1) Matrix variants ---
   const grouped = new Map<string, { adult?: typeof variants[0]; child?: typeof variants[0] }>();
-  for (const v of variants ?? []) {
+  for (const v of variants) {
     toursWithVariants.add(v.tour_id);
     const key = `${v.tour_id}|${v.zone}|${v.nationality}|${v.package_name ?? ""}`;
     if (!grouped.has(key)) grouped.set(key, {});
@@ -81,9 +85,27 @@ async function fetchData(operatorId: string): Promise<VariantRow[]> {
     });
   }
 
-  // Fallback: tours without variants use base prices
+  // --- 2) Tour packages (for tours WITHOUT matrix variants) ---
+  for (const pkg of packages) {
+    toursWithPackages.add(pkg.tour_id);
+    if (toursWithVariants.has(pkg.tour_id)) continue; // already covered by matrix
+    rows.push({
+      tour_title: tourMap[pkg.tour_id]?.title ?? "—",
+      zone: "General",
+      nationality: "General",
+      package_name: pkg.name,
+      sale_price_adult: pkg.price_adult_mxn ?? 0,
+      sale_price_child: pkg.price_child_mxn ?? 0,
+      net_cost_adult: pkg.cost_adult_usd ?? 0,
+      net_cost_child: pkg.cost_child_usd ?? 0,
+      tax_adult: pkg.tax_adult_usd ?? 0,
+      tax_child: pkg.tax_child_usd ?? 0,
+    });
+  }
+
+  // --- 3) Fallback: tours without variants AND without packages ---
   for (const tour of tours) {
-    if (toursWithVariants.has(tour.id)) continue;
+    if (toursWithVariants.has(tour.id) || toursWithPackages.has(tour.id)) continue;
     const priceMxn = tour.price_mxn ?? 0;
     const childMxn = tour.suggested_price_mxn ?? 0;
     const adultUsd = tour.public_price_adult_usd ?? 0;
@@ -96,8 +118,8 @@ async function fetchData(operatorId: string): Promise<VariantRow[]> {
       package_name: null,
       sale_price_adult: priceMxn > 0 ? priceMxn : Math.round(adultUsd * tc * 100) / 100,
       sale_price_child: childMxn > 0 ? childMxn : Math.round((tour.public_price_child_usd ?? 0) * tc * 100) / 100,
-      net_cost_adult: 0,
-      net_cost_child: 0,
+      net_cost_adult: tour.price_adult_usd ?? 0,
+      net_cost_child: tour.price_child_usd ?? 0,
       tax_adult: tour.tax_adult_usd ?? 0,
       tax_child: tour.tax_child_usd ?? 0,
     });
