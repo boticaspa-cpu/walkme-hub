@@ -91,12 +91,12 @@ export default function Dashboard() {
     enabled: isAdmin,
     queryFn: async () => {
       const { data, error } = await supabase.from("operator_payables")
-        .select("amount_mxn")
+        .select("equivalent_mxn")
         .eq("status", "pending")
-        .gte("due_date", monthStart)
-        .lte("due_date", monthEnd);
+        .gte("sale_date", monthStart)
+        .lte("sale_date", monthEnd);
       if (error) throw error;
-      return (data ?? []).reduce((a: number, r: any) => a + Number(r.amount_mxn), 0);
+      return (data ?? []).reduce((a: number, r: any) => a + Number(r.equivalent_mxn), 0);
     },
   });
 
@@ -105,11 +105,11 @@ export default function Dashboard() {
     enabled: isAdmin,
     queryFn: async () => {
       const { data, error } = await supabase.from("commissions")
-        .select("amount_mxn")
+        .select("commission_amount")
         .gte("created_at", `${monthStart}T00:00:00`)
         .lte("created_at", `${monthEnd}T23:59:59`);
       if (error) throw error;
-      return (data ?? []).reduce((a: number, r: any) => a + Number(r.amount_mxn), 0);
+      return (data ?? []).reduce((a: number, r: any) => a + Number(r.commission_amount), 0);
     },
   });
 
