@@ -1,35 +1,35 @@
 
 
-# Exportar TODOS los tours: General + Paquetes + Matriz
+# Mejorar personalidad del Asesor de Ventas IA
 
-## Problema actual
-El exportador solo muestra tours que tienen filas en `tour_price_variants` (la matriz). Los tours que solo tienen paquetes (`tour_packages`) o solo precios base no aparecen, o aparecen sin costos.
+## Qué se hará
+Actualizar el system prompt del edge function `sales-advisor` para que el agente sea más creativo, simpático y use un formato ultra claro con bullets.
 
-## Solución
-Modificar `fetchData` en `PriceListExportDialog.tsx` para consolidar las 3 fuentes de precios:
+## Cambios
 
-### 1. Matriz de precios (`tour_price_variants`)
-- Ya funciona. Muestra zona, nacionalidad, paquete, precio venta, costo neto, tax.
+### Archivo: `supabase/functions/sales-advisor/index.ts`
+Reescribir `BASE_SYSTEM_PROMPT` con estas mejoras:
 
-### 2. Paquetes del tour (`tour_packages`)
-- **Nuevo**: Consultar `tour_packages` para todos los tours del operador.
-- Para tours que tienen paquetes pero NO tienen variantes en la matriz, generar filas con:
-  - `package_name` = nombre del paquete
-  - `sale_price_adult/child` = `price_adult_mxn` / `price_child_mxn`
-  - `net_cost_adult/child` = `cost_adult_usd` / `cost_child_usd`
-  - `tax_adult/child` = `tax_adult_usd` / `tax_child_usd`
-  - `zone` / `nationality` = "General"
+1. **Personalidad**: Agregar instrucciones de tono — amigable, entusiasta, usa emojis con moderación, habla como un compañero de equipo motivador.
+2. **Formato bullet obligatorio**: Reforzar que SIEMPRE use bullets (`-` o `•`), nunca párrafos largos. Máximo 2-3 líneas por bullet.
+3. **Narrativa creativa**: Instrucciones para usar frases ingeniosas, analogías rápidas y lenguaje de vendedor carismático (ej: "¡Ese tour se vende solo! 🔥").
+4. **Estructura fija por respuesta**:
+   - Línea gancho (1 oración directa, con energía)
+   - Bullets con la info clave (máx 3-4)
+   - Cierre con acción o pregunta motivadora
+5. **Prohibiciones claras**: Sin muros de texto, sin tablas, sin respuestas genéricas aburridas.
 
-### 3. Tours sin variantes ni paquetes (precio base)
-- Ya existe el fallback pero mejorar para incluir costos USD del tour (`price_adult_usd`, `price_child_usd`).
+### Ejemplo del nuevo tono:
+```
+¡Xcaret es de los que más se venden! 🏝️
 
-### Cambios en archivo
-**`src/components/operators/PriceListExportDialog.tsx`**:
-- En `fetchData`: agregar query a `tour_packages` filtrado por `tour_id in tourIds` y `active = true`
-- Después de procesar variantes de matriz, iterar tours que no tienen variantes pero SÍ tienen paquetes → generar filas desde `tour_packages`
-- Para tours sin variantes NI paquetes → usar fallback base (ya existe, agregar campos de costo USD)
-- Agregar columna "Fuente" o agrupar visualmente por sección (Matriz / Paquete / Base)
+- 💰 Adulto: $2,800 MXN / Menor: $1,400 MXN
+- ✅ Incluye: transporte + buffet + snorkel
+- 📅 Sale: lunes, miércoles y viernes
 
-### Resultado esperado
-El PDF/Excel mostrará TODOS los tours activos del operador, sin importar cómo tengan configurados sus precios.
+👉 ¿Quieres que te arme una cotización rápida?
+```
+
+### Sin cambios en lógica
+Solo se modifica el texto del prompt. No hay cambios en fetch de catálogo, streaming ni componente del chat.
 
