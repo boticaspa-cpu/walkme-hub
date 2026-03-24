@@ -1,40 +1,27 @@
 
 
-# KPIs Financieros en Reportes
+# Agregar columna "Fuente" al Excel y PDF
 
-## Qué se agregará
-Una fila de 5 KPI cards en la parte superior de Reportes, filtradas por el mes seleccionado:
+## Cambio
+Añadir un campo `source` al `VariantRow` que indique de dónde viene el precio: **Matriz**, **Paquete** o **Base**. Mostrarlo como columna extra en ambos formatos.
 
-1. **Ventas del Mes** — suma de `sales.total_mxn` del mes
-2. **Pagos a Operadores** — suma de `operator_payables.equivalent_mxn` pagados vs pendientes
-3. **Comisiones Pagadas** — suma de `commissions.commission_amount` pagadas en el mes
-4. **Gastos del Mes** — suma de `expense_items.paid_amount_mxn` del mes
-5. **Utilidad Estimada** — Ventas − Pagos Operadores − Comisiones − Gastos
+## Cambios en `src/components/operators/PriceListExportDialog.tsx`
 
-## Cambios técnicos
+### 1. Interfaz `VariantRow`
+- Agregar `source: "Matriz" | "Paquete" | "Base"`
 
-### `src/pages/Reportes.tsx`
-- Mover el selector de mes arriba, junto al título, para que filtre tanto los KPIs como las gráficas
-- Agregar 5 queries filtradas por `selectedMonth`:
-  - `sales` filtrado por `sold_at` en rango del mes
-  - `operator_payables` filtrado por `sale_date` en rango del mes
-  - `commissions` filtrado por `created_at` en rango del mes (ya existe, reusar)
-  - `expense_items` filtrado por `period_month`
-- Renderizar 5 `KpiCard` con iconos: `DollarSign`, `Wallet`, `Percent`, `Receipt`, `TrendingUp`
-- Cada KPI muestra el valor formateado en MXN y un subtítulo con contexto (ej: "12 ventas", "3 pendientes")
+### 2. `fetchData`
+- Sección 1 (matrix variants): asignar `source: "Matriz"`
+- Sección 2 (tour_packages): asignar `source: "Paquete"`
+- Sección 3 (fallback base): asignar `source: "Base"`
 
-### Layout
-```text
-┌─────────────────────────────────────────────┐
-│  Reportes          [Selector Mes ▼]         │
-├──────┬──────┬──────┬──────┬─────────────────┤
-│Ventas│Pagos │Comis.│Gasto │  Utilidad  📈   │
-│ Op.  │      │      │      │                 │
-├──────┴──────┴──────┴──────┴─────────────────┤
-│  Gráficas existentes (sin cambio)           │
-└─────────────────────────────────────────────┘
-```
+### 3. `generateExcel`
+- Agregar "Fuente" como última columna en el header
+- Incluir `r.source` en cada fila de datos
+- Agregar ancho de columna extra `{ wch: 10 }`
 
-### Sin nuevas dependencias
-Reutiliza `KpiCard` existente y las tablas ya disponibles.
+### 4. `generatePDF`
+- Agregar "Fuente" al array `head`
+- Incluir `r.source` en cada fila del `body`
+- Ajustar `columnStyles` para la nueva columna 10
 
