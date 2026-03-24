@@ -1,35 +1,40 @@
 
 
-# Mejorar personalidad del Asesor de Ventas IA
+# KPIs Financieros en Reportes
 
-## Qué se hará
-Actualizar el system prompt del edge function `sales-advisor` para que el agente sea más creativo, simpático y use un formato ultra claro con bullets.
+## Qué se agregará
+Una fila de 5 KPI cards en la parte superior de Reportes, filtradas por el mes seleccionado:
 
-## Cambios
+1. **Ventas del Mes** — suma de `sales.total_mxn` del mes
+2. **Pagos a Operadores** — suma de `operator_payables.equivalent_mxn` pagados vs pendientes
+3. **Comisiones Pagadas** — suma de `commissions.commission_amount` pagadas en el mes
+4. **Gastos del Mes** — suma de `expense_items.paid_amount_mxn` del mes
+5. **Utilidad Estimada** — Ventas − Pagos Operadores − Comisiones − Gastos
 
-### Archivo: `supabase/functions/sales-advisor/index.ts`
-Reescribir `BASE_SYSTEM_PROMPT` con estas mejoras:
+## Cambios técnicos
 
-1. **Personalidad**: Agregar instrucciones de tono — amigable, entusiasta, usa emojis con moderación, habla como un compañero de equipo motivador.
-2. **Formato bullet obligatorio**: Reforzar que SIEMPRE use bullets (`-` o `•`), nunca párrafos largos. Máximo 2-3 líneas por bullet.
-3. **Narrativa creativa**: Instrucciones para usar frases ingeniosas, analogías rápidas y lenguaje de vendedor carismático (ej: "¡Ese tour se vende solo! 🔥").
-4. **Estructura fija por respuesta**:
-   - Línea gancho (1 oración directa, con energía)
-   - Bullets con la info clave (máx 3-4)
-   - Cierre con acción o pregunta motivadora
-5. **Prohibiciones claras**: Sin muros de texto, sin tablas, sin respuestas genéricas aburridas.
+### `src/pages/Reportes.tsx`
+- Mover el selector de mes arriba, junto al título, para que filtre tanto los KPIs como las gráficas
+- Agregar 5 queries filtradas por `selectedMonth`:
+  - `sales` filtrado por `sold_at` en rango del mes
+  - `operator_payables` filtrado por `sale_date` en rango del mes
+  - `commissions` filtrado por `created_at` en rango del mes (ya existe, reusar)
+  - `expense_items` filtrado por `period_month`
+- Renderizar 5 `KpiCard` con iconos: `DollarSign`, `Wallet`, `Percent`, `Receipt`, `TrendingUp`
+- Cada KPI muestra el valor formateado en MXN y un subtítulo con contexto (ej: "12 ventas", "3 pendientes")
 
-### Ejemplo del nuevo tono:
+### Layout
+```text
+┌─────────────────────────────────────────────┐
+│  Reportes          [Selector Mes ▼]         │
+├──────┬──────┬──────┬──────┬─────────────────┤
+│Ventas│Pagos │Comis.│Gasto │  Utilidad  📈   │
+│ Op.  │      │      │      │                 │
+├──────┴──────┴──────┴──────┴─────────────────┤
+│  Gráficas existentes (sin cambio)           │
+└─────────────────────────────────────────────┘
 ```
-¡Xcaret es de los que más se venden! 🏝️
 
-- 💰 Adulto: $2,800 MXN / Menor: $1,400 MXN
-- ✅ Incluye: transporte + buffet + snorkel
-- 📅 Sale: lunes, miércoles y viernes
-
-👉 ¿Quieres que te arme una cotización rápida?
-```
-
-### Sin cambios en lógica
-Solo se modifica el texto del prompt. No hay cambios en fetch de catálogo, streaming ni componente del chat.
+### Sin nuevas dependencias
+Reutiliza `KpiCard` existente y las tablas ya disponibles.
 
