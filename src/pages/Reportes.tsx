@@ -3,11 +3,13 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { KpiCard } from "@/components/dashboard/KpiCard";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell,
 } from "recharts";
-import { format, subMonths, startOfMonth, endOfMonth } from "date-fns";
+import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";
 import { es } from "date-fns/locale";
+import { DollarSign, Wallet, Percent, Receipt, TrendingUp } from "lucide-react";
 
 const COLORS = ["hsl(190, 82%, 40%)", "hsl(175, 60%, 45%)", "hsl(38, 92%, 50%)", "hsl(340, 65%, 50%)", "hsl(260, 60%, 55%)"];
 
@@ -19,15 +21,107 @@ function getLastMonths(count: number) {
   });
 }
 
+function useMonthRange(selectedMonth: string) {
+  return useMemo(() => {
+    const [year, month] = selectedMonth.split("-").map(Number);
+    const from = startOfMonth(new Date(year, month - 1)).toISOString();
+    const to = endOfMonth(new Date(year, month - 1)).toISOString();
+    return { from, to };
+  }, [selectedMonth]);
+}
+
 export default function Reportes() {
   const months = useMemo(() => getLastMonths(6), []);
   const [selectedMonth, setSelectedMonth] = useState(months[0].value);
+  const { from, to } = useMonthRange(selectedMonth);
+
+  // KPI: Sales
+  const { data: salesKpi } = useQuery({
+    queryKey: ["kpi-sales", selectedMonth],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("sales")
+        .select("total_mxn")
+        .gte("sold_at", from)
+        .lte("sold_at", to);
+      if (error) throw error;
+      const total = (data ?? []).reduce((s, r) => s + Number(r.total_mxn), 0);
+      return { total, count: data?.length ?? 0 };
+    },
+  });
+
+  // KPI: Operator payables
+  const { data: payablesKpi } = useQuery({
+    queryKey: ["kpi-payables", selectedMonth],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("operator_payables")
+        .select("equivalent_mxn, status")
+        .gte("sale_date", selectedMonth + "-01")
+        .lte("sale_date", format(endOfMonth(new Date(Number(selectedMonth.split("-")[0]), Number(selectedMonth.split("-")[1]) - 1)), "yyyy-MM-dd"));
+      if (error) throw error;
+      let paid = 0, pending = 0, pendingCount = 0;
+      (data ?? []).forEach(r => {
+        const val = Number(r.equivalent_mxn ?? 0);
+        if (r.status === "paid") paid += val;
+        else { pending += val; pendingCount++; }
+      });
+      return { total: paid + pending, paid, pending, pendingCount };
+    },
+  });
+
+  // KPI: Commissions
+  const { data: commissionsKpi } = useQuery({
+    queryKey: ["kpi-commissions", selectedMonth],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("commissions")
+        .select("commission_amount, status")
+        .gte("created_at", from)
+        .lte("created_at", to);
+      if (error) throw error;
+      let paid = 0, pending = 0;
+      (data ?? []).forEach(c => {
+        const val = Number(c.commission_amount);
+        if (c.status === "paid") paid += val;
+        else pending += val;
+      });
+      return { total: paid + pending, paid, pending, count: data?.length ?? 0 };
+    },
+  });
+
+  // KPI: Expenses
+  const { data: expensesKpi } = useQuery({
+    queryKey: ["kpi-expenses", selectedMonth],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("expense_items")
+        .select("paid_amount_mxn, estimated_amount_mxn, status")
+        .eq("period_month", selectedMonth);
+      if (error) throw error;
+      let paid = 0, estimated = 0;
+      (data ?? []).forEach(e => {
+        paid += Number(e.paid_amount_mxn ?? 0);
+        estimated += Number(e.estimated_amount_mxn ?? 0);
+      });
+      return { paid, estimated, count: data?.length ?? 0 };
+    },
+  });
+
+  // Computed: profit
+  const ventas = salesKpi?.total ?? 0;
+  const pagosOp = payablesKpi?.total ?? 0;
+  const comisiones = commissionsKpi?.total ?? 0;
+  const gastos = expensesKpi?.paid ?? 0;
+  const utilidad = ventas - pagosOp - comisiones - gastos;
+
+  const fmtMXN = (v: number) => `$${v.toLocaleString("es-MX", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 
   // Sales by seller
   const { data: salesBySeller = [] } = useQuery({
-    queryKey: ["report-sales-seller"],
+    queryKey: ["report-sales-seller", selectedMonth],
     queryFn: async () => {
-      const { data, error } = await supabase.from("sales").select("total_mxn, profiles:sold_by(full_name)");
+      const { data, error } = await supabase.from("sales").select("total_mxn, profiles:sold_by(full_name)").gte("sold_at", from).lte("sold_at", to);
       if (error) throw error;
       const map: Record<string, number> = {};
       (data ?? []).forEach((s: any) => {
@@ -68,15 +162,12 @@ export default function Reportes() {
   });
 
   // Commissions by seller for selected month
-  const { data: commissionData = [] } = useQuery({
+  const { data: commissionData = { rows: [], count: 0 } } = useQuery({
     queryKey: ["report-commissions", selectedMonth],
     queryFn: async () => {
-      const [year, month] = selectedMonth.split("-").map(Number);
-      const from = startOfMonth(new Date(year, month - 1)).toISOString();
-      const to = endOfMonth(new Date(year, month - 1)).toISOString();
       const { data, error } = await supabase
         .from("commissions")
-        .select("amount_mxn, profiles:seller_id(full_name)")
+        .select("commission_amount, profiles:seller_id(full_name)")
         .gte("created_at", from)
         .lte("created_at", to);
       if (error) throw error;
@@ -84,23 +175,69 @@ export default function Reportes() {
       let count = 0;
       (data ?? []).forEach((c: any) => {
         const name = c.profiles?.full_name ?? "Sin asignar";
-        map[name] = (map[name] ?? 0) + Number(c.amount_mxn);
+        map[name] = (map[name] ?? 0) + Number(c.commission_amount);
         count++;
       });
       return { rows: Object.entries(map).map(([name, total]) => ({ name, total })), count };
     },
-    select: (d) => d,
   });
 
-  const commissionRows = (commissionData as any)?.rows ?? [];
-  const commissionCount = (commissionData as any)?.count ?? 0;
-  const commissionTotal = commissionRows.reduce((s: number, r: any) => s + r.total, 0);
+  const commissionRows = commissionData.rows;
+  const commissionCount = commissionData.count;
+  const commissionTotal = commissionRows.reduce((s, r) => s + r.total, 0);
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-bold font-display">Reportes</h1>
-        <p className="text-sm text-muted-foreground">Métricas y análisis — Solo Admin</p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <div>
+          <h1 className="text-2xl font-bold font-display">Reportes</h1>
+          <p className="text-sm text-muted-foreground">Métricas y análisis — Solo Admin</p>
+        </div>
+        <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+          <SelectTrigger className="w-full sm:w-[200px] h-9 text-sm">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {months.map(m => (
+              <SelectItem key={m.value} value={m.value} className="capitalize">{m.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* KPI Cards */}
+      <div className="grid gap-3 grid-cols-2 lg:grid-cols-5">
+        <KpiCard
+          title="Ventas del Mes"
+          value={fmtMXN(ventas)}
+          subtitle={`${salesKpi?.count ?? 0} ventas`}
+          icon={DollarSign}
+        />
+        <KpiCard
+          title="Pagos Operadores"
+          value={fmtMXN(pagosOp)}
+          subtitle={payablesKpi?.pendingCount ? `${payablesKpi.pendingCount} pendientes` : "Todo pagado"}
+          icon={Wallet}
+        />
+        <KpiCard
+          title="Comisiones"
+          value={fmtMXN(comisiones)}
+          subtitle={`${commissionsKpi?.count ?? 0} registros`}
+          icon={Percent}
+        />
+        <KpiCard
+          title="Gastos"
+          value={fmtMXN(gastos)}
+          subtitle={`Est. ${fmtMXN(expensesKpi?.estimated ?? 0)}`}
+          icon={Receipt}
+        />
+        <KpiCard
+          title="Utilidad Estimada"
+          value={fmtMXN(utilidad)}
+          subtitle="Ventas − Costos"
+          icon={TrendingUp}
+          trend={ventas > 0 ? { value: Math.round((utilidad / ventas) * 100), label: "margen" } : undefined}
+        />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -150,18 +287,8 @@ export default function Reportes() {
 
         {/* Commissions by seller */}
         <Card className="lg:col-span-2">
-          <CardHeader className="pb-2 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+          <CardHeader className="pb-2">
             <CardTitle className="text-base">Comisiones por Vendedor</CardTitle>
-            <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-              <SelectTrigger className="w-full sm:w-[180px] h-8 text-sm">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {months.map(m => (
-                  <SelectItem key={m.value} value={m.value} className="capitalize">{m.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
           </CardHeader>
           <CardContent>
             {commissionRows.length === 0 ? (
