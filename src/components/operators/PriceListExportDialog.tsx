@@ -27,6 +27,7 @@ interface VariantRow {
   net_cost_child: number;
   tax_adult: number;
   tax_child: number;
+  source: "Matriz" | "Paquete" | "Base";
 }
 
 async function fetchData(operatorId: string): Promise<VariantRow[]> {
@@ -82,6 +83,7 @@ async function fetchData(operatorId: string): Promise<VariantRow[]> {
       net_cost_child: g.child?.net_cost ?? 0,
       tax_adult: g.adult?.tax_fee ?? 0,
       tax_child: g.child?.tax_fee ?? 0,
+      source: "Matriz",
     });
   }
 
@@ -100,6 +102,7 @@ async function fetchData(operatorId: string): Promise<VariantRow[]> {
       net_cost_child: pkg.cost_child_usd ?? 0,
       tax_adult: pkg.tax_adult_usd ?? 0,
       tax_child: pkg.tax_child_usd ?? 0,
+      source: "Paquete",
     });
   }
 
@@ -122,6 +125,7 @@ async function fetchData(operatorId: string): Promise<VariantRow[]> {
       net_cost_child: tour.price_child_usd ?? 0,
       tax_adult: tour.tax_adult_usd ?? 0,
       tax_child: tour.tax_child_usd ?? 0,
+      source: "Base",
     });
   }
 
@@ -144,6 +148,7 @@ function generateExcel(rows: VariantRow[], opName: string, currency: string, tc:
       "Precio Venta Adulto (MXN)", "Precio Venta Menor (MXN)",
       "Costo Neto Adulto", "Costo Neto Menor",
       "Tax Adulto (USD)", "Tax Menor (USD)",
+      "Fuente",
     ],
   ];
   const data = rows.map((r) => [
@@ -151,11 +156,13 @@ function generateExcel(rows: VariantRow[], opName: string, currency: string, tc:
     r.sale_price_adult, r.sale_price_child,
     r.net_cost_adult, r.net_cost_child,
     r.tax_adult, r.tax_child,
+    r.source,
   ]);
   const ws = XLSX.utils.aoa_to_sheet([...header, ...data]);
   ws["!cols"] = [
     { wch: 30 }, { wch: 14 }, { wch: 14 }, { wch: 16 },
     { wch: 22 }, { wch: 22 }, { wch: 18 }, { wch: 18 }, { wch: 16 }, { wch: 16 },
+    { wch: 10 },
   ];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Precios");
@@ -181,12 +188,14 @@ function generatePDF(rows: VariantRow[], opName: string, currency: string, tc: n
     "Venta Adulto\n(MXN)", "Venta Menor\n(MXN)",
     "Costo Adulto", "Costo Menor",
     "Tax Adulto\n(USD)", "Tax Menor\n(USD)",
+    "Fuente",
   ]];
   const body = rows.map((r) => [
     r.tour_title, r.zone, r.nationality, r.package_name ?? "—",
     fmtNum(r.sale_price_adult), fmtNum(r.sale_price_child),
     fmtNum(r.net_cost_adult), fmtNum(r.net_cost_child),
     fmtNum(r.tax_adult), fmtNum(r.tax_child),
+    r.source,
   ]);
 
   autoTable(doc, {
@@ -200,6 +209,7 @@ function generatePDF(rows: VariantRow[], opName: string, currency: string, tc: n
       4: { halign: "right" }, 5: { halign: "right" },
       6: { halign: "right" }, 7: { halign: "right" },
       8: { halign: "right" }, 9: { halign: "right" },
+      10: { halign: "center", cellWidth: 18 },
     },
     alternateRowStyles: { fillColor: [245, 245, 245] },
     didDrawPage: (data) => {
