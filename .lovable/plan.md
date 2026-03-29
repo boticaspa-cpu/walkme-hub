@@ -1,45 +1,37 @@
 
 
-# Revisión completa de la app — Fallas encontradas y mejoras recomendadas
+# Renombrar "Costo Neto" → "Reporte" en toda la UI
 
-## Fallas detectadas (bugs activos)
+## Resumen
+Cambiar todas las etiquetas visibles de "Costo Neto" por "Reporte" en la interfaz. Los nombres de variables/campos en código y base de datos no cambian — solo el texto que ve el usuario.
 
-### 1. KpiCard no soporta refs — Warning en consola
-`KpiCard` es un function component sin `forwardRef`. El Dashboard le pasa refs (probablemente desde un tooltip o wrapper). Esto genera warnings repetidos en consola.
-- **Fix**: Envolver `KpiCard` con `React.forwardRef`.
+## Archivos a modificar
 
-### 2. Dashboard: Queries admin con columnas que NO existen
-Las queries de KPIs financieros del admin en `Dashboard.tsx` usan columnas inexistentes:
-- Línea 94: `operator_payables` → usa `amount_mxn` y `due_date` — **no existen**. Las columnas correctas son `equivalent_mxn` y `sale_date`.
-- Línea 108: `commissions` → usa `amount_mxn` — **no existe**. La columna correcta es `commission_amount`.
-- Estos queries fallan silenciosamente, mostrando $0 siempre para "Pagos Prov. Pendientes" y "Comisiones del Mes".
-- **Fix**: Corregir nombres de columnas para que coincidan con el schema real.
+### 1. `src/pages/Tours.tsx`
+- Línea 1367: `"Modo Costo Neto"` → `"Modo Reporte"`
+- Línea 1390: `"Costo Neto Adulto {currency}"` → `"Reporte Adulto {currency}"`
+- Línea 1401: `"Costo Neto Niño {currency}"` → `"Reporte Niño {currency}"`
+- Línea 1412: `"Costo Neto Adulto {currency}"` → `"Reporte Adulto {currency}"`
+- Línea 1425: `"Costo Neto Niño {currency}"` → `"Reporte Niño {currency}"`
 
-### 3. Reservas.tsx — Archivo de 1,492 líneas
-Un solo archivo con casi 1,500 líneas. No es un bug pero dificulta mantenimiento y puede causar renders lentos.
+### 2. `src/components/tours/PriceVariantEditor.tsx`
+- Línea 126: `"Costo Neto"` → `"Reporte"`
 
-## Mejoras recomendadas
+### 3. `src/components/tours/PackageEditor.tsx`
+- Línea 211: `"Costo Neto Adulto USD"` → `"Reporte Adulto USD"`
+- Línea 215: `"Costo Neto Menor USD"` → `"Reporte Menor USD"`
 
-### A. Seguridad
-- Las queries en POS usan `(supabase as any)` — esto bypasea validación de tipos. Debería usar los tipos generados correctamente.
+### 4. `src/components/operators/PriceListExportDialog.tsx`
+- Línea 149: `"Costo Neto Adulto"` → `"Reporte Adulto"`, `"Costo Neto Menor"` → `"Reporte Menor"`
 
-### B. Performance
-- Dashboard hace 7+ queries paralelas al cargar. Considerar agrupar en una sola edge function o usar `Promise.all` con mejor manejo de errores.
-- Reservas.tsx (1,492 líneas) debería dividirse en componentes más pequeños.
+### 5. `src/components/operators/PriceListImportDialog.tsx`
+- Línea 319: `"Regla de Costo Neto"` → `"Regla de Reporte"`
 
-### C. UX
-- No hay manejo de errores visible al usuario cuando fallan las queries de KPIs (fallan silenciosamente y muestran $0).
-- Los quick-action cards del Dashboard no tienen feedback de hover en mobile.
+### 6. `src/lib/sheet-import.ts` (aliases de importación)
+- Agregar `"reporte"` como alias adicional en las listas de `cost_adult`, `cost_child` y `net_cost` para que el importador reconozca columnas con el nuevo término.
 
-## Plan de implementación (priorizado)
-
-### Archivo: `src/components/dashboard/KpiCard.tsx`
-- Agregar `React.forwardRef` al componente para eliminar warning de consola.
-
-### Archivo: `src/pages/Dashboard.tsx`
-- Línea 94: Cambiar `amount_mxn` → `equivalent_mxn` y `due_date` → `sale_date`
-- Línea 108: Cambiar `amount_mxn` → `commission_amount`
-
-### Sin otros cambios
-Las correcciones son quirúrgicas — 2 archivos, sin riesgo de regresión.
+## Lo que NO cambia
+- Nombres de columnas en base de datos (`net_cost`)
+- Variables en código (`net_cost`, `price_adult_usd`, etc.)
+- Lógica de cálculo
 
