@@ -148,12 +148,13 @@ export const PKG_ALIASES = {
   ],
   cost_adult: [
     "costo neto adulto usd", "costo neto adulto", "costo adulto usd", "costo adulto",
-    "cost_adult_usd", "costo_adulto", "neto adulto",
+    "cost_adult_usd", "costo_adulto", "neto adulto", "reporte adulto usd", "reporte adulto",
   ],
   cost_child: [
     "costo neto menor usd", "costo neto nino usd", "costo neto menor", "costo neto nino",
     "costo menor usd", "costo nino usd", "costo menor", "costo nino",
     "cost_child_usd", "costo_nino", "neto menor", "neto nino",
+    "reporte menor usd", "reporte nino usd", "reporte menor", "reporte nino",
   ],
   tax_adult: [
     "impuesto adulto", "impuesto al abordar adulto", "tax adulto", "tax adult",
@@ -177,7 +178,7 @@ export const VARIANT_ALIASES = {
   zone: ["zona", "zone"],
   pax_type: ["tipo pax", "tipo_pax", "pax_type", "tipo pasajero", "tipo de pasajero", "adulto nino", "adulto menor"],
   nationality: ["nacionalidad", "nationality", "origen", "nacional extranjero"],
-  net_cost: ["costo neto", "costo_neto", "net_cost", "costo", "neto"],
+  net_cost: ["costo neto", "costo_neto", "net_cost", "costo", "neto", "reporte"],
   tax_fee: ["tax", "fee", "tax_fee", "tax/fee", "impuesto", "impuesto fee"],
 };
 

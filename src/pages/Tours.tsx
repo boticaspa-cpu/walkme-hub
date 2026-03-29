@@ -1364,7 +1364,7 @@ export default function Tours() {
                 </Select>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground">{isCommissionMode ? "Modo Comisión" : "Modo Costo Neto"}</span>
+                <span className="text-xs text-muted-foreground">{isCommissionMode ? "Modo Comisión" : "Modo Reporte"}</span>
                 <Switch
                   checked={isCommissionMode}
                   onCheckedChange={(checked) => setForm({ ...form, calculation_mode: checked ? "commission" : "net_cost" })}
@@ -1387,7 +1387,7 @@ export default function Tours() {
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <Label>Costo Neto Adulto {form.supplier_currency}</Label>
+                    <Label>Reporte Adulto {form.supplier_currency}</Label>
                     <Input type="number" value={form.price_adult_usd} disabled className="bg-muted" placeholder="Auto" />
                     <p className="text-[10px] text-muted-foreground">= Público − (Público × %)</p>
                   </div>
@@ -1398,7 +1398,7 @@ export default function Tours() {
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <Label>Costo Neto Niño {form.supplier_currency}</Label>
+                    <Label>Reporte Niño {form.supplier_currency}</Label>
                     <Input type="number" value={form.price_child_usd} disabled className="bg-muted" placeholder="Auto" />
                   </div>
                   <div />
@@ -1409,7 +1409,7 @@ export default function Tours() {
                 {/* Net Cost Mode */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <Label>Costo Neto Adulto {form.supplier_currency}</Label>
+                    <Label>Reporte Adulto {form.supplier_currency}</Label>
                     <Input type="number" value={form.price_adult_usd} onChange={(e) => setForm({ ...form, price_adult_usd: e.target.value })} placeholder="0" />
                   </div>
                   <div className="space-y-1.5">
@@ -1422,7 +1422,7 @@ export default function Tours() {
                 )}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <Label>Costo Neto Niño {form.supplier_currency}</Label>
+                    <Label>Reporte Niño {form.supplier_currency}</Label>
                     <Input type="number" value={form.price_child_usd} onChange={(e) => setForm({ ...form, price_child_usd: e.target.value })} placeholder="0" />
                   </div>
                   <div className="space-y-1.5">

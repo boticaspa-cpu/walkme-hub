@@ -316,7 +316,7 @@ export default function PriceListImportDialog({ open, onOpenChange, operator }: 
         {/* Cost rule selector */}
         {tours.length > 0 && (
           <div className="space-y-3 rounded-lg border p-4">
-            <Label className="text-sm font-medium">Regla de Costo Neto</Label>
+            <Label className="text-sm font-medium"><Label className="text-sm font-medium">Regla de Reporte</Label></Label>
             {detectedPct !== null && (
               <p className="text-xs text-muted-foreground">
                 IA detectó comisión: <span className="font-semibold">{detectedPct}%</span>
