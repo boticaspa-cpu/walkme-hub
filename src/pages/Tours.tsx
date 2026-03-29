@@ -1364,7 +1364,7 @@ export default function Tours() {
                 </Select>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground">{isCommissionMode ? "Modo Comisión" : "<span className="text-xs text-muted-foreground">{isCommissionMode ? "Modo Comisión" : "Modo Reporte"}</span>"}</span>
+                <span className="text-xs text-muted-foreground">{isCommissionMode ? "Modo Comisión" : "Modo Reporte"}</span>
                 <Switch
                   checked={isCommissionMode}
                   onCheckedChange={(checked) => setForm({ ...form, calculation_mode: checked ? "commission" : "net_cost" })}
