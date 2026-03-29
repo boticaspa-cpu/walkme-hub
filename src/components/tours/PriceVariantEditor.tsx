@@ -123,7 +123,7 @@ export default function PriceVariantEditor({ variants, onChange, packages, isAdm
                 <TableHead className="text-xs">Tipo Pax</TableHead>
                 <TableHead className="text-xs">Nacionalidad</TableHead>
                 <TableHead className="text-xs">Precio Venta</TableHead>
-                {isAdmin && <TableHead className="text-xs">Costo Neto</TableHead>}
+                {isAdmin && <TableHead className="text-xs">Reporte</TableHead>}
                 <TableHead className="text-xs">Tax/Fee</TableHead>
                 <TableHead className="text-xs w-10"></TableHead>
               </TableRow>

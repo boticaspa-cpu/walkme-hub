@@ -146,7 +146,7 @@ function generateExcel(rows: VariantRow[], opName: string, currency: string, tc:
     [
       "Tour", "Zona", "Nacionalidad", "Paquete",
       "Precio Venta Adulto (MXN)", "Precio Venta Menor (MXN)",
-      "Costo Neto Adulto", "Costo Neto Menor",
+      "Reporte Adulto", "Reporte Menor",
       "Tax Adulto (USD)", "Tax Menor (USD)",
       "Fuente",
     ],
@@ -186,7 +186,7 @@ function generatePDF(rows: VariantRow[], opName: string, currency: string, tc: n
   const head = [[
     "Tour", "Zona", "Nac.", "Paquete",
     "Venta Adulto\n(MXN)", "Venta Menor\n(MXN)",
-    "Costo Adulto", "Costo Menor",
+    "Reporte Adulto", "Reporte Menor",
     "Tax Adulto\n(USD)", "Tax Menor\n(USD)",
     "Fuente",
   ]];
