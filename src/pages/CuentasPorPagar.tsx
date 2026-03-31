@@ -126,7 +126,7 @@ export default function CuentasPorPagar() {
         .from("operator_payables")
         .insert({
           operator_id: newForm.operator_id,
-          sale_id: newForm.operator_id, // required FK — use operator_id as placeholder
+          sale_id: null,
           amount_value: parseFloat(newForm.amount_value),
           amount_currency: newForm.amount_currency,
           sale_date: newForm.sale_date,
