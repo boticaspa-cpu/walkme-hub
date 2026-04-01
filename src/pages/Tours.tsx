@@ -290,7 +290,9 @@ function TourShowroom({ tour, onClose, onCreateReservation, onCreateQuote }: { t
 }
 
 // ── Main page ──
-export default function Tours() {
+export default function Tours({ season = "regular" }: { season?: "regular" | "alta" }) {
+  const isHighSeason = season === "alta";
+  const queryKey = isHighSeason ? "tours-alta" : "tours";
   const { role } = useAuth();
   const navigate = useNavigate();
   const isAdmin = role === "admin";
