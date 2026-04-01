@@ -461,7 +461,7 @@ export default function Tours({ season = "regular" }: { season?: "regular" | "al
       const { error } = await supabase.from("tours").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["tours"] }); toast.success("Tour eliminado"); },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: [queryKey] }); toast.success("Tour eliminado"); },
     onError: (e: Error) => toast.error(e.message),
   });
 
