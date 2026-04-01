@@ -1667,6 +1667,7 @@ export type Database = {
           public_price_adult_usd: number
           public_price_child_usd: number
           recommendations: string | null
+          season: string
           service_type: string
           short_description: string
           suggested_price_mxn: number
@@ -1704,6 +1705,7 @@ export type Database = {
           public_price_adult_usd?: number
           public_price_child_usd?: number
           recommendations?: string | null
+          season?: string
           service_type?: string
           short_description?: string
           suggested_price_mxn?: number
@@ -1741,6 +1743,7 @@ export type Database = {
           public_price_adult_usd?: number
           public_price_child_usd?: number
           recommendations?: string | null
+          season?: string
           service_type?: string
           short_description?: string
           suggested_price_mxn?: number
