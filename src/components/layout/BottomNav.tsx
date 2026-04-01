@@ -13,6 +13,7 @@ import {
   Tags,
   MapPin,
   BadgePercent,
+  Sun,
   CalendarDays,
   ClipboardCheck,
   BarChart3,
