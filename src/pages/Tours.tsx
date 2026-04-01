@@ -1296,9 +1296,11 @@ export default function Tours({ season = "regular" }: { season?: "regular" | "al
                         </Button>
                         {role === "admin" && (
                           <>
-                            <Button variant="ghost" size="icon" className="h-7 w-7" title="Duplicar para Temp. Alta" onClick={(e) => { e.stopPropagation(); if (window.confirm("¿Duplicar este tour para temporada alta?")) duplicateForHighSeason.mutate(tour.id); }}>
-                              <Copy className="h-3.5 w-3.5" />
-                            </Button>
+                            {!isHighSeason && (
+                              <Button variant="ghost" size="icon" className="h-7 w-7" title="Duplicar para Temp. Alta" onClick={(e) => { e.stopPropagation(); if (window.confirm("¿Duplicar este tour para temporada alta?")) duplicateForHighSeason.mutate(tour.id); }}>
+                                <Copy className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
                             <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={(e) => { e.stopPropagation(); if (window.confirm("¿Eliminar este tour y todos sus paquetes/variantes?")) deleteMutation.mutate(tour.id); }}><Trash2 className="h-4 w-4" /></Button>
                           </>
                         )}
