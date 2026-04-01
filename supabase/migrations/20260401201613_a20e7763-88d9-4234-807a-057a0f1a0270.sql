@@ -1,0 +1,1 @@
+ALTER TABLE public.tours ADD COLUMN season text NOT NULL DEFAULT 'regular';
