@@ -18,6 +18,7 @@ import {
   Receipt,
   LogOut,
   ChevronDown,
+  Sun,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import walkmeLogo from "@/assets/walkme-logo.png";
