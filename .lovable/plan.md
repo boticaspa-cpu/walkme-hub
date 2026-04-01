@@ -1,56 +1,40 @@
 
 
-# Tours Temporada Alta — Pagina Separada
+# Edición completa en Tours Temporada Alta
 
-## Resumen
-Se crea una nueva pagina `/tours-temporada-alta` con su propia entrada en el sidebar. El admin puede duplicar cualquier tour regular hacia esa pagina con un boton. El tour duplicado copia toda la info (fotos, descripcion, incluye/excluye, itinerario, impuestos, etc.) pero deja todos los precios en cero para que el admin los llene manualmente.
+## Problema
+La página ToursTemporadaAlta solo muestra tarjetas pero no tiene diálogo de edición. Al hacer click intenta navegar a `/tours?edit=...` que filtra por `season = 'regular'` y no encuentra el tour.
 
-## Cambios
+## Solución
+La página de Tours.tsx tiene ~1700 líneas con toda la lógica de edición (formulario, paquetes, matriz de precios, imágenes, importación de sheets, etc.). En lugar de duplicar todo ese código, la solución es:
 
-### 1. Migracion: columna `season` en `tours`
-```sql
-ALTER TABLE tours ADD COLUMN season text NOT NULL DEFAULT 'regular';
-```
+**Modificar `Tours.tsx` para que acepte un parámetro `season`** y pueda manejar ambos catálogos. La página de `ToursTemporadaAlta.tsx` simplemente renderizará `<Tours season="alta" />` o redirigirá a Tours con el contexto correcto.
 
-### 2. Nueva pagina `src/pages/ToursTemporadaAlta.tsx`
-- Copia simplificada de `Tours.tsx` que filtra tours con `season = 'alta'`
-- Misma funcionalidad: ver, editar, cambiar precios en matriz, paquetes, etc.
-- Sin boton de duplicar (solo se duplica desde la pagina regular)
-- Reutiliza los mismos componentes: `PriceVariantEditor`, `PackageEditor`, etc.
+### Enfoque concreto
 
-### 3. `src/pages/Tours.tsx` — boton "Duplicar para Temp. Alta"
-- Agregar un boton/icono en cada tarjeta de tour (solo admin)
-- Al hacer click, duplica el tour completo:
-  - **Conserva**: titulo, fotos, descripcion, itinerario, incluye/excluye, que traer, punto de encuentro, recomendaciones, tags, dias, tipo, operador, categoria, destino, edades nino, impuestos (`tax_adult_usd`, `tax_child_usd`), tipo de cambio, `service_type`, `supplier_currency`
-  - **Pone en cero**: `price_mxn`, `suggested_price_mxn`, `price_adult_usd`, `price_child_usd`, `public_price_adult_usd`, `public_price_child_usd`, `mandatory_fees_usd`, `commission_percentage`
-- Duplica `tour_packages` (conserva nombre, tipo, incluye/excluye, impuestos; precios en cero)
-- Duplica `tour_price_variants` (conserva zona, nacionalidad, pax_type, package_name, tax_fee; `sale_price` y `net_cost` en cero)
-- Nuevo tour tiene `season = 'alta'`
-- Toast de confirmacion
+1. **Refactorizar `Tours.tsx`** para recibir una prop opcional `season` (default `"regular"`):
+   - El query filtra por la season recibida
+   - El `handleSave` guarda con la season correcta
+   - Se invalidan las queries correspondientes (`tours` o `tours-alta`)
+   - Se oculta el botón "Duplicar para Temp. Alta" cuando `season === "alta"`
+   - Se muestra badge "TEMP. ALTA" cuando aplica
 
-### 4. Routing (`src/App.tsx`)
-- Agregar ruta `/tours-temporada-alta` → `<ToursTemporadaAlta />`
-- Dentro del `<AdminRoute>` (solo admin puede ver temporada alta)
+2. **Simplificar `ToursTemporadaAlta.tsx`** a un wrapper:
+   ```tsx
+   import Tours from "./Tours";
+   export default function ToursTemporadaAlta() {
+     return <Tours season="alta" />;
+   }
+   ```
 
-### 5. Sidebar (`src/components/layout/AppSidebar.tsx`)
-- Agregar entrada "Tours Temp. Alta" en `adminNav`, debajo de "Tours"
-- Icono: `Sun` o similar de lucide
+3. **Ajustes visuales**: Cuando `season="alta"`, el header muestra el icono Sol y título "Tours Temporada Alta", y no muestra el botón de crear tour nuevo ni duplicar.
 
-### 6. Bottom Nav (`src/components/layout/BottomNav.tsx`)
-- Agregar entrada si aplica para mobile
+### Resultado
+- Edición completa: formulario, paquetes, matriz de precios, imágenes, importación — todo funciona igual
+- Sin duplicación de código
+- Los tours de temporada alta se pueden reservar y cotizar normalmente desde POS/Cotizaciones (ya son entidades independientes en la tabla)
 
-## Flujo del usuario
-1. Admin va a **Tours** → ve sus tours regulares
-2. Click en icono de duplicar en "Xcaret"
-3. Toast: "Tour duplicado para temporada alta"
-4. Va a **Tours Temp. Alta** en el menu → ve "Xcaret" con precios en cero
-5. Abre el tour → llena los precios de temporada alta
-6. En POS/Cotizaciones ambos tours aparecen como opciones separadas
-
-## Archivos a crear/modificar
-- 1 migracion SQL
-- `src/pages/ToursTemporadaAlta.tsx` (nuevo)
-- `src/pages/Tours.tsx` (agregar boton duplicar)
-- `src/App.tsx` (nueva ruta)
-- `src/components/layout/AppSidebar.tsx` (nueva entrada sidebar)
+### Archivos a modificar
+- `src/pages/Tours.tsx` — agregar prop `season`, condicionar header/queries/save
+- `src/pages/ToursTemporadaAlta.tsx` — reemplazar por wrapper simple
 
