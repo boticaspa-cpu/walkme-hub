@@ -335,10 +335,10 @@ export default function Tours() {
   const { data: tours = [], isLoading } = useQuery({
     queryKey: ["tours"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase
         .from("tours")
-        .select("*, operators(name), categories(name), destinations(name)")
-        .eq("season" as any, "regular")
+        .select("*, operators(name), categories(name), destinations(name)") as any)
+        .eq("season", "regular")
         .order("title");
       if (error) throw error;
       return data as unknown as TourRow[];
