@@ -1165,10 +1165,15 @@ export default function Tours({ season = "regular" }: { season?: "regular" | "al
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold font-display">Catálogo de Tours</h1>
-          <p className="text-sm text-muted-foreground">Fichas técnicas para mostrador</p>
+          <h1 className="text-2xl font-bold font-display flex items-center gap-2">
+            {isHighSeason && <Sun className="h-6 w-6 text-amber-500" />}
+            {isHighSeason ? "Tours Temporada Alta" : "Catálogo de Tours"}
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {isHighSeason ? "Tours duplicados con precios de temporada alta" : "Fichas técnicas para mostrador"}
+          </p>
         </div>
-        {isAdmin && (
+        {isAdmin && !isHighSeason && (
           <Button onClick={openCreate}>
             <Plus className="mr-2 h-4 w-4" /><span className="hidden sm:inline">Nuevo Tour</span><span className="sm:hidden">Nuevo</span>
           </Button>
