@@ -50,6 +50,7 @@ const adminNav = [
   { title: "Leads", url: "/leads", icon: Users },
   { title: "Clientes", url: "/clientes", icon: Contact },
   { title: "Tours", url: "/tours", icon: Map },
+  { title: "Tours Temp. Alta", url: "/tours-temporada-alta", icon: Sun },
   { title: "Operadores", url: "/operadores", icon: Building2 },
   { title: "Categorías", url: "/categorias", icon: Tags },
   { title: "Destinos", url: "/destinos", icon: MapPin },
