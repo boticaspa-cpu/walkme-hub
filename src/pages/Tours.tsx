@@ -1129,6 +1129,7 @@ export default function Tours({ season = "regular" }: { season?: "regular" | "al
         image_urls: finalImageUrls,
         service_type: form.service_type,
         supplier_currency: form.supplier_currency,
+        season,
       };
 
       if (editingId) {
