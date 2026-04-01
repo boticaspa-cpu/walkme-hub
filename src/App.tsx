@@ -29,6 +29,7 @@ import Configuracion from "./pages/Configuracion";
 import Gastos from "./pages/Gastos";
 import PaquetesXcaret from "./pages/PaquetesXcaret";
 import Promociones from "./pages/Promociones";
+import ToursTemporadaAlta from "./pages/ToursTemporadaAlta";
 
 import NotFound from "./pages/NotFound";
 
