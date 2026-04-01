@@ -472,7 +472,7 @@ export default function Tours({ season = "regular" }: { season?: "regular" | "al
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["tours"] });
+      queryClient.invalidateQueries({ queryKey: [queryKey] });
       toast.success("Estado actualizado");
     },
     onError: (e: Error) => toast.error(e.message),
