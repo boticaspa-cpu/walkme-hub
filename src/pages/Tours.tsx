@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { parseCSV, parseCSVPreview, getCol, parseNum, collectAliasKeys, PKG_ALIASES, VARIANT_ALIASES, GENERAL_ALIASES, autoMapColumns, normKey, validateTabContent, type ColumnMapping } from "@/lib/sheet-import";
 import ColumnMappingDialog from "@/components/tours/ColumnMappingDialog";
 import { useNavigate } from "react-router-dom";
-import { Search, Filter, MapPin, Clock, Plus, Pencil, Upload, DollarSign, Table2, Trash2, Copy } from "lucide-react";
+import { Search, Filter, MapPin, Clock, Plus, Pencil, Upload, DollarSign, Table2, Trash2, Copy, Sun } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import SheetImportDialog from "@/components/tours/SheetImportDialog";
@@ -290,7 +290,9 @@ function TourShowroom({ tour, onClose, onCreateReservation, onCreateQuote }: { t
 }
 
 // ── Main page ──
-export default function Tours() {
+export default function Tours({ season = "regular" }: { season?: "regular" | "alta" }) {
+  const isHighSeason = season === "alta";
+  const queryKey = isHighSeason ? "tours-alta" : "tours";
   const { role } = useAuth();
   const navigate = useNavigate();
   const isAdmin = role === "admin";
@@ -333,12 +335,12 @@ export default function Tours() {
 
   // ── Queries ──
   const { data: tours = [], isLoading } = useQuery({
-    queryKey: ["tours"],
+    queryKey: [queryKey],
     queryFn: async () => {
       const { data, error } = await (supabase
         .from("tours")
         .select("*, operators(name), categories(name), destinations(name)") as any)
-        .eq("season", "regular")
+        .eq("season", season)
         .order("title");
       if (error) throw error;
       return data as unknown as TourRow[];
@@ -459,7 +461,7 @@ export default function Tours() {
       const { error } = await supabase.from("tours").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["tours"] }); toast.success("Tour eliminado"); },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: [queryKey] }); toast.success("Tour eliminado"); },
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -470,7 +472,7 @@ export default function Tours() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["tours"] });
+      queryClient.invalidateQueries({ queryKey: [queryKey] });
       toast.success("Estado actualizado");
     },
     onError: (e: Error) => toast.error(e.message),
@@ -1127,6 +1129,7 @@ export default function Tours() {
         image_urls: finalImageUrls,
         service_type: form.service_type,
         supplier_currency: form.supplier_currency,
+        season,
       };
 
       if (editingId) {
@@ -1150,7 +1153,7 @@ export default function Tours() {
         }
       }
 
-      queryClient.invalidateQueries({ queryKey: ["tours"] });
+      queryClient.invalidateQueries({ queryKey: [queryKey] });
       setDialogOpen(false);
     } catch (e: any) {
       toast.error(e.message ?? "Error al guardar");
@@ -1163,10 +1166,15 @@ export default function Tours() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold font-display">Catálogo de Tours</h1>
-          <p className="text-sm text-muted-foreground">Fichas técnicas para mostrador</p>
+          <h1 className="text-2xl font-bold font-display flex items-center gap-2">
+            {isHighSeason && <Sun className="h-6 w-6 text-amber-500" />}
+            {isHighSeason ? "Tours Temporada Alta" : "Catálogo de Tours"}
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {isHighSeason ? "Tours duplicados con precios de temporada alta" : "Fichas técnicas para mostrador"}
+          </p>
         </div>
-        {isAdmin && (
+        {isAdmin && !isHighSeason && (
           <Button onClick={openCreate}>
             <Plus className="mr-2 h-4 w-4" /><span className="hidden sm:inline">Nuevo Tour</span><span className="sm:hidden">Nuevo</span>
           </Button>
@@ -1289,9 +1297,11 @@ export default function Tours() {
                         </Button>
                         {role === "admin" && (
                           <>
-                            <Button variant="ghost" size="icon" className="h-7 w-7" title="Duplicar para Temp. Alta" onClick={(e) => { e.stopPropagation(); if (window.confirm("¿Duplicar este tour para temporada alta?")) duplicateForHighSeason.mutate(tour.id); }}>
-                              <Copy className="h-3.5 w-3.5" />
-                            </Button>
+                            {!isHighSeason && (
+                              <Button variant="ghost" size="icon" className="h-7 w-7" title="Duplicar para Temp. Alta" onClick={(e) => { e.stopPropagation(); if (window.confirm("¿Duplicar este tour para temporada alta?")) duplicateForHighSeason.mutate(tour.id); }}>
+                                <Copy className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
                             <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={(e) => { e.stopPropagation(); if (window.confirm("¿Eliminar este tour y todos sus paquetes/variantes?")) deleteMutation.mutate(tour.id); }}><Trash2 className="h-4 w-4" /></Button>
                           </>
                         )}
