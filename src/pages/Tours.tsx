@@ -1152,7 +1152,7 @@ export default function Tours({ season = "regular" }: { season?: "regular" | "al
         }
       }
 
-      queryClient.invalidateQueries({ queryKey: ["tours"] });
+      queryClient.invalidateQueries({ queryKey: [queryKey] });
       setDialogOpen(false);
     } catch (e: any) {
       toast.error(e.message ?? "Error al guardar");
