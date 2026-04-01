@@ -476,6 +476,63 @@ export default function Tours() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  // ── Duplicate tour for high season ──
+  const duplicateForHighSeason = useMutation({
+    mutationFn: async (tourId: string) => {
+      // 1. Fetch original tour
+      const { data: orig, error: e1 } = await supabase.from("tours").select("*").eq("id", tourId).single();
+      if (e1 || !orig) throw e1 || new Error("Tour no encontrado");
+
+      // 2. Clone tour with prices zeroed
+      const { id, created_at, updated_at, ...rest } = orig as any;
+      const newTourPayload = {
+        ...rest,
+        season: "alta",
+        price_mxn: 0, suggested_price_mxn: 0,
+        price_adult_usd: 0, price_child_usd: 0,
+        public_price_adult_usd: 0, public_price_child_usd: 0,
+        mandatory_fees_usd: 0, commission_percentage: 0,
+      };
+      const { data: newTour, error: e2 } = await supabase.from("tours").insert(newTourPayload as any).select("id").single();
+      if (e2 || !newTour) throw e2 || new Error("Error al duplicar");
+
+      // 3. Clone tour_packages
+      const { data: pkgs } = await (supabase as any).from("tour_packages").select("*").eq("tour_id", tourId);
+      if (pkgs?.length) {
+        const newPkgs = pkgs.map((p: any) => {
+          const { id: _id, created_at: _ca, tour_id: _tid, ...pRest } = p;
+          return {
+            ...pRest,
+            tour_id: newTour.id,
+            price_adult_mxn: 0, price_child_mxn: 0,
+            cost_adult_usd: 0, cost_child_usd: 0,
+            public_price_adult_usd: 0, public_price_child_usd: 0,
+            mandatory_fees_usd: 0, exchange_rate_tour: 0,
+          };
+        });
+        await (supabase as any).from("tour_packages").insert(newPkgs);
+      }
+
+      // 4. Clone tour_price_variants
+      const { data: vars } = await supabase.from("tour_price_variants").select("*").eq("tour_id", tourId);
+      if (vars?.length) {
+        const newVars = vars.map((v: any) => {
+          const { id: _id, created_at: _ca, tour_id: _tid, ...vRest } = v;
+          return { ...vRest, tour_id: newTour.id, sale_price: 0, net_cost: 0 };
+        });
+        await supabase.from("tour_price_variants").insert(newVars as any);
+      }
+
+      return newTour.id;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tours"] });
+      queryClient.invalidateQueries({ queryKey: ["tours-alta"] });
+      toast.success("Tour duplicado para temporada alta");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   // ── Dialog helpers ──
   const openCreate = () => {
     setEditingId(null);
