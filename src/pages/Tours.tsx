@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { parseCSV, parseCSVPreview, getCol, parseNum, collectAliasKeys, PKG_ALIASES, VARIANT_ALIASES, GENERAL_ALIASES, autoMapColumns, normKey, validateTabContent, type ColumnMapping } from "@/lib/sheet-import";
 import ColumnMappingDialog from "@/components/tours/ColumnMappingDialog";
 import { useNavigate } from "react-router-dom";
-import { Search, Filter, MapPin, Clock, Plus, Pencil, Upload, DollarSign, Table2, Trash2 } from "lucide-react";
+import { Search, Filter, MapPin, Clock, Plus, Pencil, Upload, DollarSign, Table2, Trash2, Copy } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import SheetImportDialog from "@/components/tours/SheetImportDialog";
