@@ -338,6 +338,7 @@ export default function Tours() {
       const { data, error } = await supabase
         .from("tours")
         .select("*, operators(name), categories(name), destinations(name)")
+        .eq("season" as any, "regular")
         .order("title");
       if (error) throw error;
       return data as unknown as TourRow[];
