@@ -1134,6 +1134,7 @@ export type Database = {
           notes: string | null
           operator_confirmation_code: string
           operator_folio: string | null
+          package_name: string
           pax: number
           pax_adults: number
           pax_children: number
@@ -1171,6 +1172,7 @@ export type Database = {
           notes?: string | null
           operator_confirmation_code?: string
           operator_folio?: string | null
+          package_name?: string
           pax?: number
           pax_adults?: number
           pax_children?: number
@@ -1208,6 +1210,7 @@ export type Database = {
           notes?: string | null
           operator_confirmation_code?: string
           operator_folio?: string | null
+          package_name?: string
           pax?: number
           pax_adults?: number
           pax_children?: number

@@ -85,6 +85,7 @@ export default function ReservationCheckout({ reservation, open, onOpenChange, o
   const { data: netCostData } = useQuery({
     queryKey: ["net-cost-checkout", reservation?.tour_id, reservation?.zone, reservation?.nationality],
     queryFn: async () => {
+      const pkgName = reservation.package_name || "";
       const { data: adultVariant } = await (supabase as any)
         .from("tour_price_variants")
         .select("net_cost, tax_fee")
@@ -92,6 +93,7 @@ export default function ReservationCheckout({ reservation, open, onOpenChange, o
         .eq("zone", reservation.zone || "")
         .eq("nationality", reservation.nationality || "")
         .eq("pax_type", "Adulto")
+        .eq("package_name", pkgName)
         .eq("active", true)
         .limit(1)
         .maybeSingle();
@@ -102,6 +104,7 @@ export default function ReservationCheckout({ reservation, open, onOpenChange, o
         .eq("zone", reservation.zone || "")
         .eq("nationality", reservation.nationality || "")
         .eq("pax_type", "Menor")
+        .eq("package_name", pkgName)
         .eq("active", true)
         .limit(1)
         .maybeSingle();
@@ -131,7 +134,7 @@ export default function ReservationCheckout({ reservation, open, onOpenChange, o
     queryFn: async () => {
       const { data } = await supabase
         .from("tour_price_variants")
-        .select("tour_id, zone, nationality, pax_type, sale_price")
+        .select("tour_id, zone, nationality, pax_type, sale_price, package_name")
         .eq("active", true);
       return data ?? [];
     },
@@ -150,7 +153,8 @@ export default function ReservationCheckout({ reservation, open, onOpenChange, o
       reservation.zone ?? "",
       reservation.nationality ?? "",
       variantsForPricing as any,
-      toursForPricing as any
+      toursForPricing as any,
+      reservation.package_name || undefined
     );
     const total = computeTotal(result.adultPrice, result.childPrice, reservation.pax_adults || 1, reservation.pax_children || 0);
     if (total > 0) {
@@ -317,6 +321,7 @@ export default function ReservationCheckout({ reservation, open, onOpenChange, o
           } else if (reservation.tour_id) {
             const zone = reservation.zone || "";
             const nationality = reservation.nationality || "";
+            const commPkgName = reservation.package_name || "";
             const { data: adultVariant } = await (supabase as any)
               .from("tour_price_variants")
               .select("net_cost, tax_fee")
@@ -324,6 +329,7 @@ export default function ReservationCheckout({ reservation, open, onOpenChange, o
               .eq("zone", zone)
               .eq("nationality", nationality)
               .eq("pax_type", "Adulto")
+              .eq("package_name", commPkgName)
               .eq("active", true)
               .limit(1)
               .maybeSingle();
@@ -334,6 +340,7 @@ export default function ReservationCheckout({ reservation, open, onOpenChange, o
               .eq("zone", zone)
               .eq("nationality", nationality)
               .eq("pax_type", "Menor")
+              .eq("package_name", commPkgName)
               .eq("active", true)
               .limit(1)
               .maybeSingle();

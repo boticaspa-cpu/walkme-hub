@@ -416,6 +416,7 @@ export default function Reservas() {
           tax_included: form.tax_included,
           pax_email: form.pax_email,
           operator_confirmation_code: form.operator_confirmation_code,
+          package_name: form.package_name || "",
         } as any;
         const { error } = await supabase.from("reservations").update(payload).eq("id", editingId);
         if (error) throw error;
@@ -526,6 +527,7 @@ export default function Reservas() {
           tour_language: shared.tour_language || null,
           tax_included: shared.tax_included,
           operator_confirmation_code: shared.operator_confirmation_code || "",
+          package_name: item.package_name || "",
         } as any));
         const { error } = await supabase.from("reservations").insert(inserts);
         if (error) throw error;
