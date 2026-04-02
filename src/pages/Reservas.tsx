@@ -255,10 +255,10 @@ export default function Reservas() {
   // ── Auto-pricing (edit mode only) ──
   useEffect(() => {
     if (!editingId || !form.tour_id) return;
-    const result = computeTourPrice(form.tour_id, form.zone, form.nationality, allVariants as any, tours as any);
+    const result = computeTourPrice(form.tour_id, form.zone, form.nationality, allVariants as any, tours as any, form.package_name || undefined, allTourPackages);
     const total = computeTotal(result.adultPrice, result.childPrice, form.pax_adults, form.pax_children);
     setForm((p) => ({ ...p, total_mxn: total }));
-  }, [editingId, form.tour_id, form.zone, form.nationality, form.pax_adults, form.pax_children, allVariants, tours]);
+  }, [editingId, form.tour_id, form.zone, form.nationality, form.pax_adults, form.pax_children, form.package_name, allVariants, tours, allTourPackages]);
 
   // ── Detect ?tour_id= query param to open create dialog ──
   useEffect(() => {
