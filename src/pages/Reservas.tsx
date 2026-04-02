@@ -805,11 +805,11 @@ export default function Reservas() {
     }, 200);
   };
 
-  const handleSendConfirmation = (r: any) => {
+  const handleSendConfirmation = async (r: any) => {
     if (isPrepagoBlocked(r)) {
       toast.warning("Recuerda: el pago al proveedor (prepago) está pendiente.");
     }
-    setSendConfirmReservation(enrichWithPrices(r));
+    setSendConfirmReservation(await enrichWithPrices(r));
   };
 
   /* ── filter ── */

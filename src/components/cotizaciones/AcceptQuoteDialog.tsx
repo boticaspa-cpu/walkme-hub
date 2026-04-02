@@ -93,10 +93,12 @@ export default function AcceptQuoteDialog({ open, onOpenChange, quote }: Props) 
         package_name: i.package_name || null,
       }));
 
-      // 2. Insert reservation_items (best-effort — table may not exist yet)
+      // 2. Insert reservation_items — mandatory for price integrity
       const { error: riErr } = await supabase.from("reservation_items").insert(reservationItems);
       if (riErr) {
-        console.warn("reservation_items insert skipped:", riErr.message);
+        // Rollback reservation
+        await supabase.from("reservations").delete().eq("id", reservationId);
+        throw new Error(`Error al guardar detalle de items: ${riErr.message}`);
       }
 
       // 3. Mark quote as accepted and link to reservation

@@ -204,6 +204,20 @@ export default function ReservationCheckout({ reservation, open, onOpenChange, o
 
       const er = currency !== "MXN" ? parseFloat(exchangeRate) || 1 : 1;
 
+      // 0. Fetch reservation_items for accurate sale_items
+      const { data: resItems } = await supabase
+        .from("reservation_items")
+        .select("*")
+        .eq("reservation_id", reservation.id);
+
+      const hasResItems = resItems && resItems.length > 0;
+      const resDiscount = reservation.discount_mxn || 0;
+
+      // Compute real subtotal from items (before discount)
+      const itemsSubtotal = hasResItems
+        ? resItems.reduce((s: number, i: any) => s + (i.subtotal_mxn || 0), 0)
+        : baseTotalMxn + resDiscount;
+
       // 1. Create sale — total = deposit (what the agency actually collects)
       const saleTotal = isPartialMode ? parsedDeposit : baseTotalMxn;
       const { data: sale, error: saleErr } = await (supabase as any).from("sales").insert({
@@ -212,25 +226,40 @@ export default function ReservationCheckout({ reservation, open, onOpenChange, o
         payment_method: paymentMethod,
         currency,
         exchange_rate: er,
-        subtotal_mxn: saleTotal,
-        discount_mxn: 0,
+        subtotal_mxn: isPartialMode ? saleTotal : itemsSubtotal,
+        discount_mxn: isPartialMode ? 0 : resDiscount,
         total_mxn: saleTotal,
         sold_by: user?.id,
         cash_session_id: activeSession?.id || null,
       }).select("id").single();
       if (saleErr) throw saleErr;
 
-      // 2. Create sale_item
-      await (supabase as any).from("sale_items").insert({
-        sale_id: sale.id,
-        tour_id: reservation.tour_id,
-        qty: (reservation.pax_adults || 0) + (reservation.pax_children || 0),
-        qty_adults: reservation.pax_adults || 1,
-        qty_children: reservation.pax_children || 0,
-        unit_price_mxn: saleTotal / Math.max(1, reservation.pax_adults || 1),
-        unit_price_child_mxn: 0,
-        tour_date: reservation.reservation_date,
-      });
+      // 2. Create sale_items from reservation_items when available
+      if (hasResItems) {
+        const saleItems = resItems.map((ri: any) => ({
+          sale_id: sale.id,
+          tour_id: ri.tour_id,
+          qty: (ri.qty_adults || 0) + (ri.qty_children || 0),
+          qty_adults: ri.qty_adults || 0,
+          qty_children: ri.qty_children || 0,
+          unit_price_mxn: ri.unit_price_mxn || 0,
+          unit_price_child_mxn: ri.unit_price_child_mxn || 0,
+          tour_date: ri.tour_date || reservation.reservation_date,
+        }));
+        await (supabase as any).from("sale_items").insert(saleItems);
+      } else {
+        // Fallback for old reservations without items
+        await (supabase as any).from("sale_items").insert({
+          sale_id: sale.id,
+          tour_id: reservation.tour_id,
+          qty: (reservation.pax_adults || 0) + (reservation.pax_children || 0),
+          qty_adults: reservation.pax_adults || 1,
+          qty_children: reservation.pax_children || 0,
+          unit_price_mxn: saleTotal / Math.max(1, reservation.pax_adults || 1),
+          unit_price_child_mxn: 0,
+          tour_date: reservation.reservation_date,
+        });
+      }
 
       // 3. Create cash_movement if session open — only for what the agency charges
       if (activeSession?.id) {
