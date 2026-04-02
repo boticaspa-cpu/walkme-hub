@@ -50,8 +50,8 @@ Deno.serve(async (req) => {
       .eq("key", policyKey)
       .limit(1);
     
-    const defaultPolicyEs = "Cualquier cambio o cancelación deberá realizarse con al menos 48 horas de anticipación. Cancelaciones con menos de 48 horas o no shows no son reembolsables.";
-    const defaultPolicyEn = "Any change or cancellation must be made at least 48 hours in advance. Cancellations with less than 48 hours notice or no-shows are non-refundable.";
+    const defaultPolicyEs = "Cualquier cambio o cancelación deberá realizarse con al menos 72 horas de anticipación. Cancelaciones con menos de 72 horas o no shows no son reembolsables.";
+    const defaultPolicyEn = "Any change or cancellation must be made at least 72 hours in advance. Cancellations with less than 72 hours notice or no-shows are non-refundable.";
     const policy = settingsRows?.[0]?.value || (lang === "es" ? defaultPolicyEs : defaultPolicyEn);
 
     const labels = lang === "es"
