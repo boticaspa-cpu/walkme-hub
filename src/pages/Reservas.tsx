@@ -756,7 +756,7 @@ export default function Reservas() {
     return { amountPerAdult: feeAdult, amountPerChild: feeChild, currency: "USD" };
   };
 
-  const handleVoucherWithCheck = (r: any) => {
+  const handleVoucherWithCheck = async (r: any) => {
     if (isPrepagoBlocked(r)) {
       toast.warning("Recuerda: el pago al proveedor (prepago) está pendiente.");
     }
@@ -765,7 +765,7 @@ export default function Reservas() {
     const op = operators.find((o: any) => o.id === tour?.operator_id);
     const isOnSite = (op as any)?.fee_collection_mode === "on_site";
     setTaxIncluded(!isOnSite);
-    setVoucherReservation(enrichWithPrices(r));
+    setVoucherReservation(await enrichWithPrices(r));
   };
 
   const handlePrint = (r: any) => {
