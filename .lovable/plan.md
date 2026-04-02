@@ -1,40 +1,26 @@
 
 
-# Edición completa en Tours Temporada Alta
+# Actualizar política de cancelación a 72 horas en todos los cupones
 
 ## Problema
-La página ToursTemporadaAlta solo muestra tarjetas pero no tiene diálogo de edición. Al hacer click intenta navegar a `/tours?edit=...` que filtra por `season = 'regular'` y no encuentra el tour.
+Las políticas de cancelación dicen "48 horas" en los mensajes de WhatsApp y en el PDF del edge function. Deben ser **72 horas** en todos lados, consistente con lo que ya tiene el VoucherPrintView.
 
-## Solución
-La página de Tours.tsx tiene ~1700 líneas con toda la lógica de edición (formulario, paquetes, matriz de precios, imágenes, importación de sheets, etc.). En lugar de duplicar todo ese código, la solución es:
+## Archivos a modificar
 
-**Modificar `Tours.tsx` para que acepte un parámetro `season`** y pueda manejar ambos catálogos. La página de `ToursTemporadaAlta.tsx` simplemente renderizará `<Tours season="alta" />` o redirigirá a Tours con el contexto correcto.
+### 1. `src/components/reservations/whatsapp-message.ts`
+- **Línea 78** (inglés): Cambiar "48 hours" → "72 hours"
+- **Línea 137** (español): Cambiar "48 hrs" → "72 hrs"
 
-### Enfoque concreto
+### 2. `supabase/functions/generate-voucher-pdf/index.ts`
+- **Línea 53** (defaultPolicyEs): Cambiar "48 horas" → "72 horas"
+- **Línea 54** (defaultPolicyEn): Cambiar "48 hours" → "72 hours"
 
-1. **Refactorizar `Tours.tsx`** para recibir una prop opcional `season` (default `"regular"`):
-   - El query filtra por la season recibida
-   - El `handleSave` guarda con la season correcta
-   - Se invalidan las queries correspondientes (`tours` o `tours-alta`)
-   - Se oculta el botón "Duplicar para Temp. Alta" cuando `season === "alta"`
-   - Se muestra badge "TEMP. ALTA" cuando aplica
+### 3. `src/components/reservations/VoucherPrintView.tsx`
+Ya dice 72 horas — sin cambios necesarios.
 
-2. **Simplificar `ToursTemporadaAlta.tsx`** a un wrapper:
-   ```tsx
-   import Tours from "./Tours";
-   export default function ToursTemporadaAlta() {
-     return <Tours season="alta" />;
-   }
-   ```
+### 4. `src/pages/CotizacionPDF.tsx`
+La cotización tiene sus propios términos pero no menciona horas específicas de cancelación — sin cambios.
 
-3. **Ajustes visuales**: Cuando `season="alta"`, el header muestra el icono Sol y título "Tours Temporada Alta", y no muestra el botón de crear tour nuevo ni duplicar.
-
-### Resultado
-- Edición completa: formulario, paquetes, matriz de precios, imágenes, importación — todo funciona igual
-- Sin duplicación de código
-- Los tours de temporada alta se pueden reservar y cotizar normalmente desde POS/Cotizaciones (ya son entidades independientes en la tabla)
-
-### Archivos a modificar
-- `src/pages/Tours.tsx` — agregar prop `season`, condicionar header/queries/save
-- `src/pages/ToursTemporadaAlta.tsx` — reemplazar por wrapper simple
+## Resumen
+Solo se cambia "48" → "72" en 4 strings (2 archivos). El VoucherPrintView ya está correcto.
 
