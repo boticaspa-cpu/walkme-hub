@@ -531,7 +531,7 @@ export default function Cotizaciones() {
                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(q)}><Pencil className="h-3.5 w-3.5" /></Button>
                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => window.open(`/cotizaciones/${q.id}/pdf`, '_blank')}><FileText className="h-3.5 w-3.5" /></Button>
                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setSendQuote(q)}><Send className="h-3.5 w-3.5" /></Button>
-                        {(q.status === "draft" || q.status === "sent") && (
+                        {(q.status === "draft" || q.status === "sent" || (q.status === "accepted" && !(q as any).reservation_id)) && (
                           <Button variant="ghost" size="icon" className="h-7 w-7 text-green-600" onClick={() => setAcceptQuote(q)}><CheckCircle className="h-3.5 w-3.5" /></Button>
                         )}
                         {(q as any).reservation_id && (
@@ -551,7 +551,7 @@ export default function Cotizaciones() {
                             <DropdownMenuItem onClick={() => openEdit(q)}><Pencil className="mr-2 h-4 w-4" />Editar</DropdownMenuItem>
                             <DropdownMenuItem onClick={() => window.open(`/cotizaciones/${q.id}/pdf`, '_blank')}><FileText className="mr-2 h-4 w-4" />Ver PDF</DropdownMenuItem>
                             <DropdownMenuItem onClick={() => setSendQuote(q)}><Send className="mr-2 h-4 w-4" />Enviar</DropdownMenuItem>
-                            {(q.status === "draft" || q.status === "sent") && (
+                            {(q.status === "draft" || q.status === "sent" || (q.status === "accepted" && !(q as any).reservation_id)) && (
                               <DropdownMenuItem onClick={() => setAcceptQuote(q)}><CheckCircle className="mr-2 h-4 w-4" />Aceptar</DropdownMenuItem>
                             )}
                             {(q as any).reservation_id && (

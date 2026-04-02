@@ -69,6 +69,7 @@ export default function AcceptQuoteDialog({ open, onOpenChange, quote }: Props) 
           payment_status: "unpaid",
           notes: quote.notes || null,
           created_by: user?.id,
+          package_name: firstItem.package_name || "",
         } as any)
         .select("id")
         .single();
