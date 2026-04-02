@@ -1,24 +1,33 @@
 
 
-# Simplificar cobro: opción explícita Completo vs Parcial
+# Fix: Checkout picks wrong price variant (missing package_name)
 
-## Problema
-Cuando el operador es `on_site`, el panel de cobro parcial aparece automáticamente sin opción de hacer pago completo. Esto confunde porque a veces se quiere cobrar el total (ej: impuestos son aparte, no forman parte del split). El vendedor no tiene control.
+## Problem
+When a reservation is created, the price is calculated correctly using the selected package (e.g., "Con Transporte"). But the `package_name` is never saved to the `reservations` table. When checkout opens, the variant queries in `ReservationCheckout.tsx` don't filter by `package_name`, so Supabase returns the first matching variant (often the cheaper "Solo Entrada" one), causing wrong amounts for commissions, net cost, and split payment calculations.
 
-## Solución
-Agregar un toggle "Pago completo / Pago parcial" que aparece solo cuando el operador es `on_site`. Por defecto selecciona **Pago completo**. Si el vendedor elige "Parcial", entonces aparece el panel actual con depósito y balance.
+## Root cause
+1. The `reservations` table has no `package_name` column
+2. The reservation insert in `Reservas.tsx` doesn't save the package name
+3. `ReservationCheckout.tsx` queries `tour_price_variants` without a `package_name` filter, so it picks whichever row comes first
 
-## Cambios en `src/components/reservations/ReservationCheckout.tsx`
+## Solution
 
-1. Agregar estado `splitMode` (`"full"` | `"partial"`) con default `"full"`
-2. Cuando `isOnSite`, mostrar un selector simple (dos botones/radio) antes del panel de split:
-   - **Pago completo** — cobra el total, marca como `paid`
-   - **Pago parcial** — muestra los campos de depósito/balance como ahora
-3. La variable `chargeAmount` usa `baseTotalMxn` cuando `splitMode === "full"`, o `parsedDeposit` cuando `splitMode === "partial"`
-4. El `payment_status` en la reserva será `"paid"` si completo, `"partial"` si parcial
-5. El panel azul de depósito/balance solo se muestra cuando `splitMode === "partial"`
+### 1. Add `package_name` column to `reservations` table
+Migration: `ALTER TABLE public.reservations ADD COLUMN package_name text NOT NULL DEFAULT '';`
 
-### Resultado visual
-- Por defecto: checkout limpio, sin panel de split, botón dice "Cobrar $6,085.57"
-- Si elige parcial: aparece el panel con depósito/balance como ahora
+### 2. Save `package_name` when creating reservations (`src/pages/Reservas.tsx`)
+Add `package_name: item.package_name || ""` to the insert object (around line 508).
+Also add it to the update payload when editing.
+
+### 3. Filter by `package_name` in checkout (`src/components/reservations/ReservationCheckout.tsx`)
+In all 3 places where `tour_price_variants` is queried without `package_name`:
+- **Net cost query** (lines 88-107): add `.eq("package_name", reservation.package_name || "")`
+- **Commission variant queries** (lines 320-339): same filter
+- **Recalc variant fetch** (lines 129-137): include `package_name` in the select so `computeTourPrice` can match correctly; also pass `reservation.package_name` to `computeTourPrice` on line 148
+
+### 4. Include `package_name` in reservation select query
+In the reservations fetch query (line 172), the column will be included automatically since it uses `*`.
+
+## Result
+The checkout will always use the same package variant that was selected when the reservation was created, so prices will match between reservation creation and payment.
 
