@@ -37,6 +37,7 @@ export default function ReservationCheckout({ reservation, open, onOpenChange, o
   const [recalculatedTotal, setRecalculatedTotal] = useState<number | null>(null);
 
   // Split payment state
+  const [splitMode, setSplitMode] = useState<"full" | "partial">("full");
   const [depositAmount, setDepositAmount] = useState("");
   const [balanceAmount, setBalanceAmount] = useState("");
 
@@ -179,7 +180,8 @@ export default function ReservationCheckout({ reservation, open, onOpenChange, o
   const parsedBalance = parseFloat(balanceAmount) || 0;
 
   // The amount the agency actually charges
-  const chargeAmount = isOnSite ? parsedDeposit : baseTotalMxn;
+  const isPartialMode = isOnSite && splitMode === "partial";
+  const chargeAmount = isPartialMode ? parsedDeposit : baseTotalMxn;
   const balanceCurrency = operatorInfo?.base_currency || "MXN";
 
   const checkoutMutation = useMutation({
@@ -192,14 +194,14 @@ export default function ReservationCheckout({ reservation, open, onOpenChange, o
         throw new Error("Debes abrir caja para cobrar en efectivo");
       }
 
-      if (isOnSite && parsedDeposit <= 0) {
+      if (isPartialMode && parsedDeposit <= 0) {
         throw new Error("El depósito debe ser mayor a $0");
       }
 
       const er = currency !== "MXN" ? parseFloat(exchangeRate) || 1 : 1;
 
       // 1. Create sale — total = deposit (what the agency actually collects)
-      const saleTotal = isOnSite ? parsedDeposit : baseTotalMxn;
+      const saleTotal = isPartialMode ? parsedDeposit : baseTotalMxn;
       const { data: sale, error: saleErr } = await (supabase as any).from("sales").insert({
         reservation_id: reservation.id,
         client_id: reservation.client_id || null,
@@ -240,12 +242,12 @@ export default function ReservationCheckout({ reservation, open, onOpenChange, o
         });
       }
 
-      // 4. Update reservation — partial if on_site, paid otherwise
+      // 4. Update reservation — partial if partial mode, paid otherwise
       const updateData: any = {
-        payment_status: isOnSite ? "partial" : "paid",
+        payment_status: isPartialMode ? "partial" : "paid",
         sale_id: sale.id,
       };
-      if (isOnSite) {
+      if (isPartialMode) {
         updateData.deposit_mxn = parsedDeposit;
         updateData.balance_mxn = parsedBalance;
         updateData.balance_currency = balanceCurrency;
@@ -277,8 +279,8 @@ export default function ReservationCheckout({ reservation, open, onOpenChange, o
             payableMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
           }
 
-          // If on_site, the operator gets paid directly by client — skip payable
-          if (!isOnSite) {
+          // If partial mode, the operator gets paid directly by client — skip payable
+          if (!isPartialMode) {
             const amountFx = operator.base_currency !== "MXN" ? baseTotalMxn / (operator.exchange_rate || 1) : null;
             await (supabase as any).from("operator_payables").insert({
               reservation_id: reservation.id,
@@ -308,8 +310,8 @@ export default function ReservationCheckout({ reservation, open, onOpenChange, o
           let totalNetCost = 0;
           let totalTaxFee = 0;
 
-          if (isOnSite && netCostData) {
-            // For on_site, net cost goes to operator via client — profit = deposit
+          if (isPartialMode && netCostData) {
+            // For partial, net cost goes to operator via client — profit = deposit
             totalNetCost = 0;
             totalTaxFee = 0;
           } else if (reservation.tour_id) {
@@ -343,7 +345,7 @@ export default function ReservationCheckout({ reservation, open, onOpenChange, o
             totalTaxFee = (adultTax * (reservation.pax_adults || 1)) + (childTax * (reservation.pax_children || 0));
           }
 
-          const profit = isOnSite
+          const profit = isPartialMode
             ? Math.max(0, parsedDeposit - cardFeeAmount)
             : Math.max(0, baseTotalMxn - totalNetCost - totalTaxFee - cardFeeAmount);
           const commissionAmount = profit * rate;
@@ -365,7 +367,7 @@ export default function ReservationCheckout({ reservation, open, onOpenChange, o
       qc.invalidateQueries({ queryKey: ["cash-movements"] });
       qc.invalidateQueries({ queryKey: ["cash-session-sales"] });
       qc.invalidateQueries({ queryKey: ["pending-reservations"] });
-      toast.success(isOnSite
+      toast.success(isPartialMode
         ? `Depósito cobrado — balance de ${fmt(parsedBalance)} pendiente al abordar`
         : "Reserva cobrada — pendiente confirmación del operador"
       );
@@ -440,54 +442,84 @@ export default function ReservationCheckout({ reservation, open, onOpenChange, o
             )}
           </div>
 
-          {/* ── SPLIT PAYMENT (on_site) ── */}
+          {/* ── SPLIT PAYMENT MODE SELECTOR (on_site) ── */}
           {isOnSite && (
-            <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-4 space-y-3">
-              <div className="flex items-center gap-2 text-sm font-medium text-blue-800">
-                <Info className="h-4 w-4" />
-                Cobro parcial — Pago al operador al abordar
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">Tipo de cobro</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSplitMode("full")}
+                  className={`rounded-lg border p-3 text-sm font-medium text-center transition-colors ${
+                    splitMode === "full"
+                      ? "border-primary bg-primary/5 text-primary"
+                      : "border-input text-muted-foreground hover:bg-accent"
+                  }`}
+                >
+                  Pago completo
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSplitMode("partial")}
+                  className={`rounded-lg border p-3 text-sm font-medium text-center transition-colors ${
+                    splitMode === "partial"
+                      ? "border-primary bg-primary/5 text-primary"
+                      : "border-input text-muted-foreground hover:bg-accent"
+                  }`}
+                >
+                  Pago parcial
+                </button>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-medium">Depósito (cobro agencia)</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={depositAmount}
-                    onChange={(e) => {
-                      setDepositAmount(e.target.value);
-                      const dep = parseFloat(e.target.value) || 0;
-                      setBalanceAmount(Math.max(0, baseTotalMxn - dep).toFixed(2));
-                    }}
-                    className="font-mono"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-medium">Balance (pago al operador)</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={balanceAmount}
-                    onChange={(e) => {
-                      setBalanceAmount(e.target.value);
-                      const bal = parseFloat(e.target.value) || 0;
-                      setDepositAmount(Math.max(0, baseTotalMxn - bal).toFixed(2));
-                    }}
-                    className="font-mono"
-                  />
-                  {balanceCurrency !== "MXN" && (
-                    <p className="text-[11px] text-muted-foreground">
-                      Moneda del operador: {balanceCurrency}
-                    </p>
-                  )}
-                </div>
-              </div>
+              {splitMode === "partial" && (
+                <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-4 space-y-3">
+                  <div className="flex items-center gap-2 text-sm font-medium text-blue-800">
+                    <Info className="h-4 w-4" />
+                    Cobro parcial — Pago al operador al abordar
+                  </div>
 
-              <p className="text-xs text-blue-700">
-                El cliente pagará <strong>{fmt(parsedBalance)}</strong> al operador al abordar el tour.
-                Solo se cobrará <strong>{fmt(parsedDeposit)}</strong> como depósito ahora.
-              </p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-medium">Depósito (cobro agencia)</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={depositAmount}
+                        onChange={(e) => {
+                          setDepositAmount(e.target.value);
+                          const dep = parseFloat(e.target.value) || 0;
+                          setBalanceAmount(Math.max(0, baseTotalMxn - dep).toFixed(2));
+                        }}
+                        className="font-mono"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-medium">Balance (pago al operador)</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={balanceAmount}
+                        onChange={(e) => {
+                          setBalanceAmount(e.target.value);
+                          const bal = parseFloat(e.target.value) || 0;
+                          setDepositAmount(Math.max(0, baseTotalMxn - bal).toFixed(2));
+                        }}
+                        className="font-mono"
+                      />
+                      {balanceCurrency !== "MXN" && (
+                        <p className="text-[11px] text-muted-foreground">
+                          Moneda del operador: {balanceCurrency}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-blue-700">
+                    El cliente pagará <strong>{fmt(parsedBalance)}</strong> al operador al abordar el tour.
+                    Solo se cobrará <strong>{fmt(parsedDeposit)}</strong> como depósito ahora.
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
@@ -560,7 +592,7 @@ export default function ReservationCheckout({ reservation, open, onOpenChange, o
           >
             {checkoutMutation.isPending
               ? "Procesando…"
-              : isOnSite
+              : isPartialMode
                 ? `Cobrar depósito ${fmt(chargeAmount)}`
                 : `Cobrar ${fmt(chargeAmount)}`
             }
