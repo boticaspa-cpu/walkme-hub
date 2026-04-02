@@ -1,0 +1,1 @@
+ALTER TABLE public.reservations ADD COLUMN package_name text NOT NULL DEFAULT '';
