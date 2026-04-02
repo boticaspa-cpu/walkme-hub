@@ -768,11 +768,12 @@ export default function Reservas() {
     setVoucherReservation(await enrichWithPrices(r));
   };
 
-  const handlePrint = (r: any) => {
+  const handlePrint = async (r: any) => {
     if (isPrepagoBlocked(r)) {
       toast.warning("Recuerda: el pago al proveedor (prepago) está pendiente.");
     }
-    setVoucherReservation(enrichWithPrices(r));
+    const enriched = await enrichWithPrices(r);
+    setVoucherReservation(enriched);
     setTimeout(() => {
       const content = document.getElementById("voucher-content");
       if (!content) return;
