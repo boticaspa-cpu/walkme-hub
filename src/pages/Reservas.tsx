@@ -255,10 +255,10 @@ export default function Reservas() {
   // ── Auto-pricing (edit mode only) ──
   useEffect(() => {
     if (!editingId || !form.tour_id) return;
-    const result = computeTourPrice(form.tour_id, form.zone, form.nationality, allVariants as any, tours as any);
+    const result = computeTourPrice(form.tour_id, form.zone, form.nationality, allVariants as any, tours as any, form.package_name || undefined, allTourPackages);
     const total = computeTotal(result.adultPrice, result.childPrice, form.pax_adults, form.pax_children);
     setForm((p) => ({ ...p, total_mxn: total }));
-  }, [editingId, form.tour_id, form.zone, form.nationality, form.pax_adults, form.pax_children, allVariants, tours]);
+  }, [editingId, form.tour_id, form.zone, form.nationality, form.pax_adults, form.pax_children, form.package_name, allVariants, tours, allTourPackages]);
 
   // ── Detect ?tour_id= query param to open create dialog ──
   useEffect(() => {
@@ -701,38 +701,41 @@ export default function Reservas() {
     return !payable || payable.status === "pending";
   };
 
-  const enrichWithPrices = (r: any) => {
-    if (!r.tour_id) return r;
+  const enrichWithPrices = async (r: any) => {
     const tour = tours.find((t: any) => t.id === r.tour_id);
     const op = operators.find((o: any) => o.id === tour?.operator_id);
 
-    const lookupPrice = (paxType: string): number => {
-      const zone = r.zone;
-      const nationality = r.nationality;
-      const tourId = r.tour_id;
-
-      if (zone && nationality) {
-        const v = allVariants.find(
-          (v: any) => v.tour_id === tourId && v.zone === zone && v.nationality === nationality && v.pax_type === paxType && !v.package_name
-        );
-        if (v?.sale_price) return v.sale_price;
+    // Try to get persisted reservation_items first (source of truth)
+    let unitAdult = 0;
+    let unitChild = 0;
+    try {
+      const { data: resItems } = await supabase
+        .from("reservation_items")
+        .select("unit_price_mxn, unit_price_child_mxn, qty_adults, qty_children")
+        .eq("reservation_id", r.id)
+        .limit(1)
+        .maybeSingle();
+      if (resItems && (resItems.unit_price_mxn > 0 || resItems.unit_price_child_mxn > 0)) {
+        unitAdult = resItems.unit_price_mxn;
+        unitChild = resItems.unit_price_child_mxn;
       }
+    } catch { /* fallback below */ }
 
-      if (!tour) return 0;
-      const baseMxn = paxType === "Menor" ? (tour.suggested_price_mxn ?? 0) : (tour.price_mxn ?? 0);
-      if (baseMxn > 0) return baseMxn;
-
-      const baseUsd = paxType === "Menor" ? (tour.public_price_child_usd ?? 0) : (tour.public_price_adult_usd ?? 0);
-      const tc = tour.exchange_rate_tour && tour.exchange_rate_tour > 0 ? tour.exchange_rate_tour : 1;
-      if (baseUsd > 0) return Math.round(baseUsd * tc * 100) / 100;
-
-      return 0;
-    };
+    // Fallback: compute from price matrix
+    if (unitAdult === 0 && r.tour_id) {
+      const result = computeTourPrice(
+        r.tour_id, r.zone ?? "", r.nationality ?? "",
+        allVariants as any, tours as any,
+        r.package_name || undefined, allTourPackages
+      );
+      unitAdult = result.adultPrice;
+      unitChild = result.childPrice;
+    }
 
     return {
       ...r,
-      unit_price_mxn: lookupPrice("Adulto"),
-      unit_price_child_mxn: lookupPrice("Menor"),
+      unit_price_mxn: unitAdult,
+      unit_price_child_mxn: unitChild,
       _tax_adult_usd: tour?.tax_adult_usd ?? 0,
       _tax_child_usd: tour?.tax_child_usd ?? 0,
       _mandatory_fees_usd: tour?.mandatory_fees_usd ?? 0,
@@ -753,7 +756,7 @@ export default function Reservas() {
     return { amountPerAdult: feeAdult, amountPerChild: feeChild, currency: "USD" };
   };
 
-  const handleVoucherWithCheck = (r: any) => {
+  const handleVoucherWithCheck = async (r: any) => {
     if (isPrepagoBlocked(r)) {
       toast.warning("Recuerda: el pago al proveedor (prepago) está pendiente.");
     }
@@ -762,14 +765,15 @@ export default function Reservas() {
     const op = operators.find((o: any) => o.id === tour?.operator_id);
     const isOnSite = (op as any)?.fee_collection_mode === "on_site";
     setTaxIncluded(!isOnSite);
-    setVoucherReservation(enrichWithPrices(r));
+    setVoucherReservation(await enrichWithPrices(r));
   };
 
-  const handlePrint = (r: any) => {
+  const handlePrint = async (r: any) => {
     if (isPrepagoBlocked(r)) {
       toast.warning("Recuerda: el pago al proveedor (prepago) está pendiente.");
     }
-    setVoucherReservation(enrichWithPrices(r));
+    const enriched = await enrichWithPrices(r);
+    setVoucherReservation(enriched);
     setTimeout(() => {
       const content = document.getElementById("voucher-content");
       if (!content) return;
@@ -801,11 +805,11 @@ export default function Reservas() {
     }, 200);
   };
 
-  const handleSendConfirmation = (r: any) => {
+  const handleSendConfirmation = async (r: any) => {
     if (isPrepagoBlocked(r)) {
       toast.warning("Recuerda: el pago al proveedor (prepago) está pendiente.");
     }
-    setSendConfirmReservation(enrichWithPrices(r));
+    setSendConfirmReservation(await enrichWithPrices(r));
   };
 
   /* ── filter ── */
