@@ -551,7 +551,7 @@ export default function Cotizaciones() {
                             <DropdownMenuItem onClick={() => openEdit(q)}><Pencil className="mr-2 h-4 w-4" />Editar</DropdownMenuItem>
                             <DropdownMenuItem onClick={() => window.open(`/cotizaciones/${q.id}/pdf`, '_blank')}><FileText className="mr-2 h-4 w-4" />Ver PDF</DropdownMenuItem>
                             <DropdownMenuItem onClick={() => setSendQuote(q)}><Send className="mr-2 h-4 w-4" />Enviar</DropdownMenuItem>
-                            {(q.status === "draft" || q.status === "sent") && (
+                            {(q.status === "draft" || q.status === "sent" || (q.status === "accepted" && !(q as any).reservation_id)) && (
                               <DropdownMenuItem onClick={() => setAcceptQuote(q)}><CheckCircle className="mr-2 h-4 w-4" />Aceptar</DropdownMenuItem>
                             )}
                             {(q as any).reservation_id && (
