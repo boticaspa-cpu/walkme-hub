@@ -89,6 +89,7 @@ const emptyForm = {
   tax_included: false,
   pax_email: "",
   operator_confirmation_code: "",
+  package_name: "",
 };
 
 /* ── multi-tour create types ── */
@@ -685,6 +686,7 @@ export default function Reservas() {
       tax_included: (r as any).tax_included ?? false,
       pax_email: r.pax_email ?? "",
       operator_confirmation_code: r.operator_confirmation_code ?? "",
+      package_name: (r as any).package_name ?? "",
     });
     setEditingId(r.id);
     setDialogOpen(true);
