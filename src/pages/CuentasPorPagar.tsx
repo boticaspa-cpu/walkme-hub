@@ -14,10 +14,14 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { CheckCircle, Plus } from "lucide-react";
+import { CheckCircle, Plus, Pencil, Trash2 } from "lucide-react";
 
 const fmt = (n: number) => n.toLocaleString("es-MX", { style: "currency", currency: "MXN" });
 const fmtDate = (s: string) => new Date(s + "T12:00:00").toLocaleDateString("es-MX");
@@ -61,14 +65,20 @@ export default function CuentasPorPagar() {
     payment_amount: "",
   });
 
-  const [newDialogOpen, setNewDialogOpen] = useState(false);
-  const [newForm, setNewForm] = useState({
+  // Edit/New shared state
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<Payable | null>(null);
+  const [editForm, setEditForm] = useState({
     operator_id: "",
     amount_value: "",
     amount_currency: "USD",
     sale_date: today,
     notes: "",
+    status: "pending",
   });
+
+  // Delete state
+  const [deleteItem, setDeleteItem] = useState<Payable | null>(null);
 
   const { data: payables = [], isLoading } = useQuery<Payable[]>({
     queryKey: ["operator-payables"],
@@ -120,29 +130,77 @@ export default function CuentasPorPagar() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const createPayableMutation = useMutation({
+  const upsertPayableMutation = useMutation({
     mutationFn: async () => {
+      const payload = {
+        operator_id: editForm.operator_id,
+        amount_value: parseFloat(editForm.amount_value),
+        amount_currency: editForm.amount_currency,
+        sale_date: editForm.sale_date,
+        notes: editForm.notes || null,
+        status: editForm.status,
+      };
+
+      if (editingItem) {
+        const { error } = await (supabase as any)
+          .from("operator_payables")
+          .update(payload)
+          .eq("id", editingItem.id);
+        if (error) throw error;
+      } else {
+        const { error } = await (supabase as any)
+          .from("operator_payables")
+          .insert({ ...payload, sale_id: null });
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["operator-payables"] });
+      toast.success(editingItem ? "Pago actualizado" : "Pago creado");
+      closeEditDialog();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const deletePayableMutation = useMutation({
+    mutationFn: async (id: string) => {
       const { error } = await (supabase as any)
         .from("operator_payables")
-        .insert({
-          operator_id: newForm.operator_id,
-          sale_id: null,
-          amount_value: parseFloat(newForm.amount_value),
-          amount_currency: newForm.amount_currency,
-          sale_date: newForm.sale_date,
-          notes: newForm.notes || null,
-          status: "pending",
-        });
+        .delete()
+        .eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["operator-payables"] });
-      toast.success("Pago creado");
-      setNewDialogOpen(false);
-      setNewForm({ operator_id: "", amount_value: "", amount_currency: "USD", sale_date: today, notes: "" });
+      toast.success("Registro eliminado");
+      setDeleteItem(null);
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  function openNewDialog() {
+    setEditingItem(null);
+    setEditForm({ operator_id: "", amount_value: "", amount_currency: "USD", sale_date: today, notes: "", status: "pending" });
+    setEditDialogOpen(true);
+  }
+
+  function openEditDialog(p: Payable) {
+    setEditingItem(p);
+    setEditForm({
+      operator_id: p.operator_id,
+      amount_value: Number(p.amount_value).toFixed(2),
+      amount_currency: p.amount_currency,
+      sale_date: p.sale_date,
+      notes: p.notes || "",
+      status: p.status,
+    });
+    setEditDialogOpen(true);
+  }
+
+  function closeEditDialog() {
+    setEditDialogOpen(false);
+    setEditingItem(null);
+  }
 
   if (!isAdmin) {
     return <div className="p-8 text-muted-foreground">Acceso restringido a administradores.</div>;
@@ -170,7 +228,7 @@ export default function CuentasPorPagar() {
             <p className="text-xs text-muted-foreground">Total pendiente</p>
             <p className="text-xl font-bold text-primary">{fmt(totalPending)}</p>
           </Card>
-          <Button onClick={() => setNewDialogOpen(true)}>
+          <Button onClick={openNewDialog}>
             <Plus className="h-4 w-4 mr-1" /> Nuevo Pago
           </Button>
         </div>
@@ -241,23 +299,31 @@ export default function CuentasPorPagar() {
                         )}
                       </TableCell>
                       <TableCell>
-                        {p.status === "pending" && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              setPayDialogItem(p);
-                              setPayForm({
-                                payment_method: "",
-                                payment_reference: "",
-                                payment_date: today,
-                                payment_amount: Number(p.amount_value).toFixed(2),
-                              });
-                            }}
-                          >
-                            <CheckCircle className="h-3.5 w-3.5 mr-1" /> Pagar
+                        <div className="flex items-center gap-1">
+                          {p.status === "pending" && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setPayDialogItem(p);
+                                setPayForm({
+                                  payment_method: "",
+                                  payment_reference: "",
+                                  payment_date: today,
+                                  payment_amount: Number(p.amount_value).toFixed(2),
+                                });
+                              }}
+                            >
+                              <CheckCircle className="h-3.5 w-3.5 mr-1" /> Pagar
+                            </Button>
+                          )}
+                          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEditDialog(p)}>
+                            <Pencil className="h-3.5 w-3.5" />
                           </Button>
-                        )}
+                          <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleteItem(p)}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
@@ -323,14 +389,16 @@ export default function CuentasPorPagar() {
         </DialogContent>
       </Dialog>
 
-      {/* New Payment Dialog */}
-      <Dialog open={newDialogOpen} onOpenChange={setNewDialogOpen}>
+      {/* Edit / New Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={(o) => { if (!o) closeEditDialog(); }}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Nuevo Pago a Operador</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>{editingItem ? "Editar Pago" : "Nuevo Pago a Operador"}</DialogTitle>
+          </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-1">
               <Label>Operador</Label>
-              <Select value={newForm.operator_id} onValueChange={(v) => setNewForm((f) => ({ ...f, operator_id: v }))}>
+              <Select value={editForm.operator_id} onValueChange={(v) => setEditForm((f) => ({ ...f, operator_id: v }))}>
                 <SelectTrigger><SelectValue placeholder="Seleccionar operador" /></SelectTrigger>
                 <SelectContent>
                   {(operatorsList as any[]).map((o) => (
@@ -342,12 +410,12 @@ export default function CuentasPorPagar() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label>Monto</Label>
-                <Input type="number" step="0.01" min="0" value={newForm.amount_value}
-                  onChange={(e) => setNewForm((f) => ({ ...f, amount_value: e.target.value }))} placeholder="0.00" />
+                <Input type="number" step="0.01" min="0" value={editForm.amount_value}
+                  onChange={(e) => setEditForm((f) => ({ ...f, amount_value: e.target.value }))} placeholder="0.00" />
               </div>
               <div className="space-y-1">
                 <Label>Moneda</Label>
-                <Select value={newForm.amount_currency} onValueChange={(v) => setNewForm((f) => ({ ...f, amount_currency: v }))}>
+                <Select value={editForm.amount_currency} onValueChange={(v) => setEditForm((f) => ({ ...f, amount_currency: v }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="USD">USD</SelectItem>
@@ -358,25 +426,58 @@ export default function CuentasPorPagar() {
             </div>
             <div className="space-y-1">
               <Label>Fecha de servicio</Label>
-              <Input type="date" value={newForm.sale_date}
-                onChange={(e) => setNewForm((f) => ({ ...f, sale_date: e.target.value }))} />
+              <Input type="date" value={editForm.sale_date}
+                onChange={(e) => setEditForm((f) => ({ ...f, sale_date: e.target.value }))} />
             </div>
             <div className="space-y-1">
               <Label>Concepto / Notas</Label>
-              <Input value={newForm.notes}
-                onChange={(e) => setNewForm((f) => ({ ...f, notes: e.target.value }))}
+              <Input value={editForm.notes}
+                onChange={(e) => setEditForm((f) => ({ ...f, notes: e.target.value }))}
                 placeholder="Descripción del pago..." />
             </div>
+            {editingItem && (
+              <div className="space-y-1">
+                <Label>Estado</Label>
+                <Select value={editForm.status} onValueChange={(v) => setEditForm((f) => ({ ...f, status: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pending">Pendiente</SelectItem>
+                    <SelectItem value="paid">Pagado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setNewDialogOpen(false)}>Cancelar</Button>
-            <Button onClick={() => createPayableMutation.mutate()}
-              disabled={createPayableMutation.isPending || !newForm.operator_id || !newForm.amount_value}>
-              Crear Pago
+            <Button variant="outline" onClick={closeEditDialog}>Cancelar</Button>
+            <Button onClick={() => upsertPayableMutation.mutate()}
+              disabled={upsertPayableMutation.isPending || !editForm.operator_id || !editForm.amount_value}>
+              {editingItem ? "Guardar Cambios" : "Crear Pago"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!deleteItem} onOpenChange={(o) => { if (!o) setDeleteItem(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar este registro?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Se eliminará el pago de ${Number(deleteItem?.amount_value).toFixed(2)} {deleteItem?.amount_currency} a {deleteItem?.operator?.name || "operador"}. Esta acción no se puede deshacer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => deleteItem && deletePayableMutation.mutate(deleteItem.id)}
+            >
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
