@@ -295,39 +295,34 @@ export default function ReservationCheckout({ reservation, open, onOpenChange, o
           .eq("id", reservation.tours.operator_id)
           .single();
 
-        if (operator) {
-          const serviceDate = reservation.reservation_date;
-          const rule = operator.payment_rules || "prepago";
-          let dueDate: string;
-          let payableMonth: string | null = null;
-
-          if (rule === "prepago") {
-            const d = new Date(serviceDate + "T00:00:00");
-            d.setDate(d.getDate() - 1);
-            dueDate = d.toISOString().split("T")[0];
+        if (operator && !isPartialMode) {
+          // Compute net cost in operator currency
+          let operatorCostMxn = 0;
+          if (netCostData) {
+            operatorCostMxn = netCostData.totalNetCost;
           } else {
-            const d = new Date(serviceDate + "T00:00:00");
-            const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0);
-            dueDate = lastDay.toISOString().split("T")[0];
-            payableMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+            // Fallback: estimate from variants
+            operatorCostMxn = baseTotalMxn * 0.70;
           }
+          const opExRate = operator.exchange_rate || 17.5;
+          const amountInCurrency = operator.base_currency !== "MXN"
+            ? operatorCostMxn / opExRate
+            : operatorCostMxn;
 
-          // If partial mode, the operator gets paid directly by client — skip payable
-          if (!isPartialMode) {
-            const amountFx = operator.base_currency !== "MXN" ? baseTotalMxn / (operator.exchange_rate || 1) : null;
-            await (supabase as any).from("operator_payables").insert({
-              reservation_id: reservation.id,
-              operator_id: operator.id,
-              service_date: serviceDate,
-              payment_rule_snapshot: rule,
-              due_date: dueDate,
-              payable_month: payableMonth,
-              amount_mxn: baseTotalMxn,
-              amount_fx: amountFx,
-              currency_fx: operator.base_currency !== "MXN" ? operator.base_currency : null,
-              status: "pending",
-            });
-          }
+          const tourTitle = reservation.tours?.title || "";
+          const folio = reservation.folio || reservation.id.slice(0, 8);
+
+          await (supabase as any).from("operator_payables").insert({
+            operator_id: operator.id,
+            sale_id: sale.id,
+            sale_date: reservation.reservation_date,
+            amount_currency: operator.base_currency || "USD",
+            amount_value: parseFloat(amountInCurrency.toFixed(2)),
+            equivalent_mxn: parseFloat(operatorCostMxn.toFixed(2)),
+            exchange_rate_used: opExRate,
+            notes: `Reserva ${folio} - ${tourTitle}`.trim(),
+            status: "pending",
+          });
         }
       }
 
