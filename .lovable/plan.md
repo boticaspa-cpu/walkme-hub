@@ -1,102 +1,50 @@
 
-# Fix real: la cotización guarda bien, pero reserva/voucher/cobro vuelven a calcular mal
 
-## Lo que confirmé
-Ya no es el problema de `package_name` en la tabla `reservations`: esa columna ya existe y sí se guarda.
+# Editar, eliminar cuentas por pagar + fix de creacion automatica
 
-El desfase actual viene de esto:
-- La cotización guarda los precios correctos en `quote_items`
-- Al pasar a reserva, esos precios sí se copian a `reservation_items`
-- Pero después, varias pantallas **ignoran `reservation_items`** y vuelven a calcular desde `tour_price_variants` o precio base
-- Además, en checkout se crea `sale_items` con un precio inventado (`total / adultos`) y se pierde el detalle real
+## Problemas detectados
 
-Eso explica exactamente tu captura:
-- cotización: adulto = `3607.50`
-- voucher/reserva: adulto = `3126.50`
-- total final sigue igual porque conserva el descuento, pero el desglose ya quedó mal
+1. **No se pueden editar ni eliminar** registros de cuentas por pagar - la UI solo tiene "Pagar" y "Nuevo"
+2. **No se crean payables desde checkout** porque el codigo inserta columnas que NO existen en la tabla (`reservation_id`, `service_date`, `due_date`, `payable_month`, `amount_mxn`, `amount_fx`, `currency_fx`, `payment_rule_snapshot`). Esto falla silenciosamente
+3. El trigger `create_commission_and_payable_on_confirm` si existe pero usa formulas genéricas (70% del total / 17.5) en vez de costos reales
 
-## Plan de implementación
+## Plan
 
-### 1. Hacer `reservation_items` la fuente de verdad después de aceptar una cotización
-**Archivo:** `src/components/cotizaciones/AcceptQuoteDialog.tsx`
+### 1. Agregar edicion y eliminacion en CuentasPorPagar.tsx
+- Agregar boton "Editar" (icono lapiz) en cada fila, tanto pendientes como pagados
+- Agregar boton "Eliminar" (icono basura) con confirmacion AlertDialog
+- Dialog de edicion reutiliza el formulario de "Nuevo Pago" pero pre-cargado con los datos del registro
+- Campos editables: operador, monto, moneda, fecha servicio, concepto/notas, estado
+- Mutacion `updatePayableMutation` con `.update().eq("id", ...)`
+- Mutacion `deletePayableMutation` con `.delete().eq("id", ...)`
 
-- Dejar de tratar el insert de `reservation_items` como “best-effort”
-- Si falla el insert de items, hacer rollback de la reserva y mostrar error
-- Así garantizamos que toda reserva creada desde cotización tenga sus precios exactos persistidos
+### 2. Corregir insert de payables en ReservationCheckout.tsx
+El insert actual usa columnas inexistentes. Corregir para usar las columnas reales de la tabla:
 
-### 2. Corregir voucher y confirmaciones para que usen precios guardados, no recalculados
-**Archivo:** `src/pages/Reservas.tsx`
+```text
+Columnas reales:          Lo que el codigo intenta:
+operator_id         ✓     operator_id
+sale_id                   reservation_id (NO EXISTE)
+sale_date           ✓     service_date (NO EXISTE)
+amount_currency           currency_fx (NO EXISTE)
+amount_value              amount_fx (NO EXISTE)
+equivalent_mxn            amount_mxn (NO EXISTE)
+status              ✓     status
+notes                     (no usa)
+```
 
-- Cambiar `enrichWithPrices()` para que:
-  - primero busque `reservation_items`
-  - si existen, use `unit_price_mxn`, `unit_price_child_mxn`, `subtotal_mxn` y `package_name` guardados
-  - solo use fallback de matriz/base para reservas viejas sin items
+Mapeo correcto:
+- `sale_id` = sale.id (la venta recién creada)
+- `sale_date` = reservation.reservation_date
+- `amount_currency` = operator.base_currency
+- `amount_value` = net cost en moneda del operador
+- `equivalent_mxn` = net cost en MXN
+- `notes` = "Reserva {folio} - {tour title}"
+- `status` = "pending"
 
-- Corregir además el fallback actual, porque hoy ignora el paquete:
-  - usar `computeTourPrice(..., r.package_name, allTourPackages)`
-  - eliminar la búsqueda genérica que usa `!v.package_name` cuando sí hay paquete
+### 3. Archivos a modificar
+- `src/pages/CuentasPorPagar.tsx` — agregar edit/delete UI + mutations
+- `src/components/reservations/ReservationCheckout.tsx` — corregir columnas del insert de payables (lineas ~318-329)
 
-**Archivo:** `src/components/reservations/VoucherPrintView.tsx`
+No se necesita migracion de base de datos.
 
-- Mostrar el desglose usando los valores reales persistidos
-- Mantener fallback para reservas antiguas
-- Resultado esperado: el voucher debe enseñar el mismo precio por adulto/menor que se vio en la cotización
-
-### 3. Corregir checkout para cobrar y registrar con el detalle correcto
-**Archivo:** `src/components/reservations/ReservationCheckout.tsx`
-
-- Cargar `reservation_items` al abrir el modal
-- Mantener `reservation.total_mxn` como total a cobrar
-- Pero usar `reservation_items` para:
-  - el resumen interno del cobro
-  - el subtotal real antes de descuento
-  - preservar el descuento en la venta
-  - crear `sale_items` correctos
-
-Cambios concretos:
-- Si la reserva tiene descuento, no guardar la venta con `discount_mxn: 0`
-- Para pago completo:
-  - `subtotal_mxn` = suma real de `reservation_items.subtotal_mxn`
-  - `discount_mxn` = `reservation.discount_mxn`
-  - `total_mxn` = lo efectivamente cobrado
-- Dejar de crear `sale_items` con:
-  - `unit_price_mxn = saleTotal / adultos`
-  - `unit_price_child_mxn = 0`
-- En su lugar, mapear los `reservation_items` reales a `sale_items`
-
-### 4. Blindar también el flujo de edición de reservas
-**Archivo:** `src/pages/Reservas.tsx`
-
-- En el `useEffect` de auto-pricing en modo edición, pasar también:
-  - `form.package_name`
-  - `allTourPackages`
-- Así editar una reserva con paquete no volverá a cambiarla a precio general/base por accidente
-
-## Resultado esperado
-Después del fix:
-- Cotización, reserva, voucher y cobro mostrarán el mismo monto
-- Tours con transporte/paquete ya no caerán al precio de “solo entrada”
-- El descuento seguirá correcto
-- La venta quedará registrada con líneas reales, no con precios promediados falsos
-
-## Archivos a tocar
-- `src/components/cotizaciones/AcceptQuoteDialog.tsx`
-- `src/pages/Reservas.tsx`
-- `src/components/reservations/VoucherPrintView.tsx`
-- `src/components/reservations/ReservationCheckout.tsx`
-
-## Nota técnica
-No hace falta migración nueva:
-- `reservations.package_name` ya existe
-- `reservation_items` ya existe
-- las políticas actuales permiten leer e insertar esos items
-
-El arreglo es principalmente de consistencia en frontend y persistencia de detalle.
-
-## Validación que haré al implementarlo
-1. Crear una cotización con paquete/transporte y descuento
-2. Pasarla a reserva
-3. Verificar que el voucher muestre el mismo precio unitario que la cotización
-4. Abrir checkout y confirmar que el total/subtotal/descuento coinciden
-5. Cobrar y revisar que la venta guarde los items correctos
-6. Probar una reserva vieja sin `reservation_items` para asegurar que el fallback siga funcionando
