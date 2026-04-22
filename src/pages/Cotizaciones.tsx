@@ -573,19 +573,29 @@ export default function Cotizaciones() {
             <DialogDescription>{editingId ? "Modifica la cotización." : "El folio se genera automáticamente."}</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-2">
-            {/* Cliente */}
-            <div className="space-y-1.5">
-              <Label>Cliente *</Label>
-              <div className="flex gap-2">
-                <Select value={form.client_id} onValueChange={(v) => setForm(p => ({ ...p, client_id: v }))}>
-                  <SelectTrigger className="flex-1"><SelectValue placeholder="Seleccionar cliente" /></SelectTrigger>
-                  <SelectContent>
-                    {clients.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                <Button type="button" size="icon" variant="outline" onClick={() => setClientDialogOpen(true)}><Plus className="h-4 w-4" /></Button>
+            {/* Cliente — datos opcionales para cotizar rápido */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div className="space-y-1.5">
+                <Label>Nombre del cliente</Label>
+                <Input
+                  placeholder="Opcional"
+                  value={form.client_name}
+                  onChange={(e) => setForm(p => ({ ...p, client_name: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Email</Label>
+                <Input
+                  type="email"
+                  placeholder="Opcional"
+                  value={form.email}
+                  onChange={(e) => setForm(p => ({ ...p, email: e.target.value }))}
+                />
               </div>
             </div>
+            <p className="text-xs text-muted-foreground -mt-2">
+              Solo el tour es obligatorio. El teléfono y demás datos se piden al convertir en reserva.
+            </p>
 
             {/* Items */}
             <div className="space-y-3">
