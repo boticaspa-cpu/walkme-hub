@@ -56,7 +56,25 @@ interface QuoteItem {
   package_name: string;
 }
 
-const emptyForm = { client_id: "", client_name: "", notes: "", status: "draft", discount_mxn: 0 };
+const emptyForm = { client_id: "", client_name: "", email: "", notes: "", status: "draft", discount_mxn: 0 };
+
+// Helpers to embed/extract email from notes (avoids DB migration)
+const EMAIL_PREFIX = "Email: ";
+function extractEmailFromNotes(raw: string | null | undefined): { email: string; notes: string } {
+  if (!raw) return { email: "", notes: "" };
+  const lines = raw.split("\n");
+  if (lines[0]?.startsWith(EMAIL_PREFIX)) {
+    return { email: lines[0].slice(EMAIL_PREFIX.length).trim(), notes: lines.slice(1).join("\n").trim() };
+  }
+  return { email: "", notes: raw };
+}
+function buildNotesWithEmail(email: string, notes: string): string | null {
+  const e = email.trim();
+  const n = notes.trim();
+  if (!e && !n) return null;
+  if (!e) return n;
+  return n ? `${EMAIL_PREFIX}${e}\n${n}` : `${EMAIL_PREFIX}${e}`;
+}
 
 export default function Cotizaciones() {
   const { user, role } = useAuth();
