@@ -732,29 +732,11 @@ export default function Cotizaciones() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={closeDialog}>Cancelar</Button>
-            <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending || !form.client_id}>
+            <Button
+              onClick={() => saveMutation.mutate()}
+              disabled={saveMutation.isPending || items.length === 0 || !items.some(i => i.tour_id)}
+            >
               {saveMutation.isPending ? "Guardando…" : editingId ? "Actualizar" : "Crear Cotización"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Mini-dialog Nuevo Cliente */}
-      <Dialog open={clientDialogOpen} onOpenChange={setClientDialogOpen}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Nuevo Cliente</DialogTitle>
-            <DialogDescription>Crea un cliente rápido para esta cotización.</DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-3 py-2">
-            <div className="space-y-1.5"><Label>Nombre *</Label><Input value={clientForm.name} onChange={(e) => setClientForm(p => ({ ...p, name: e.target.value }))} /></div>
-            <div className="space-y-1.5"><Label>Teléfono</Label><Input value={clientForm.phone} onChange={(e) => setClientForm(p => ({ ...p, phone: e.target.value }))} /></div>
-            <div className="space-y-1.5"><Label>Email</Label><Input type="email" value={clientForm.email} onChange={(e) => setClientForm(p => ({ ...p, email: e.target.value }))} /></div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setClientDialogOpen(false)}>Cancelar</Button>
-            <Button onClick={() => saveClientMutation.mutate()} disabled={saveClientMutation.isPending || !clientForm.name.trim()}>
-              {saveClientMutation.isPending ? "Guardando…" : "Crear Cliente"}
             </Button>
           </DialogFooter>
         </DialogContent>
