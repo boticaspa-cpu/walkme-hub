@@ -56,7 +56,25 @@ interface QuoteItem {
   package_name: string;
 }
 
-const emptyForm = { client_id: "", client_name: "", notes: "", status: "draft", discount_mxn: 0 };
+const emptyForm = { client_id: "", client_name: "", email: "", notes: "", status: "draft", discount_mxn: 0 };
+
+// Helpers to embed/extract email from notes (avoids DB migration)
+const EMAIL_PREFIX = "Email: ";
+function extractEmailFromNotes(raw: string | null | undefined): { email: string; notes: string } {
+  if (!raw) return { email: "", notes: "" };
+  const lines = raw.split("\n");
+  if (lines[0]?.startsWith(EMAIL_PREFIX)) {
+    return { email: lines[0].slice(EMAIL_PREFIX.length).trim(), notes: lines.slice(1).join("\n").trim() };
+  }
+  return { email: "", notes: raw };
+}
+function buildNotesWithEmail(email: string, notes: string): string | null {
+  const e = email.trim();
+  const n = notes.trim();
+  if (!e && !n) return null;
+  if (!e) return n;
+  return n ? `${EMAIL_PREFIX}${e}\n${n}` : `${EMAIL_PREFIX}${e}`;
+}
 
 export default function Cotizaciones() {
   const { user, role } = useAuth();
@@ -75,10 +93,6 @@ export default function Cotizaciones() {
   const [sendQuote, setSendQuote] = useState<any>(null);
   const [acceptQuote, setAcceptQuote] = useState<any>(null);
 
-  // mini-dialog client
-  const [clientDialogOpen, setClientDialogOpen] = useState(false);
-  const [clientForm, setClientForm] = useState({ name: "", phone: "", email: "" });
-
   const { data: quotes = [], isLoading } = useQuery({
     queryKey: ["quotes", role, user?.id],
     queryFn: async () => {
@@ -89,15 +103,6 @@ export default function Cotizaciones() {
       return data;
     },
     enabled: !!user,
-  });
-
-  const { data: clients = [] } = useQuery({
-    queryKey: ["clients-list"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("clients").select("id, name").order("name");
-      if (error) throw error;
-      return data;
-    },
   });
 
   const { data: tours = [] } = useQuery({
@@ -171,13 +176,14 @@ export default function Cotizaciones() {
     mutationFn: async () => {
       const subtotal = items.reduce((s, i) => s + i.qty_adults * i.unit_price_mxn + i.qty_children * i.unit_price_child_mxn, 0);
       const total_mxn = Math.max(0, subtotal - (form.discount_mxn || 0));
-      const clientName = clients.find((c: any) => c.id === form.client_id)?.name ?? form.client_name;
+      const clientName = (form.client_name || "").trim() || "Cliente sin nombre";
+      const notesWithEmail = buildNotesWithEmail(form.email, form.notes);
 
       if (editingId) {
         const { error } = await supabase.from("quotes").update({
           client_id: form.client_id || null,
           client_name: clientName,
-          notes: form.notes || null,
+          notes: notesWithEmail,
           status: form.status,
           total_mxn,
           discount_mxn: form.discount_mxn || 0,
@@ -207,7 +213,7 @@ export default function Cotizaciones() {
         const { data, error } = await supabase.from("quotes").insert({
           client_id: form.client_id || null,
           client_name: clientName,
-          notes: form.notes || null,
+          notes: notesWithEmail,
           status: "draft",
           total_mxn,
           discount_mxn: form.discount_mxn || 0,
@@ -252,24 +258,6 @@ export default function Cotizaciones() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const saveClientMutation = useMutation({
-    mutationFn: async () => {
-      const { data, error } = await supabase
-        .from("clients")
-        .insert({ name: clientForm.name, phone: clientForm.phone, email: clientForm.email || null, created_by: user?.id })
-        .select("id").single();
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: (data) => {
-      qc.invalidateQueries({ queryKey: ["clients-list"] });
-      setForm(p => ({ ...p, client_id: data.id }));
-      toast.success("Cliente creado");
-      setClientDialogOpen(false);
-      setClientForm({ name: "", phone: "", email: "" });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
 
   const closeDialog = () => { setDialogOpen(false); setEditingId(null); setForm(emptyForm); setItems([]); };
   const openCreate = () => { setForm(emptyForm); setItems([]); setEditingId(null); setDialogOpen(true); };
@@ -416,7 +404,8 @@ export default function Cotizaciones() {
   }, [searchParams, tours]);
 
   const openEdit = async (q: any) => {
-    setForm({ client_id: q.client_id ?? "", client_name: q.client_name, notes: q.notes ?? "", status: q.status, discount_mxn: (q as any).discount_mxn ?? 0 });
+    const parsed = extractEmailFromNotes(q.notes);
+    setForm({ client_id: q.client_id ?? "", client_name: q.client_name ?? "", email: parsed.email, notes: parsed.notes, status: q.status, discount_mxn: (q as any).discount_mxn ?? 0 });
     setEditingId(q.id);
     const { data } = await supabase.from("quote_items").select("tour_id, tour_date, qty_adults, qty_children, unit_price_mxn, unit_price_child_mxn, zone, nationality, package_name").eq("quote_id", q.id);
     setItems((data ?? []).map((i: any) => ({
@@ -580,19 +569,29 @@ export default function Cotizaciones() {
             <DialogDescription>{editingId ? "Modifica la cotización." : "El folio se genera automáticamente."}</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-2">
-            {/* Cliente */}
-            <div className="space-y-1.5">
-              <Label>Cliente *</Label>
-              <div className="flex gap-2">
-                <Select value={form.client_id} onValueChange={(v) => setForm(p => ({ ...p, client_id: v }))}>
-                  <SelectTrigger className="flex-1"><SelectValue placeholder="Seleccionar cliente" /></SelectTrigger>
-                  <SelectContent>
-                    {clients.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                <Button type="button" size="icon" variant="outline" onClick={() => setClientDialogOpen(true)}><Plus className="h-4 w-4" /></Button>
+            {/* Cliente — datos opcionales para cotizar rápido */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div className="space-y-1.5">
+                <Label>Nombre del cliente</Label>
+                <Input
+                  placeholder="Opcional"
+                  value={form.client_name}
+                  onChange={(e) => setForm(p => ({ ...p, client_name: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Email</Label>
+                <Input
+                  type="email"
+                  placeholder="Opcional"
+                  value={form.email}
+                  onChange={(e) => setForm(p => ({ ...p, email: e.target.value }))}
+                />
               </div>
             </div>
+            <p className="text-xs text-muted-foreground -mt-2">
+              Solo el tour es obligatorio. El teléfono y demás datos se piden al convertir en reserva.
+            </p>
 
             {/* Items */}
             <div className="space-y-3">
@@ -729,29 +728,11 @@ export default function Cotizaciones() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={closeDialog}>Cancelar</Button>
-            <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending || !form.client_id}>
+            <Button
+              onClick={() => saveMutation.mutate()}
+              disabled={saveMutation.isPending || items.length === 0 || !items.some(i => i.tour_id)}
+            >
               {saveMutation.isPending ? "Guardando…" : editingId ? "Actualizar" : "Crear Cotización"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Mini-dialog Nuevo Cliente */}
-      <Dialog open={clientDialogOpen} onOpenChange={setClientDialogOpen}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Nuevo Cliente</DialogTitle>
-            <DialogDescription>Crea un cliente rápido para esta cotización.</DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-3 py-2">
-            <div className="space-y-1.5"><Label>Nombre *</Label><Input value={clientForm.name} onChange={(e) => setClientForm(p => ({ ...p, name: e.target.value }))} /></div>
-            <div className="space-y-1.5"><Label>Teléfono</Label><Input value={clientForm.phone} onChange={(e) => setClientForm(p => ({ ...p, phone: e.target.value }))} /></div>
-            <div className="space-y-1.5"><Label>Email</Label><Input type="email" value={clientForm.email} onChange={(e) => setClientForm(p => ({ ...p, email: e.target.value }))} /></div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setClientDialogOpen(false)}>Cancelar</Button>
-            <Button onClick={() => saveClientMutation.mutate()} disabled={saveClientMutation.isPending || !clientForm.name.trim()}>
-              {saveClientMutation.isPending ? "Guardando…" : "Crear Cliente"}
             </Button>
           </DialogFooter>
         </DialogContent>
