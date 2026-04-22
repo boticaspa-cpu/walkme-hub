@@ -93,10 +93,6 @@ export default function Cotizaciones() {
   const [sendQuote, setSendQuote] = useState<any>(null);
   const [acceptQuote, setAcceptQuote] = useState<any>(null);
 
-  // mini-dialog client
-  const [clientDialogOpen, setClientDialogOpen] = useState(false);
-  const [clientForm, setClientForm] = useState({ name: "", phone: "", email: "" });
-
   const { data: quotes = [], isLoading } = useQuery({
     queryKey: ["quotes", role, user?.id],
     queryFn: async () => {
