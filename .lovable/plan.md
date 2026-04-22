@@ -1,63 +1,62 @@
 
 
-# Cotización rápida: solo lo esencial
+# Dashboard "a prueba de cliente"
 
-## Objetivo
-Que crear una cotización tome segundos. Quitar fricción: cliente y email pasan a ser opcionales, y los datos pesados (teléfono, hotel, etc.) solo se piden al convertir en reserva (donde ya están implementados).
+## Problema
+El Dashboard muestra montos sensibles (ventas del día, comisiones, gastos, pagos a proveedores, ventas recientes). Si un cliente alcanza a ver tu pantalla, expone información privada del negocio. Además, los accesos rápidos a **Promociones** y **Paquetes Xcaret** llevan a páginas con precios netos / márgenes que tampoco quieres exponer.
 
-## Cambios en el formulario "Nueva Cotización"
+## Solución: botón "Modo Cliente" + reorganizar accesos
 
-### Datos del cliente (arriba del formulario)
-Reemplazar el bloque actual (Select cliente obligatorio + botón "+") por dos inputs sueltos, ambos **opcionales**:
+### 1. Botón "Modo Cliente" en el Dashboard
+Arriba a la derecha del título "Dashboard General" se agrega un toggle (icono de ojo) con dos estados:
+- **Modo Normal** (default): se ve todo como hoy.
+- **Modo Cliente** (un clic): oculta cifras y secciones sensibles al instante. Pensado para cuando un cliente está mirando tu pantalla.
 
-- **Nombre** (texto libre, opcional) — placeholder: "Nombre del cliente (opcional)"
-- **Email** (texto libre, opcional) — placeholder: "Email (opcional)"
+Lo que se oculta en Modo Cliente:
+- Los 3 KPIs superiores (Ventas del Día, Reservas Hoy, Leads Activos) → se reemplazan por el bloque de accesos rápidos seguros (ver punto 2).
+- La fila completa de KPIs financieros admin (Pagos Pendientes, Comisiones, Gastos).
+- La tarjeta "Ventas Recientes" completa.
+- La tarjeta "Próximas Reservas" se mantiene pero **sin nombres de clientes** (solo título del tour y fecha).
+- Se ocultan los accesos a **Promociones** y **Paquetes Xcaret** (porque llevan a precios netos).
 
-Si el vendedor escribe un nombre, se guarda en `quotes.client_name`. Si lo deja vacío, se guarda algo como `"Cliente sin nombre"` para que la lista no muestre vacío. El email se guarda en `quotes.notes` con un prefijo `Email: ...` (no requiere migración) o se ignora si está vacío.
+El estado del toggle se guarda en `localStorage` para que persista entre recargas — así si dejas la pantalla en Modo Cliente, sigue así al refrescar.
 
-Se elimina:
-- El Select de clientes existentes
-- El mini-dialog "Nuevo Cliente" (`clientDialogOpen`, `clientForm`, `saveClientMutation`) — ya no se necesita en este flujo
-- La validación `disabled={!form.client_id}` del botón Crear
+### 2. Accesos rápidos: dos grupos
+Los 6 accesos actuales se dividen en dos grupos según si son seguros frente a un cliente:
 
-### Datos del tour (lo único obligatorio)
-Lo que el vendedor SÍ debe llenar para una cotización válida:
-- **Tour o paquete** (ya existe)
-- **Adultos / Menores** (ya existe)
-- **Fecha del tour** (ya existe)
+**Seguros (siempre visibles, también en Modo Cliente):**
+- Nueva Cotización
+- Nueva Reserva
+- Ver Catálogo
+- Nuevo Lead
 
-Zona y nacionalidad siguen disponibles porque son los que disparan el precio correcto, pero NO se vuelven obligatorios — si el vendedor no los pone, se usa el precio base del tour (lookup actual ya cae a `tour_packages` y luego a `price_mxn`).
+**Sensibles (solo visibles en Modo Normal):**
+- Promociones
+- Paquetes Xcaret
 
-### Validación al guardar
-Solo se exige:
-- Al menos 1 item con `tour_id` seleccionado
-- Cantidad total de pax > 0
+En Modo Cliente, los 4 accesos seguros se promueven a la parte superior (donde antes iban los KPIs), para que el Dashboard se vea limpio y útil sin exponer nada.
 
-Si falta nombre del cliente, se guarda como "Cliente sin nombre" automáticamente — sin bloquear.
+### 3. Resultado visual
 
-## Conversión a Reserva (sin cambios funcionales)
-`AcceptQuoteDialog.tsx` ya pide la fecha y crea la reserva. Cuando una cotización sin cliente formal pasa a reserva, ahí es donde el vendedor completa los datos pesados (teléfono, email, hotel, pickup, etc.) en el flujo de Reservas que ya existe. No se toca esa lógica.
+**Modo Normal** (lo que tú ves):
+```
+Dashboard General                              [👁 Modo Cliente]
+[Ventas Hoy] [Reservas Hoy] [Leads Activos]
+[Pagos Pend.] [Comisiones]  [Gastos]
+[Cotización] [Reserva] [Catálogo] [Lead] [Promos] [Xcaret]
+[Próximas Reservas]              [Ventas Recientes]
+```
 
-## Detalles técnicos
+**Modo Cliente** (un clic):
+```
+Dashboard                                     [👁 Modo Normal]
+[Nueva Cotización] [Nueva Reserva]
+[Ver Catálogo]     [Nuevo Lead]
+[Próximas Reservas - solo tour y fecha]
+```
 
-**Archivo a modificar:** `src/pages/Cotizaciones.tsx` únicamente.
+## Archivos a modificar
+- `src/pages/Dashboard.tsx` — único archivo. Se agrega el estado `clientMode` (con persistencia en localStorage), el botón toggle, y la lógica condicional para ocultar los bloques sensibles.
 
-Cambios concretos:
-1. `emptyForm` → quitar `client_id`, dejar `client_name`, `email` (nuevo campo local), `notes`, `status`, `discount_mxn`
-2. Reemplazar el bloque "Cliente *" (líneas ~583-595) por dos `<Input>` opcionales (Nombre, Email)
-3. En `saveMutation`:
-   - `client_id: null` siempre (desde este flujo simplificado)
-   - `client_name: form.client_name || "Cliente sin nombre"`
-   - Si `form.email`, anteponerlo a `notes`: `Email: ${email}\n${notes}`
-4. Cambiar `disabled={saveMutation.isPending || !form.client_id}` → `disabled={saveMutation.isPending || items.length === 0 || !items.some(i => i.tour_id)}`
-5. Eliminar: `clientDialogOpen`, `clientForm`, `saveClientMutation`, query `clients-list`, mini-dialog "Nuevo Cliente"
-6. En `openEdit`, pre-cargar `client_name` y extraer `email` de notes si tiene el prefijo
-
-No se requiere migración de base de datos: las columnas `client_id`, `client_name`, `notes` ya soportan el nuevo flujo (todas son nullable o tienen default).
-
-## Validación al implementar
-1. Abrir "Nueva Cotización" → solo seleccionar tour, poner 2 adultos, fecha, guardar → debe crearse sin pedir cliente
-2. Crear otra con nombre y email → verificar que aparezcan en la lista y en el PDF
-3. Convertir una cotización sin cliente a reserva → el dialog de reserva debe pedir todos los datos del cliente como ya lo hace
-4. Editar una cotización vieja (con cliente formal) → debe seguir funcionando
+No requiere migraciones de base de datos ni cambios en otros componentes.
 
