@@ -1,50 +1,63 @@
 
 
-# Editar, eliminar cuentas por pagar + fix de creacion automatica
+# Cotización rápida: solo lo esencial
 
-## Problemas detectados
+## Objetivo
+Que crear una cotización tome segundos. Quitar fricción: cliente y email pasan a ser opcionales, y los datos pesados (teléfono, hotel, etc.) solo se piden al convertir en reserva (donde ya están implementados).
 
-1. **No se pueden editar ni eliminar** registros de cuentas por pagar - la UI solo tiene "Pagar" y "Nuevo"
-2. **No se crean payables desde checkout** porque el codigo inserta columnas que NO existen en la tabla (`reservation_id`, `service_date`, `due_date`, `payable_month`, `amount_mxn`, `amount_fx`, `currency_fx`, `payment_rule_snapshot`). Esto falla silenciosamente
-3. El trigger `create_commission_and_payable_on_confirm` si existe pero usa formulas genéricas (70% del total / 17.5) en vez de costos reales
+## Cambios en el formulario "Nueva Cotización"
 
-## Plan
+### Datos del cliente (arriba del formulario)
+Reemplazar el bloque actual (Select cliente obligatorio + botón "+") por dos inputs sueltos, ambos **opcionales**:
 
-### 1. Agregar edicion y eliminacion en CuentasPorPagar.tsx
-- Agregar boton "Editar" (icono lapiz) en cada fila, tanto pendientes como pagados
-- Agregar boton "Eliminar" (icono basura) con confirmacion AlertDialog
-- Dialog de edicion reutiliza el formulario de "Nuevo Pago" pero pre-cargado con los datos del registro
-- Campos editables: operador, monto, moneda, fecha servicio, concepto/notas, estado
-- Mutacion `updatePayableMutation` con `.update().eq("id", ...)`
-- Mutacion `deletePayableMutation` con `.delete().eq("id", ...)`
+- **Nombre** (texto libre, opcional) — placeholder: "Nombre del cliente (opcional)"
+- **Email** (texto libre, opcional) — placeholder: "Email (opcional)"
 
-### 2. Corregir insert de payables en ReservationCheckout.tsx
-El insert actual usa columnas inexistentes. Corregir para usar las columnas reales de la tabla:
+Si el vendedor escribe un nombre, se guarda en `quotes.client_name`. Si lo deja vacío, se guarda algo como `"Cliente sin nombre"` para que la lista no muestre vacío. El email se guarda en `quotes.notes` con un prefijo `Email: ...` (no requiere migración) o se ignora si está vacío.
 
-```text
-Columnas reales:          Lo que el codigo intenta:
-operator_id         ✓     operator_id
-sale_id                   reservation_id (NO EXISTE)
-sale_date           ✓     service_date (NO EXISTE)
-amount_currency           currency_fx (NO EXISTE)
-amount_value              amount_fx (NO EXISTE)
-equivalent_mxn            amount_mxn (NO EXISTE)
-status              ✓     status
-notes                     (no usa)
-```
+Se elimina:
+- El Select de clientes existentes
+- El mini-dialog "Nuevo Cliente" (`clientDialogOpen`, `clientForm`, `saveClientMutation`) — ya no se necesita en este flujo
+- La validación `disabled={!form.client_id}` del botón Crear
 
-Mapeo correcto:
-- `sale_id` = sale.id (la venta recién creada)
-- `sale_date` = reservation.reservation_date
-- `amount_currency` = operator.base_currency
-- `amount_value` = net cost en moneda del operador
-- `equivalent_mxn` = net cost en MXN
-- `notes` = "Reserva {folio} - {tour title}"
-- `status` = "pending"
+### Datos del tour (lo único obligatorio)
+Lo que el vendedor SÍ debe llenar para una cotización válida:
+- **Tour o paquete** (ya existe)
+- **Adultos / Menores** (ya existe)
+- **Fecha del tour** (ya existe)
 
-### 3. Archivos a modificar
-- `src/pages/CuentasPorPagar.tsx` — agregar edit/delete UI + mutations
-- `src/components/reservations/ReservationCheckout.tsx` — corregir columnas del insert de payables (lineas ~318-329)
+Zona y nacionalidad siguen disponibles porque son los que disparan el precio correcto, pero NO se vuelven obligatorios — si el vendedor no los pone, se usa el precio base del tour (lookup actual ya cae a `tour_packages` y luego a `price_mxn`).
 
-No se necesita migracion de base de datos.
+### Validación al guardar
+Solo se exige:
+- Al menos 1 item con `tour_id` seleccionado
+- Cantidad total de pax > 0
+
+Si falta nombre del cliente, se guarda como "Cliente sin nombre" automáticamente — sin bloquear.
+
+## Conversión a Reserva (sin cambios funcionales)
+`AcceptQuoteDialog.tsx` ya pide la fecha y crea la reserva. Cuando una cotización sin cliente formal pasa a reserva, ahí es donde el vendedor completa los datos pesados (teléfono, email, hotel, pickup, etc.) en el flujo de Reservas que ya existe. No se toca esa lógica.
+
+## Detalles técnicos
+
+**Archivo a modificar:** `src/pages/Cotizaciones.tsx` únicamente.
+
+Cambios concretos:
+1. `emptyForm` → quitar `client_id`, dejar `client_name`, `email` (nuevo campo local), `notes`, `status`, `discount_mxn`
+2. Reemplazar el bloque "Cliente *" (líneas ~583-595) por dos `<Input>` opcionales (Nombre, Email)
+3. En `saveMutation`:
+   - `client_id: null` siempre (desde este flujo simplificado)
+   - `client_name: form.client_name || "Cliente sin nombre"`
+   - Si `form.email`, anteponerlo a `notes`: `Email: ${email}\n${notes}`
+4. Cambiar `disabled={saveMutation.isPending || !form.client_id}` → `disabled={saveMutation.isPending || items.length === 0 || !items.some(i => i.tour_id)}`
+5. Eliminar: `clientDialogOpen`, `clientForm`, `saveClientMutation`, query `clients-list`, mini-dialog "Nuevo Cliente"
+6. En `openEdit`, pre-cargar `client_name` y extraer `email` de notes si tiene el prefijo
+
+No se requiere migración de base de datos: las columnas `client_id`, `client_name`, `notes` ya soportan el nuevo flujo (todas son nullable o tienen default).
+
+## Validación al implementar
+1. Abrir "Nueva Cotización" → solo seleccionar tour, poner 2 adultos, fecha, guardar → debe crearse sin pedir cliente
+2. Crear otra con nombre y email → verificar que aparezcan en la lista y en el PDF
+3. Convertir una cotización sin cliente a reserva → el dialog de reserva debe pedir todos los datos del cliente como ya lo hace
+4. Editar una cotización vieja (con cliente formal) → debe seguir funcionando
 
