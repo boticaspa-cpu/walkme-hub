@@ -180,13 +180,14 @@ export default function Cotizaciones() {
     mutationFn: async () => {
       const subtotal = items.reduce((s, i) => s + i.qty_adults * i.unit_price_mxn + i.qty_children * i.unit_price_child_mxn, 0);
       const total_mxn = Math.max(0, subtotal - (form.discount_mxn || 0));
-      const clientName = clients.find((c: any) => c.id === form.client_id)?.name ?? form.client_name;
+      const clientName = (form.client_name || "").trim() || "Cliente sin nombre";
+      const notesWithEmail = buildNotesWithEmail(form.email, form.notes);
 
       if (editingId) {
         const { error } = await supabase.from("quotes").update({
           client_id: form.client_id || null,
           client_name: clientName,
-          notes: form.notes || null,
+          notes: notesWithEmail,
           status: form.status,
           total_mxn,
           discount_mxn: form.discount_mxn || 0,
@@ -216,7 +217,7 @@ export default function Cotizaciones() {
         const { data, error } = await supabase.from("quotes").insert({
           client_id: form.client_id || null,
           client_name: clientName,
-          notes: form.notes || null,
+          notes: notesWithEmail,
           status: "draft",
           total_mxn,
           discount_mxn: form.discount_mxn || 0,
