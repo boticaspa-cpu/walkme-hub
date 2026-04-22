@@ -109,15 +109,6 @@ export default function Cotizaciones() {
     enabled: !!user,
   });
 
-  const { data: clients = [] } = useQuery({
-    queryKey: ["clients-list"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("clients").select("id, name").order("name");
-      if (error) throw error;
-      return data;
-    },
-  });
-
   const { data: tours = [] } = useQuery({
     queryKey: ["tours-active"],
     queryFn: async () => {
