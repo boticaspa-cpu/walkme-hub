@@ -262,24 +262,6 @@ export default function Cotizaciones() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const saveClientMutation = useMutation({
-    mutationFn: async () => {
-      const { data, error } = await supabase
-        .from("clients")
-        .insert({ name: clientForm.name, phone: clientForm.phone, email: clientForm.email || null, created_by: user?.id })
-        .select("id").single();
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: (data) => {
-      qc.invalidateQueries({ queryKey: ["clients-list"] });
-      setForm(p => ({ ...p, client_id: data.id }));
-      toast.success("Cliente creado");
-      setClientDialogOpen(false);
-      setClientForm({ name: "", phone: "", email: "" });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
 
   const closeDialog = () => { setDialogOpen(false); setEditingId(null); setForm(emptyForm); setItems([]); };
   const openCreate = () => { setForm(emptyForm); setItems([]); setEditingId(null); setDialogOpen(true); };
