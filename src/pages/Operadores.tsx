@@ -139,11 +139,13 @@ export default function Operadores() {
       let logo_url: string | undefined;
 
       if (logoFile) {
-        const ext = logoFile.name.split(".").pop();
+        const { compressImage } = await import("@/lib/compress-image");
+        const compressed = await compressImage(logoFile, 400, 0.8);
+        const ext = compressed.name.split(".").pop() || "jpg";
         const path = `operators/logos/${crypto.randomUUID()}.${ext}`;
         const { error: uploadErr } = await supabase.storage
           .from("media")
-          .upload(path, logoFile, { upsert: true });
+          .upload(path, compressed, { upsert: true, contentType: compressed.type });
         if (uploadErr) throw uploadErr;
         const { data: urlData } = supabase.storage.from("media").getPublicUrl(path);
         logo_url = urlData.publicUrl;
