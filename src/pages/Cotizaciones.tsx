@@ -96,7 +96,11 @@ export default function Cotizaciones() {
   const { data: quotes = [], isLoading } = useQuery({
     queryKey: ["quotes", role, user?.id],
     queryFn: async () => {
-      let q = supabase.from("quotes").select("*, clients(name)").order("created_at", { ascending: false });
+      let q = supabase
+        .from("quotes")
+        .select("id, folio, status, total_mxn, discount_mxn, notes, created_at, created_by, client_id, client_name, reservation_id, clients(name)")
+        .order("created_at", { ascending: false })
+        .limit(200);
       if (role === "seller") q = q.eq("created_by", user!.id);
       const { data, error } = await q;
       if (error) throw error;
