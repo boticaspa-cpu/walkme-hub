@@ -43,4 +43,18 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Split heavy libraries that are loaded on-demand into their own chunks
+          // so the initial bundle stays small and these load only when needed.
+          xlsx: ["xlsx"],
+          pdf: ["jspdf", "jspdf-autotable"],
+          html2canvas: ["html2canvas"],
+          charts: ["recharts"],
+        },
+      },
+    },
+  },
 }));
