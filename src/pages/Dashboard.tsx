@@ -71,10 +71,13 @@ export default function Dashboard() {
   });
 
   const { data: upcomingRes = [], isLoading: loadingUpcoming } = useQuery({
-    queryKey: ["dashboard-upcoming"],
+    queryKey: ["dashboard-upcoming", clientMode],
     queryFn: async () => {
+      const select = clientMode
+        ? "id, reservation_date, reservation_time, tours(title)"
+        : "id, reservation_date, reservation_time, tours(title), clients(name)";
       const { data, error } = await supabase.from("reservations")
-        .select("id, reservation_date, reservation_time, tours(title), clients(name)")
+        .select(select)
         .eq("status", "scheduled")
         .gte("reservation_date", todayStr)
         .order("reservation_date", { ascending: true })
