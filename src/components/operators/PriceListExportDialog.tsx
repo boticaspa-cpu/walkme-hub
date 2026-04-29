@@ -136,7 +136,8 @@ function fmtNum(n: number) {
   return n ? `$${n.toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "—";
 }
 
-function generateExcel(rows: VariantRow[], opName: string, currency: string, tc: number) {
+async function generateExcel(rows: VariantRow[], opName: string, currency: string, tc: number) {
+  const XLSX = await import("xlsx");
   const now = new Date().toLocaleDateString("es-MX");
   const header = [
     ["Lista de Precios —", opName],
@@ -168,7 +169,11 @@ function generateExcel(rows: VariantRow[], opName: string, currency: string, tc:
   XLSX.writeFile(wb, `Precios_${opName.replace(/\s+/g, "_")}.xlsx`);
 }
 
-function generatePDF(rows: VariantRow[], opName: string, currency: string, tc: number) {
+async function generatePDF(rows: VariantRow[], opName: string, currency: string, tc: number) {
+  const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
+    import("jspdf"),
+    import("jspdf-autotable"),
+  ]);
   const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "letter" });
   const now = new Date().toLocaleDateString("es-MX");
 
@@ -235,10 +240,10 @@ export default function PriceListExportDialog({ open, onOpenChange, operator }: 
       const cur = operator.base_currency ?? "USD";
 
       if (format === "xlsx") {
-        generateExcel(rows, operator.name, cur, tc);
+        await generateExcel(rows, operator.name, cur, tc);
         toast.success("Excel descargado");
       } else {
-        generatePDF(rows, operator.name, cur, tc);
+        await generatePDF(rows, operator.name, cur, tc);
         toast.success("PDF descargado");
       }
     } catch (e: any) {
