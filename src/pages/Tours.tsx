@@ -31,6 +31,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { tourThumb, tourFull, tourThumbSrcSet } from "@/lib/image-url";
 
 const PLACEHOLDER_IMG = "/placeholder.svg";
 const ALL_DAYS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
@@ -153,9 +154,11 @@ function TourImageCarousel({ images, title }: { images?: string[] | null; title:
             <CarouselItem key={i}>
               <AspectRatio ratio={16 / 9}>
                 <img
-                  src={url}
+                  src={tourFull(url, 1200)}
                   alt={`${title} - ${i + 1}`}
                   className="w-full h-full object-cover rounded-lg bg-muted"
+                  loading={i === 0 ? "eager" : "lazy"}
+                  decoding="async"
                   onError={(e) => { (e.target as HTMLImageElement).src = PLACEHOLDER_IMG; }}
                 />
               </AspectRatio>
@@ -1087,11 +1090,14 @@ export default function Tours({ season = "regular" }: { season?: "regular" | "al
     setSaving(true);
     try {
       // Upload new images and build image_urls array
+      // Compress before upload (typical phone photo: 5MB → ~250KB)
       let finalImageUrls = [...imagePreviews.filter(p => p.startsWith("http"))];
+      const { compressImage } = await import("@/lib/compress-image");
       for (const file of imageFiles) {
-        const ext = file.name.split(".").pop();
+        const compressed = await compressImage(file, 1600, 0.75);
+        const ext = compressed.name.split(".").pop() || "jpg";
         const path = `tours/${crypto.randomUUID()}.${ext}`;
-        const { error: upErr } = await supabase.storage.from("media").upload(path, file, { upsert: true });
+        const { error: upErr } = await supabase.storage.from("media").upload(path, compressed, { upsert: true, contentType: compressed.type });
         if (upErr) throw upErr;
         const { data: urlData } = supabase.storage.from("media").getPublicUrl(path);
         finalImageUrls.push(urlData.publicUrl);
@@ -1239,10 +1245,14 @@ export default function Tours({ season = "regular" }: { season?: "regular" | "al
             >
               <div className="aspect-video w-full overflow-hidden bg-muted">
                 <img
-                  src={tour.image_urls?.[0] || PLACEHOLDER_IMG}
+                  src={tour.image_urls?.[0] ? tourThumb(tour.image_urls[0], 600) : PLACEHOLDER_IMG}
+                  srcSet={tour.image_urls?.[0] ? tourThumbSrcSet(tour.image_urls[0], 600) : undefined}
                   alt={tour.title}
                   className="h-full w-full object-cover"
                   loading="lazy"
+                  decoding="async"
+                  width={600}
+                  height={338}
                   onError={(e) => { (e.target as HTMLImageElement).src = PLACEHOLDER_IMG; }}
                 />
               </div>
