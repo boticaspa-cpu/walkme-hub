@@ -451,19 +451,33 @@ export default function PaquetesXcaret() {
             <div className="space-y-2">
               <Label>Tours incluidos ({selectedTourIds.length} seleccionados)</Label>
               <div className="max-h-48 overflow-y-auto rounded-md border border-border p-2 space-y-1">
-                {tours.map((t) => (
-                  <label
-                    key={t.id}
-                    className="flex items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-muted cursor-pointer"
-                  >
-                    <Checkbox
-                      checked={selectedTourIds.includes(t.id)}
-                      onCheckedChange={() => toggleTour(t.id)}
-                    />
-                    <span className="flex-1">{t.title}</span>
-                    <span className="text-muted-foreground">{fmt(tourToMxnAdult(t))}</span>
-                  </label>
-                ))}
+                {tours.map((t) => {
+                  const isSelected = selectedTourIds.includes(t.id);
+
+                  return (
+                    <div
+                      key={t.id}
+                      role="button"
+                      tabIndex={0}
+                      className="flex items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-muted cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      onClick={() => toggleTour(t.id)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          toggleTour(t.id);
+                        }
+                      }}
+                    >
+                      <Checkbox
+                        checked={isSelected}
+                        onCheckedChange={() => toggleTour(t.id)}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                      <span className="flex-1">{t.title}</span>
+                      <span className="text-muted-foreground">{fmt(tourToMxnAdult(t))}</span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
