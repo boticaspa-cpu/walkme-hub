@@ -1,74 +1,35 @@
-# Corrección de Paquetes Xcaret
+# Corrección Paquetes Xcaret — clasificación correcta
 
-## Diagnóstico
-Ya revisé la razón exacta.
+## Contexto
+La regla de negocio es: **solo tours con transporte** entran en paquetes Xcaret combinables. Esa regla es correcta. El problema es que en la base de datos los tours principales de Xcaret (Full Day, Plus, Xelha, Xenses, Xoximilco, Xplor Día/Fuego) están mal marcados como `entry_only`, por eso solo aparecían Xichén Clásico y Deluxe.
 
-Hoy la pantalla de **Paquetes Xcaret** no está fallando por el menú o por el modal: está filtrando demasiado los tours.
+## Solución (2 partes)
 
-En `src/pages/PaquetesXcaret.tsx` la lista se arma con estas reglas:
-- solo operadores **Xcaret Blue Dreams** y **Xcaret McSERI Tours**
-- solo tours `active = true`
-- solo `service_type = 'with_transport'`
-- excluye títulos con `Fury` y `ATV`
+### 1. Migración: reclasificar tours Xcaret a `with_transport`
 
-Con los datos actuales del backend, **solo 2 tours cumplen ese filtro**:
-- Xichén Clásico
-- Xichén Deluxe
+Actualizar `service_type = 'with_transport'` en los tours activos de Blue Dreams / McSERI Tours que sí incluyen transporte:
 
-Los demás tours Xcaret activos sí existen, pero están guardados como `entry_only`, por ejemplo:
 - Xcaret Full Day
-- Xcaret Plus
+- Xcaret Plus: Entrada + Comida Buffet
 - Xelha Light
-- Xenses
+- XENSES
 - Xoximilco
 - Xplor Día
 - Xplor Fuego
 
-Por eso el modal solo te deja elegir esos dos.
+Quedan como `entry_only` (no entran en paquetes):
+- Ferry Xcaret Cozumel sencillo (solo traslado marítimo)
+- ATV's Experience Sencilla (ya excluido por nombre)
+- Catamarán Fury Cozumel (ya excluido por nombre)
 
-## Plan de solución
+### 2. Restaurar filtro estricto en `src/pages/PaquetesXcaret.tsx`
 
-### 1. Ajustar el filtro del selector de tours
-Modificar `src/pages/PaquetesXcaret.tsx` para que el selector ya no dependa únicamente de `with_transport`.
+Volver a agregar `.eq("service_type", "with_transport")` en el query de tours, para que la regla de negocio quede protegida hacia el futuro (si alguien crea un tour `entry_only` no se cuele al paquete por error).
 
-Lo cambiaré para mostrar **todos los tours Xcaret activos elegibles**, manteniendo fuera únicamente los productos que realmente no deban entrar al paquete (por ejemplo Fury y ATV, si esa exclusión sigue siendo correcta).
+## Resultado esperado
+En el diálogo "Nuevo paquete Xcaret" aparecerán los ~9 tours activos elegibles: Xichén Clásico, Xichén Deluxe, Xcaret Full Day, Xcaret Plus, Xelha Light, Xenses, Xoximilco, Xplor Día, Xplor Fuego, ATV Doble.
 
-Resultado esperado:
-- al crear paquete aparecerá el catálogo Xcaret completo que sí quieres combinar
-- dejarán de verse solo 2 opciones
-
-### 2. Mantener la lógica de cálculo del paquete
-No cambiaré la parte del cálculo del paquete, solo la fuente de tours elegibles.
-
-Se conservará:
-- suma de tours seleccionados
-- descuento del paquete
-- generación del precio final del paquete
-
-Así el cambio corrige la selección sin romper la fórmula actual.
-
-### 3. Validar compatibilidad con Cotizar y Reservar
-Revisaré el flujo que manda un paquete Xcaret a:
-- `Cotizaciones`
-- `Reservas`
-
-Ese flujo ya trabaja con `tour_id` del paquete, así que la idea es confirmar que al incluir más tours del catálogo:
-- se precarguen correctamente
-- no fallen los items del paquete
-- se mantenga la nota `Paquete Xcaret: ...`
-
-### 4. Dejar la regla más clara para evitar que vuelva a pasar
-Aprovecharé para dejar la lógica más explícita en código, para que el módulo no dependa de una restricción vieja de negocio que ya no coincide con lo que necesitas.
-
-## Archivos a tocar
-- `src/pages/PaquetesXcaret.tsx` — ajuste principal del filtro
-- posible revisión menor en `src/pages/Cotizaciones.tsx` y `src/pages/Reservas.tsx` solo si hace falta reforzar compatibilidad, pero en principio no parece requerir cambios grandes
-
-## Impacto
-- No requiere migraciones
-- No requiere cambios de base de datos
-- No afecta autenticación
-- Es un cambio localizado al módulo de Paquetes Xcaret
-
-## Resultado esperado después del fix
-Cuando abras **Nuevo paquete Xcaret**, en “Tours incluidos” ya no verás solo `Xichén Clásico` y `Xichén Deluxe`, sino el catálogo Xcaret activo permitido para paquetes.
+## Archivos
+- Migración SQL (UPDATE en `tours`)
+- `src/pages/PaquetesXcaret.tsx` — restaurar filtro `with_transport`
+- Actualizar `mem://features/xcaret-package-logic` para reflejar la regla correcta

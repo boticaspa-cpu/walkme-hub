@@ -106,8 +106,9 @@ export default function PaquetesXcaret() {
 
   const xcaretOpIds = xcaretOperators.map((o) => o.id);
 
-  // Fetch all active Xcaret tours (both with_transport and entry_only),
-  // excluding Fury and ATV which never participate in Xcaret combo packages.
+  // Fetch active Xcaret tours WITH TRANSPORT only (business rule:
+  // Xcaret combinable packages require transport included).
+  // Also exclude Fury and ATV tours which never participate in combos.
   const { data: tours = [] } = useQuery<Tour[]>({
     queryKey: ["tours-for-promos", xcaretOpIds],
     queryFn: async () => {
@@ -115,6 +116,7 @@ export default function PaquetesXcaret() {
         .from("tours")
         .select("id, title, public_price_adult_usd, public_price_child_usd, tax_adult_usd, tax_child_usd, exchange_rate_tour, active")
         .eq("active", true)
+        .eq("service_type", "with_transport")
         .in("operator_id", xcaretOpIds)
         .not("title", "ilike", "%fury%")
         .not("title", "ilike", "%atv%")
