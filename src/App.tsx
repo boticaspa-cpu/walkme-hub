@@ -36,6 +36,7 @@ const Gastos = lazy(() => import("./pages/Gastos"));
 const PaquetesXcaret = lazy(() => import("./pages/PaquetesXcaret"));
 const Promociones = lazy(() => import("./pages/Promociones"));
 const ToursTemporadaAlta = lazy(() => import("./pages/ToursTemporadaAlta"));
+const Transfers = lazy(() => import("./pages/Transfers"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
@@ -71,6 +72,7 @@ const App = () => (
                 <Route path="/promociones" element={<Promociones />} />
                 <Route path="/cotizaciones" element={<Cotizaciones />} />
                 <Route path="/reservas" element={<Reservas />} />
+                <Route path="/transfers" element={<Transfers />} />
                 <Route path="/calendario" element={<Calendario />} />
                 <Route path="/pos" element={<POS />} />
                 <Route path="/cierre-diario" element={<CierreDiario />} />
