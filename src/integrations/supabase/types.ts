@@ -1783,6 +1783,93 @@ export type Database = {
           },
         ]
       }
+      transfers: {
+        Row: {
+          client_email: string
+          client_name: string
+          client_phone: string
+          created_at: string
+          created_by: string | null
+          currency: string
+          destination: string
+          exchange_rate: number
+          flight_info: string
+          folio: string | null
+          hotel_name: string
+          id: string
+          notes: string | null
+          operator_id: string | null
+          origin: string
+          pax_adults: number
+          pax_children: number
+          payment_method: string | null
+          payment_status: string
+          pickup_time: string
+          price_mxn: number
+          room_number: string
+          service_date: string
+          status: string
+          updated_at: string
+          vehicle_type: string
+        }
+        Insert: {
+          client_email?: string
+          client_name?: string
+          client_phone?: string
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          destination?: string
+          exchange_rate?: number
+          flight_info?: string
+          folio?: string | null
+          hotel_name?: string
+          id?: string
+          notes?: string | null
+          operator_id?: string | null
+          origin?: string
+          pax_adults?: number
+          pax_children?: number
+          payment_method?: string | null
+          payment_status?: string
+          pickup_time?: string
+          price_mxn?: number
+          room_number?: string
+          service_date: string
+          status?: string
+          updated_at?: string
+          vehicle_type?: string
+        }
+        Update: {
+          client_email?: string
+          client_name?: string
+          client_phone?: string
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          destination?: string
+          exchange_rate?: number
+          flight_info?: string
+          folio?: string | null
+          hotel_name?: string
+          id?: string
+          notes?: string | null
+          operator_id?: string | null
+          origin?: string
+          pax_adults?: number
+          pax_children?: number
+          payment_method?: string | null
+          payment_status?: string
+          pickup_time?: string
+          price_mxn?: number
+          room_number?: string
+          service_date?: string
+          status?: string
+          updated_at?: string
+          vehicle_type?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
