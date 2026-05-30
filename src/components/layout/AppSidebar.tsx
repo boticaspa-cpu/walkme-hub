@@ -59,6 +59,7 @@ const adminNav = [
   { title: "Promociones", url: "/promociones", icon: Tags },
   { title: "Cotizaciones", url: "/cotizaciones", icon: FileText },
   { title: "Reservas", url: "/reservas", icon: FolderOpen },
+  { title: "Transfers", url: "/transfers", icon: Car },
   { title: "Calendario", url: "/calendario", icon: CalendarDays },
   { title: "POS", url: "/pos", icon: ShoppingCart },
   { title: "Cierre Diario", url: "/cierre-diario", icon: ClipboardCheck },
