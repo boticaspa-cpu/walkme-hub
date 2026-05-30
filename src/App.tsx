@@ -36,6 +36,7 @@ const Gastos = lazy(() => import("./pages/Gastos"));
 const PaquetesXcaret = lazy(() => import("./pages/PaquetesXcaret"));
 const Promociones = lazy(() => import("./pages/Promociones"));
 const ToursTemporadaAlta = lazy(() => import("./pages/ToursTemporadaAlta"));
+const Transfers = lazy(() => import("./pages/Transfers"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
