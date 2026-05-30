@@ -267,7 +267,7 @@ export default function Transfers() {
             icon={Car}
             title="Sin transfers"
             description="Crea tu primer transfer para empezar."
-            action={<Button onClick={openNew}><Plus className="mr-2 h-4 w-4" />Nuevo transfer</Button>}
+            action={{ label: "Nuevo transfer", onClick: openNew }}
           />
         ) : (
           <Table>
