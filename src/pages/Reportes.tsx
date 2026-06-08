@@ -1,39 +1,22 @@
-import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell,
 } from "recharts";
-import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";
-import { es } from "date-fns/locale";
 import { DollarSign, Wallet, Percent, Receipt, TrendingUp } from "lucide-react";
+import { PeriodFilter } from "@/components/shared/PeriodFilter";
+import { usePeriodFilter } from "@/hooks/usePeriodFilter";
 
 const COLORS = ["hsl(190, 82%, 40%)", "hsl(175, 60%, 45%)", "hsl(38, 92%, 50%)", "hsl(340, 65%, 50%)", "hsl(260, 60%, 55%)"];
 
-function getLastMonths(count: number) {
-  const now = new Date();
-  return Array.from({ length: count }, (_, i) => {
-    const d = subMonths(now, i);
-    return { value: format(d, "yyyy-MM"), label: format(d, "MMMM yyyy", { locale: es }) };
-  });
-}
-
-function useMonthRange(selectedMonth: string) {
-  return useMemo(() => {
-    const [year, month] = selectedMonth.split("-").map(Number);
-    const from = startOfMonth(new Date(year, month - 1)).toISOString();
-    const to = endOfMonth(new Date(year, month - 1)).toISOString();
-    return { from, to };
-  }, [selectedMonth]);
-}
-
 export default function Reportes() {
-  const months = useMemo(() => getLastMonths(6), []);
-  const [selectedMonth, setSelectedMonth] = useState(months[0].value);
-  const { from, to } = useMonthRange(selectedMonth);
+  const { period, setPeriod, fromISO, toISO, fromDate, toDate } = usePeriodFilter("this_month");
+  const periodKey = `${fromISO}_${toISO}`;
+  const from = fromISO;
+  const to = toISO;
+
 
   // KPI: Sales
   const { data: salesKpi } = useQuery({
