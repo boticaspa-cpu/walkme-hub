@@ -3,7 +3,8 @@ import { useSearchParams } from "react-router-dom";
 import { Plus, Search, FileText, Send, Pencil, Trash2, CheckCircle, ExternalLink, MoreVertical } from "lucide-react";
 import { TableSkeleton } from "@/components/ui/table-skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
-import DateRangeFilter from "@/components/shared/DateRangeFilter";
+import { PeriodFilter } from "@/components/shared/PeriodFilter";
+import { usePeriodFilter } from "@/hooks/usePeriodFilter";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -82,8 +83,7 @@ export default function Cotizaciones() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [search, setSearch] = useState("");
-  const [dateFrom, setDateFrom] = useState<Date | undefined>();
-  const [dateTo, setDateTo] = useState<Date | undefined>();
+  const { period, setPeriod } = usePeriodFilter("this_month");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
@@ -464,12 +464,8 @@ export default function Cotizaciones() {
   const fmtUsd = (n: number) => `$${n.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })} USD`;
 
   const filtered = quotes.filter((q: any) => {
-    if (dateFrom && new Date(q.created_at) < dateFrom) return false;
-    if (dateTo) {
-      const end = new Date(dateTo);
-      end.setHours(23, 59, 59, 999);
-      if (new Date(q.created_at) > end) return false;
-    }
+    const d = new Date(q.created_at);
+    if (d < period.from || d > period.to) return false;
     if (!search) return true;
     const s = search.toLowerCase();
     return (q.folio ?? "").toLowerCase().includes(s) || (q.clients?.name ?? q.client_name ?? "").toLowerCase().includes(s);
@@ -492,7 +488,7 @@ export default function Cotizaciones() {
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input placeholder="Buscar cotización..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
             </div>
-            <DateRangeFilter dateFrom={dateFrom} dateTo={dateTo} onDateFromChange={setDateFrom} onDateToChange={setDateTo} />
+            <PeriodFilter value={period} onChange={setPeriod} />
           </div>
         </CardHeader>
         <CardContent className="p-0 overflow-x-auto">
