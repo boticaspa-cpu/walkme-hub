@@ -148,7 +148,7 @@ export default function Reportes() {
 
   // Commissions by seller for selected month
   const { data: commissionData = { rows: [], count: 0 } } = useQuery({
-    queryKey: ["report-commissions", selectedMonth],
+    queryKey: ["report-commissions", periodKey],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("commissions")
@@ -178,16 +178,7 @@ export default function Reportes() {
           <h1 className="text-2xl font-bold font-display">Reportes</h1>
           <p className="text-sm text-muted-foreground">Métricas y análisis — Solo Admin</p>
         </div>
-        <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-          <SelectTrigger className="w-full sm:w-[200px] h-9 text-sm">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {months.map(m => (
-              <SelectItem key={m.value} value={m.value} className="capitalize">{m.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <PeriodFilter value={period} onChange={setPeriod} />
       </div>
 
       {/* KPI Cards */}
