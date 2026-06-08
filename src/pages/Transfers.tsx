@@ -1,4 +1,6 @@
 import { useState, useMemo } from "react";
+import { PeriodFilter } from "@/components/shared/PeriodFilter";
+import { usePeriodFilter } from "@/hooks/usePeriodFilter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -92,6 +94,7 @@ export default function Transfers() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Transfer | null>(null);
   const [form, setForm] = useState<typeof emptyForm>(emptyForm);
+  const { period, setPeriod } = usePeriodFilter("this_month");
 
   const { data: transfers = [], isLoading } = useQuery({
     queryKey: ["transfers"],
@@ -122,12 +125,16 @@ export default function Transfers() {
     const q = search.trim().toLowerCase();
     return transfers.filter((t) => {
       if (statusFilter !== "all" && t.status !== statusFilter) return false;
+      if (t.service_date) {
+        const d = new Date(t.service_date + "T00:00:00");
+        if (d < period.from || d > period.to) return false;
+      }
       if (!q) return true;
       return [t.folio, t.client_name, t.origin, t.destination, t.hotel_name, t.client_phone]
         .filter(Boolean)
         .some((v) => String(v).toLowerCase().includes(q));
     });
-  }, [transfers, search, statusFilter]);
+  }, [transfers, search, statusFilter, period.from, period.to]);
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -257,6 +264,7 @@ export default function Transfers() {
             ))}
           </SelectContent>
         </Select>
+        <PeriodFilter value={period} onChange={setPeriod} />
       </div>
 
       <div className="rounded-md border bg-card">

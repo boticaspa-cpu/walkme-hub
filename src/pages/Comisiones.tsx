@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { PeriodFilter } from "@/components/shared/PeriodFilter";
+import { usePeriodFilter } from "@/hooks/usePeriodFilter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -270,6 +272,7 @@ export default function Comisiones() {
   const [editItem, setEditItem] = useState<any>(null);
   const [payItem, setPayItem] = useState<any>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const { period, setPeriod } = usePeriodFilter("this_month");
 
   const { data: commissions = [], isLoading } = useQuery({
     queryKey: ["commissions", isAdmin, user?.id],
@@ -303,6 +306,8 @@ export default function Comisiones() {
   const filtered = commissions.filter((c: any) => {
     if (filterStatus !== "all" && (c.status ?? "pending") !== filterStatus) return false;
     if (isAdmin && filterSeller !== "all" && c.seller_id !== filterSeller) return false;
+    const d = c.created_at ? new Date(c.created_at) : null;
+    if (d && (d < period.from || d > period.to)) return false;
     return true;
   });
 
@@ -378,7 +383,9 @@ export default function Comisiones() {
             </SelectContent>
           </Select>
         )}
+        <PeriodFilter value={period} onChange={setPeriod} />
       </div>
+
 
       {/* Table */}
       <Card>

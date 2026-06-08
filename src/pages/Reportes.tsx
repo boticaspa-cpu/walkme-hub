@@ -1,43 +1,26 @@
-import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell,
 } from "recharts";
-import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";
-import { es } from "date-fns/locale";
 import { DollarSign, Wallet, Percent, Receipt, TrendingUp } from "lucide-react";
+import { PeriodFilter } from "@/components/shared/PeriodFilter";
+import { usePeriodFilter } from "@/hooks/usePeriodFilter";
 
 const COLORS = ["hsl(190, 82%, 40%)", "hsl(175, 60%, 45%)", "hsl(38, 92%, 50%)", "hsl(340, 65%, 50%)", "hsl(260, 60%, 55%)"];
 
-function getLastMonths(count: number) {
-  const now = new Date();
-  return Array.from({ length: count }, (_, i) => {
-    const d = subMonths(now, i);
-    return { value: format(d, "yyyy-MM"), label: format(d, "MMMM yyyy", { locale: es }) };
-  });
-}
-
-function useMonthRange(selectedMonth: string) {
-  return useMemo(() => {
-    const [year, month] = selectedMonth.split("-").map(Number);
-    const from = startOfMonth(new Date(year, month - 1)).toISOString();
-    const to = endOfMonth(new Date(year, month - 1)).toISOString();
-    return { from, to };
-  }, [selectedMonth]);
-}
-
 export default function Reportes() {
-  const months = useMemo(() => getLastMonths(6), []);
-  const [selectedMonth, setSelectedMonth] = useState(months[0].value);
-  const { from, to } = useMonthRange(selectedMonth);
+  const { period, setPeriod, fromISO, toISO, fromDate, toDate } = usePeriodFilter("this_month");
+  const periodKey = `${fromISO}_${toISO}`;
+  const from = fromISO;
+  const to = toISO;
+
 
   // KPI: Sales
   const { data: salesKpi } = useQuery({
-    queryKey: ["kpi-sales", selectedMonth],
+    queryKey: ["kpi-sales", periodKey],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("sales")
@@ -52,13 +35,13 @@ export default function Reportes() {
 
   // KPI: Operator payables
   const { data: payablesKpi } = useQuery({
-    queryKey: ["kpi-payables", selectedMonth],
+    queryKey: ["kpi-payables", periodKey],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("operator_payables")
         .select("equivalent_mxn, status")
-        .gte("sale_date", selectedMonth + "-01")
-        .lte("sale_date", format(endOfMonth(new Date(Number(selectedMonth.split("-")[0]), Number(selectedMonth.split("-")[1]) - 1)), "yyyy-MM-dd"));
+        .gte("sale_date", fromDate)
+        .lte("sale_date", toDate);
       if (error) throw error;
       let paid = 0, pending = 0, pendingCount = 0;
       (data ?? []).forEach(r => {
@@ -72,7 +55,7 @@ export default function Reportes() {
 
   // KPI: Commissions
   const { data: commissionsKpi } = useQuery({
-    queryKey: ["kpi-commissions", selectedMonth],
+    queryKey: ["kpi-commissions", periodKey],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("commissions")
@@ -90,14 +73,15 @@ export default function Reportes() {
     },
   });
 
-  // KPI: Expenses
+  // KPI: Expenses (by due_date for flexible periods)
   const { data: expensesKpi } = useQuery({
-    queryKey: ["kpi-expenses", selectedMonth],
+    queryKey: ["kpi-expenses", periodKey],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("expense_items")
-        .select("paid_amount_mxn, estimated_amount_mxn, status")
-        .eq("period_month", selectedMonth);
+        .select("paid_amount_mxn, estimated_amount_mxn, status, due_date")
+        .gte("due_date", fromDate)
+        .lte("due_date", toDate);
       if (error) throw error;
       let paid = 0, estimated = 0;
       (data ?? []).forEach(e => {
@@ -107,6 +91,7 @@ export default function Reportes() {
       return { paid, estimated, count: data?.length ?? 0 };
     },
   });
+
 
   // Computed: profit
   const ventas = salesKpi?.total ?? 0;
@@ -119,7 +104,7 @@ export default function Reportes() {
 
   // Sales by seller
   const { data: salesBySeller = [] } = useQuery({
-    queryKey: ["report-sales-seller", selectedMonth],
+    queryKey: ["report-sales-seller", periodKey],
     queryFn: async () => {
       const { data, error } = await supabase.from("sales").select("total_mxn, profiles:sold_by(full_name)").gte("sold_at", from).lte("sold_at", to);
       if (error) throw error;
@@ -163,7 +148,7 @@ export default function Reportes() {
 
   // Commissions by seller for selected month
   const { data: commissionData = { rows: [], count: 0 } } = useQuery({
-    queryKey: ["report-commissions", selectedMonth],
+    queryKey: ["report-commissions", periodKey],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("commissions")
@@ -193,16 +178,7 @@ export default function Reportes() {
           <h1 className="text-2xl font-bold font-display">Reportes</h1>
           <p className="text-sm text-muted-foreground">Métricas y análisis — Solo Admin</p>
         </div>
-        <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-          <SelectTrigger className="w-full sm:w-[200px] h-9 text-sm">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {months.map(m => (
-              <SelectItem key={m.value} value={m.value} className="capitalize">{m.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <PeriodFilter value={period} onChange={setPeriod} />
       </div>
 
       {/* KPI Cards */}

@@ -1,68 +1,87 @@
-
-# Sección Transfers
+# Plan: Filtro de periodo unificado para toda la app
 
 ## Objetivo
-Página dedicada para registrar transfers (traslados) con captura manual de datos. Sin tabulador de precios — el vendedor escribe el monto a mano.
+Crear un componente único de filtro de periodo (`PeriodFilter`) reutilizable, con presets rápidos, navegación mes anterior/siguiente y rango personalizado, y aplicarlo en todas las pantallas con datos por fecha.
 
-## Datos a capturar por transfer
-- Fecha del servicio
-- Hora (pickup)
-- Número de pax (adultos / niños o total)
-- Origen (texto libre, p. ej. "Aeropuerto CUN")
-- Destino (texto libre, p. ej. "Hotel Riu Cancún")
-- Tipo de vehículo (select: Sedán, SUV, Van, Sprinter, Bus, Otro)
-- Hotel + número de habitación
-- Teléfono del pax
-- Email del pax
-- Nombre del pax / cliente
-- Precio MXN (input manual)
-- Moneda (MXN/USD) + tipo de cambio si USD
-- Operador (opcional, select de `operators`)
-- Notas / vuelo / referencia
-- Estado: programado, confirmado, completado, cancelado
-- Pagado: sí/no, método de pago
+## 1. Nuevo componente `src/components/shared/PeriodFilter.tsx`
 
-## Cambios de base de datos
-Nueva tabla `public.transfers`:
-- `id`, `folio` (auto TRF-001), `created_by`, `created_at`, `updated_at`
-- `client_name`, `client_phone`, `client_email`
-- `service_date`, `pickup_time`
-- `pax_adults`, `pax_children`
-- `origin`, `destination`
-- `vehicle_type`
-- `hotel_name`, `room_number`
-- `flight_info` (notas/vuelo)
-- `operator_id` (nullable)
-- `price_mxn`, `currency`, `exchange_rate`
-- `payment_status` ('unpaid'|'paid'), `payment_method`
-- `status` ('scheduled'|'confirmed'|'completed'|'cancelled')
-- `notes`
+Componente controlado que expone un rango `{ from: Date, to: Date }` siempre normalizado (inicio/fin de día).
 
-GRANTs + RLS:
-- Sellers: ven y editan los propios (`created_by = auth.uid()`); insertan libremente
-- Admin: acceso total
-- Trigger de folio (extender `generate_folio` para prefijo `TRF`) y trigger `update_updated_at_column`
+**UI compacta (una sola fila, mobile-friendly):**
 
-## Cambios de UI
-1. **Ruta nueva** `/transfers` en `src/App.tsx` (lazy).
-2. **Sidebar** (`AppSidebar.tsx`): item "Transfers" con icono `Car` para admin y seller.
-3. **Página `src/pages/Transfers.tsx`**:
-   - Header con buscador, filtro por fecha y estado, botón "Nuevo transfer"
-   - Tabla responsive: Folio, Fecha/Hora, Pax, Origen → Destino, Vehículo, Cliente, Precio, Estado, Pagado, Acciones
-   - Mobile: oculta columnas secundarias, acciones en DropdownMenu
-4. **Dialog `TransferDialog`** (crear/editar):
-   - Form con `react-hook-form` + `zod`
-   - Layout `grid-cols-1 sm:grid-cols-2`
-   - Validaciones: campos obligatorios (fecha, origen, destino, pax, precio, cliente, teléfono), email opcional con formato, precio > 0
-5. **Detalle / voucher simple**: vista de impresión opcional reutilizando el estilo de `VoucherPrintView` (fase 2, no incluida en este plan inicial).
+```
+[ ‹ ]  [ Junio 2026 ▾ ]  [ › ]   [ Hoy ▾ ]
+```
 
-## Reglas
-- Precio 100% manual (sin cálculo automático).
-- Sin integración con cotizaciones, POS, comisiones ni cuentas por pagar en esta primera entrega — solo registro operativo.
-- Folio independiente con prefijo `TRF-`.
+- **Flechas ‹ ›**: navegan mes anterior/siguiente cuando el preset es mensual.
+- **Etiqueta central**: muestra el periodo actual con formato dinámico:
+  - Mes: `"Junio 2026"`
+  - Día: `"8 de junio de 2026"`
+  - Rango: `"Del 1 al 8 de junio de 2026"` (o con meses distintos si aplica)
+  - Click abre `Popover` con calendario de rango (`react-day-picker` mode="range").
+- **Selector de preset** (dropdown a la derecha):
+  - Hoy
+  - Esta semana (lun–dom, locale es)
+  - Este mes ← default
+  - Mes anterior
+  - Últimos 7 días
+  - Últimos 30 días
+  - Este año
+  - Personalizado (abre el calendario de rango)
 
-## Verificación
-- Crear transfer como seller → aparece en la lista, no visible para otro seller.
-- Admin ve todos.
-- Editar precio y estado funciona.
-- Mobile: tabla scrollea y dialog cabe.
+**API:**
+```ts
+type Period = { from: Date; to: Date; preset: PresetKey; label: string };
+<PeriodFilter value={period} onChange={setPeriod} />
+```
+
+**Hook helper** `usePeriodFilter(defaultPreset = "this_month")` que devuelve `{ period, setPeriod, fromISO, toISO }` para usar directo en queries.
+
+**Reglas:**
+- `from` = `startOfDay`, `to` = `endOfDay` (inclusivo).
+- Default = mes actual.
+- Flechas ‹ › solo visibles cuando `preset === "this_month" | "last_month"` (navegan mes a mes y cambian preset a "custom_month").
+- Etiqueta siempre visible — el usuario sabe qué periodo está viendo.
+
+## 2. Pantallas a actualizar
+
+Reemplazar el filtro actual o agregarlo donde no existe:
+
+| Pantalla | Acción |
+|---|---|
+| `Reportes.tsx` | Sustituir el `Select` de "últimos 6 meses" por `PeriodFilter`. Reescribir queries para usar `from`/`to` en vez de `period_month`. |
+| `Reservas.tsx` | Sustituir `DateRangeFilter` por `PeriodFilter`. |
+| `Cotizaciones.tsx` | Sustituir `DateRangeFilter` por `PeriodFilter`. |
+| `POS.tsx` | Sustituir `DateRangeFilter` por `PeriodFilter`. |
+| `Comisiones.tsx` | Agregar `PeriodFilter` filtrando por `created_at`. |
+| `CierreDiario.tsx` | Agregar `PeriodFilter` filtrando por `closing_date`. |
+| `Gastos.tsx` | Agregar `PeriodFilter` filtrando por `due_date` / `period_month`. |
+| `Transfers.tsx` | Agregar `PeriodFilter` filtrando por `service_date`. |
+| `CuentasPorPagar.tsx` | Agregar `PeriodFilter` filtrando por `sale_date`. |
+| `Dashboard.tsx` | Agregar `PeriodFilter` para KPIs (hoy por defecto). |
+
+`Gastos` seguirá usando `period_month` cuando el preset sea "este mes/mes anterior" para preservar la lógica de items mensuales; en otros casos filtra por `due_date BETWEEN from AND to`.
+
+## 3. Detalles técnicos
+
+- Dependencias ya presentes: `date-fns`, `react-day-picker`, `@/components/ui/popover`, `calendar`, `dropdown-menu`, `button`. No se instala nada nuevo.
+- Locale `es` de `date-fns` para todas las etiquetas.
+- `DateRangeFilter.tsx` queda como deprecated y se elimina al final cuando ya no haya referencias.
+- Mantener la altura `h-9` y look consistente con el resto de filtros (Tailwind tokens semánticos).
+
+## 4. UX mobile (viewport <640px)
+
+- Flechas ‹ › y etiqueta en una fila.
+- Selector de preset colapsa a icono (ícono de calendario + chevron).
+- El popover de rango abre como bottom-sheet en mobile (consistente con el patrón actual del proyecto).
+
+## 5. Entregables
+
+1. `src/components/shared/PeriodFilter.tsx` (componente + tipos).
+2. `src/hooks/usePeriodFilter.ts` (hook).
+3. Refactor de las 10 pantallas listadas.
+4. Eliminación de `DateRangeFilter.tsx` cuando esté sin uso.
+
+## Fuera de alcance
+- No cambia ninguna lógica de negocio, RLS, ni esquema de DB.
+- No toca el cálculo de KPIs ni de comisiones — solo el rango que reciben las queries.
