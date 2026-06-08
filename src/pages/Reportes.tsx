@@ -20,7 +20,7 @@ export default function Reportes() {
 
   // KPI: Sales
   const { data: salesKpi } = useQuery({
-    queryKey: ["kpi-sales", selectedMonth],
+    queryKey: ["kpi-sales", periodKey],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("sales")
@@ -35,13 +35,13 @@ export default function Reportes() {
 
   // KPI: Operator payables
   const { data: payablesKpi } = useQuery({
-    queryKey: ["kpi-payables", selectedMonth],
+    queryKey: ["kpi-payables", periodKey],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("operator_payables")
         .select("equivalent_mxn, status")
-        .gte("sale_date", selectedMonth + "-01")
-        .lte("sale_date", format(endOfMonth(new Date(Number(selectedMonth.split("-")[0]), Number(selectedMonth.split("-")[1]) - 1)), "yyyy-MM-dd"));
+        .gte("sale_date", fromDate)
+        .lte("sale_date", toDate);
       if (error) throw error;
       let paid = 0, pending = 0, pendingCount = 0;
       (data ?? []).forEach(r => {
@@ -55,7 +55,7 @@ export default function Reportes() {
 
   // KPI: Commissions
   const { data: commissionsKpi } = useQuery({
-    queryKey: ["kpi-commissions", selectedMonth],
+    queryKey: ["kpi-commissions", periodKey],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("commissions")
@@ -73,14 +73,15 @@ export default function Reportes() {
     },
   });
 
-  // KPI: Expenses
+  // KPI: Expenses (by due_date for flexible periods)
   const { data: expensesKpi } = useQuery({
-    queryKey: ["kpi-expenses", selectedMonth],
+    queryKey: ["kpi-expenses", periodKey],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("expense_items")
-        .select("paid_amount_mxn, estimated_amount_mxn, status")
-        .eq("period_month", selectedMonth);
+        .select("paid_amount_mxn, estimated_amount_mxn, status, due_date")
+        .gte("due_date", fromDate)
+        .lte("due_date", toDate);
       if (error) throw error;
       let paid = 0, estimated = 0;
       (data ?? []).forEach(e => {
@@ -90,6 +91,7 @@ export default function Reportes() {
       return { paid, estimated, count: data?.length ?? 0 };
     },
   });
+
 
   // Computed: profit
   const ventas = salesKpi?.total ?? 0;
@@ -102,7 +104,7 @@ export default function Reportes() {
 
   // Sales by seller
   const { data: salesBySeller = [] } = useQuery({
-    queryKey: ["report-sales-seller", selectedMonth],
+    queryKey: ["report-sales-seller", periodKey],
     queryFn: async () => {
       const { data, error } = await supabase.from("sales").select("total_mxn, profiles:sold_by(full_name)").gte("sold_at", from).lte("sold_at", to);
       if (error) throw error;
