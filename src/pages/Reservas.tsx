@@ -3,7 +3,8 @@ import { useSearchParams } from "react-router-dom";
 import { Plus, Search, FileText, Printer, Send, Pencil, DollarSign, CheckCircle, MoreVertical, Trash2, Tag, Calendar } from "lucide-react";
 import { TableSkeleton } from "@/components/ui/table-skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
-import DateRangeFilter from "@/components/shared/DateRangeFilter";
+import { PeriodFilter } from "@/components/shared/PeriodFilter";
+import { usePeriodFilter } from "@/hooks/usePeriodFilter";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -139,8 +140,7 @@ export default function Reservas() {
   const isAdmin = role === "admin";
 
   const [search, setSearch] = useState("");
-  const [dateFrom, setDateFrom] = useState<Date | undefined>();
-  const [dateTo, setDateTo] = useState<Date | undefined>();
+  const { period, setPeriod } = usePeriodFilter("this_month");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterPayment, setFilterPayment] = useState("all");
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -814,12 +814,8 @@ export default function Reservas() {
 
   /* ── filter ── */
   const filtered = reservations.filter((r: any) => {
-    if (dateFrom && new Date(r.reservation_date) < dateFrom) return false;
-    if (dateTo) {
-      const end = new Date(dateTo);
-      end.setHours(23, 59, 59, 999);
-      if (new Date(r.reservation_date) > end) return false;
-    }
+    const d = new Date(r.reservation_date);
+    if (d < period.from || d > period.to) return false;
     if (filterStatus !== "all" && (r.confirmation_status || "scheduled") !== filterStatus) return false;
     if (filterPayment !== "all" && (r.payment_status || "unpaid") !== filterPayment) return false;
     if (!search) return true;
@@ -856,7 +852,7 @@ export default function Reservas() {
                 onChange={(e) => setSearch(e.target.value)}
               />
             </div>
-            <DateRangeFilter dateFrom={dateFrom} dateTo={dateTo} onDateFromChange={setDateFrom} onDateToChange={setDateTo} />
+            <PeriodFilter value={period} onChange={setPeriod} />
             <Select value={filterStatus} onValueChange={setFilterStatus}>
 <SelectTrigger className="h-9 w-full sm:w-[150px]">
                 <SelectValue placeholder="Estado" />
