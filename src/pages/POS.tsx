@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { Search, Lock, ShoppingCart, DollarSign, Receipt, Clock, Coins, Wallet } from "lucide-react";
 import { TableSkeleton } from "@/components/ui/table-skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
-import DateRangeFilter from "@/components/shared/DateRangeFilter";
+import { PeriodFilter } from "@/components/shared/PeriodFilter";
+import { usePeriodFilter } from "@/hooks/usePeriodFilter";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useCashSession } from "@/hooks/useCashSession";
@@ -24,8 +25,7 @@ export default function POS() {
   const { activeSession, isSessionOpen, isLoadingSession, movements } = useCashSession();
 
   const [search, setSearch] = useState("");
-  const [dateFrom, setDateFrom] = useState<Date | undefined>();
-  const [dateTo, setDateTo] = useState<Date | undefined>();
+  const { period, setPeriod } = usePeriodFilter("this_month");
   const [checkoutReservation, setCheckoutReservation] = useState<any>(null);
 
   // Fetch pending reservations
@@ -101,12 +101,8 @@ export default function POS() {
 
   // Filter
   const filtered = pendingReservations.filter((r: any) => {
-    if (dateFrom && new Date(r.reservation_date) < dateFrom) return false;
-    if (dateTo) {
-      const end = new Date(dateTo);
-      end.setHours(23, 59, 59, 999);
-      if (new Date(r.reservation_date) > end) return false;
-    }
+    const d = new Date(r.reservation_date);
+    if (d < period.from || d > period.to) return false;
     if (!search) return true;
     const q = search.toLowerCase();
     return (
@@ -208,7 +204,7 @@ export default function POS() {
                 onChange={(e) => setSearch(e.target.value)}
               />
             </div>
-            <DateRangeFilter dateFrom={dateFrom} dateTo={dateTo} onDateFromChange={setDateFrom} onDateToChange={setDateTo} />
+            <PeriodFilter value={period} onChange={setPeriod} />
           </div>
         </CardHeader>
         <CardContent className="p-0">
