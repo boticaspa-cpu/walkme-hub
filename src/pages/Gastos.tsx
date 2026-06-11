@@ -303,8 +303,15 @@ function ConceptosTab({ qc }: { qc: ReturnType<typeof useQueryClient> }) {
    ═══════════════════════════════════════════════════════ */
 
 function MesTab({ qc, userId }: { qc: ReturnType<typeof useQueryClient>; userId?: string }) {
-  const [month, setMonth] = useState(currentMonth());
-  const months = useMemo(() => monthOptions(12), []);
+  const { period, setPeriod, fromDate, toDate } = usePeriodFilter("this_month");
+
+  // A preset is "monthly" when it spans exactly one calendar month — in that case
+  // we keep using period_month (existing column) and trigger auto-generation.
+  const isMonthlyPreset =
+    period.preset === "this_month" ||
+    period.preset === "last_month" ||
+    period.preset === "custom_month";
+  const month = format(period.from, "yyyy-MM");
 
   // concepts
   const { data: concepts = [] } = useQuery({
@@ -316,25 +323,28 @@ function MesTab({ qc, userId }: { qc: ReturnType<typeof useQueryClient>; userId?
     },
   });
 
-  // items for month
+  // items for selected period
   const { data: items = [], isLoading, refetch } = useQuery({
-    queryKey: ["expense-items", month],
+    queryKey: ["expense-items", isMonthlyPreset ? `m:${month}` : `r:${fromDate}_${toDate}`],
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from("expense_items")
-        .select("*, expense_concepts(*)")
-        .eq("period_month", month)
-        .order("due_date");
+      let q = (supabase as any).from("expense_items").select("*, expense_concepts(*)");
+      if (isMonthlyPreset) {
+        q = q.eq("period_month", month);
+      } else {
+        q = q.gte("due_date", fromDate).lte("due_date", toDate);
+      }
+      const { data, error } = await q.order("due_date");
       if (error) throw error;
       return data as ExpenseItem[];
     },
   });
 
-  // auto-generate missing monthly items
+  // auto-generate missing monthly items — only for monthly presets
   useEffect(() => {
+    if (!isMonthlyPreset) return;
     if (!concepts.length) return;
     const activeMonthlyConcepts = concepts.filter((c) => c.active && c.frequency === "monthly");
-    const existingConceptIds = new Set(items.map((i) => i.concept_id));
+    const existingConceptIds = new Set(items.filter((i) => i.period_month === month).map((i) => i.concept_id));
     const missing = activeMonthlyConcepts.filter((c) => !existingConceptIds.has(c.id));
     if (!missing.length) return;
 
@@ -355,7 +365,7 @@ function MesTab({ qc, userId }: { qc: ReturnType<typeof useQueryClient>; userId?
       const { error } = await (supabase as any).from("expense_items").insert(toInsert);
       if (!error) refetch();
     })();
-  }, [concepts, items, month, userId, refetch]);
+  }, [concepts, items, month, userId, refetch, isMonthlyPreset]);
 
   // pay dialog
   const [payDialog, setPayDialog] = useState(false);
