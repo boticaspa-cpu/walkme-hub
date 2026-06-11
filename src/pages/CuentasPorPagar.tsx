@@ -21,7 +21,10 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { CheckCircle, Plus, Pencil, Trash2 } from "lucide-react";
+import { CheckCircle, Plus, Pencil, Trash2, Clock, AlertCircle, Wallet } from "lucide-react";
+import { PeriodFilter } from "@/components/shared/PeriodFilter";
+import { usePeriodFilter } from "@/hooks/usePeriodFilter";
+import { KpiCard } from "@/components/dashboard/KpiCard";
 
 const fmt = (n: number) => n.toLocaleString("es-MX", { style: "currency", currency: "MXN" });
 const fmtDate = (s: string) => new Date(s + "T12:00:00").toLocaleDateString("es-MX");
