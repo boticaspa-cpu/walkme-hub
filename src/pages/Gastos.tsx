@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Plus, Pencil, CheckCircle, Upload, Receipt, TrendingUp, BarChart3 } from "lucide-react";
+import { Plus, Pencil, CheckCircle, Upload, Receipt, TrendingUp, BarChart3, AlertCircle, Clock, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,6 +23,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format, parse } from "date-fns";
 import { es } from "date-fns/locale";
+import { PeriodFilter } from "@/components/shared/PeriodFilter";
+import { usePeriodFilter } from "@/hooks/usePeriodFilter";
+import { KpiCard } from "@/components/dashboard/KpiCard";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend,
@@ -300,8 +303,15 @@ function ConceptosTab({ qc }: { qc: ReturnType<typeof useQueryClient> }) {
    ═══════════════════════════════════════════════════════ */
 
 function MesTab({ qc, userId }: { qc: ReturnType<typeof useQueryClient>; userId?: string }) {
-  const [month, setMonth] = useState(currentMonth());
-  const months = useMemo(() => monthOptions(12), []);
+  const { period, setPeriod, fromDate, toDate } = usePeriodFilter("this_month");
+
+  // A preset is "monthly" when it spans exactly one calendar month — in that case
+  // we keep using period_month (existing column) and trigger auto-generation.
+  const isMonthlyPreset =
+    period.preset === "this_month" ||
+    period.preset === "last_month" ||
+    period.preset === "custom_month";
+  const month = format(period.from, "yyyy-MM");
 
   // concepts
   const { data: concepts = [] } = useQuery({
@@ -313,25 +323,28 @@ function MesTab({ qc, userId }: { qc: ReturnType<typeof useQueryClient>; userId?
     },
   });
 
-  // items for month
+  // items for selected period
   const { data: items = [], isLoading, refetch } = useQuery({
-    queryKey: ["expense-items", month],
+    queryKey: ["expense-items", isMonthlyPreset ? `m:${month}` : `r:${fromDate}_${toDate}`],
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from("expense_items")
-        .select("*, expense_concepts(*)")
-        .eq("period_month", month)
-        .order("due_date");
+      let q = (supabase as any).from("expense_items").select("*, expense_concepts(*)");
+      if (isMonthlyPreset) {
+        q = q.eq("period_month", month);
+      } else {
+        q = q.gte("due_date", fromDate).lte("due_date", toDate);
+      }
+      const { data, error } = await q.order("due_date");
       if (error) throw error;
       return data as ExpenseItem[];
     },
   });
 
-  // auto-generate missing monthly items
+  // auto-generate missing monthly items — only for monthly presets
   useEffect(() => {
+    if (!isMonthlyPreset) return;
     if (!concepts.length) return;
     const activeMonthlyConcepts = concepts.filter((c) => c.active && c.frequency === "monthly");
-    const existingConceptIds = new Set(items.map((i) => i.concept_id));
+    const existingConceptIds = new Set(items.filter((i) => i.period_month === month).map((i) => i.concept_id));
     const missing = activeMonthlyConcepts.filter((c) => !existingConceptIds.has(c.id));
     if (!missing.length) return;
 
@@ -352,7 +365,7 @@ function MesTab({ qc, userId }: { qc: ReturnType<typeof useQueryClient>; userId?
       const { error } = await (supabase as any).from("expense_items").insert(toInsert);
       if (!error) refetch();
     })();
-  }, [concepts, items, month, userId, refetch]);
+  }, [concepts, items, month, userId, refetch, isMonthlyPreset]);
 
   // pay dialog
   const [payDialog, setPayDialog] = useState(false);
@@ -403,7 +416,7 @@ function MesTab({ qc, userId }: { qc: ReturnType<typeof useQueryClient>; userId?
       const { error } = await (supabase as any).from("expense_items").update(update).eq("id", payingItem.id);
       if (error) throw error;
       toast.success("Gasto marcado como pagado");
-      qc.invalidateQueries({ queryKey: ["expense-items", month] });
+      qc.invalidateQueries({ queryKey: ["expense-items"] });
       setPayDialog(false);
     } catch (e: any) { toast.error(e.message ?? "Error"); }
     finally { setPayingSaving(false); }
@@ -426,25 +439,34 @@ function MesTab({ qc, userId }: { qc: ReturnType<typeof useQueryClient>; userId?
       .update({ estimated_amount_mxn: parseFloat(editEstValue) || 0 }).eq("id", editEstItem.id);
     if (error) { toast.error(error.message); return; }
     toast.success("Estimado actualizado");
-    qc.invalidateQueries({ queryKey: ["expense-items", month] });
+    qc.invalidateQueries({ queryKey: ["expense-items"] });
     setEditEstDialog(false);
   };
 
+  const todayStr = format(new Date(), "yyyy-MM-dd");
   const totalEstimated = items.reduce((s, i) => s + Number(i.estimated_amount_mxn), 0);
   const totalPaid = items.filter((i) => i.status === "paid").reduce((s, i) => s + Number(i.paid_amount_mxn ?? 0), 0);
+  const pendingItems = items.filter((i) => i.status !== "paid");
+  const totalPending = pendingItems.reduce((s, i) => s + Number(i.estimated_amount_mxn), 0);
+  const overdueItems = pendingItems.filter((i) => i.due_date && i.due_date < todayStr);
+  const totalOverdue = overdueItems.reduce((s, i) => s + Number(i.estimated_amount_mxn), 0);
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <Select value={month} onValueChange={setMonth}>
-          <SelectTrigger className="w-full sm:w-52"><SelectValue /></SelectTrigger>
-          <SelectContent>{months.map((m) => <SelectItem key={m} value={m}>{monthLabel(m)}</SelectItem>)}</SelectContent>
-        </Select>
-        <div className="flex gap-4 text-sm">
-          <span className="text-muted-foreground">Estimado: <strong>{fmtMXN(totalEstimated)}</strong></span>
-          <span className="text-muted-foreground">Pagado: <strong className="text-green-600">{fmtMXN(totalPaid)}</strong></span>
-        </div>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <PeriodFilter value={period} onChange={setPeriod} align="start" />
+        <p className="text-xs text-muted-foreground">
+          {isMonthlyPreset ? "Filtrando por mes contable" : "Filtrando por fecha de vencimiento"}
+        </p>
       </div>
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <KpiCard title="Estimado" value={fmtMXN(totalEstimated)} subtitle={`${items.length} concepto${items.length !== 1 ? "s" : ""}`} icon={Wallet} />
+        <KpiCard title="Pagado" value={fmtMXN(totalPaid)} subtitle={`${items.filter((i) => i.status === "paid").length} pago${items.filter((i) => i.status === "paid").length !== 1 ? "s" : ""}`} icon={CheckCircle} />
+        <KpiCard title="Pendiente" value={fmtMXN(totalPending)} subtitle={`${pendingItems.length} por pagar`} icon={Clock} />
+        <KpiCard title="Vencido" value={fmtMXN(totalOverdue)} subtitle={`${overdueItems.length} atrasado${overdueItems.length !== 1 ? "s" : ""}`} icon={AlertCircle} />
+      </div>
+
 
       {isLoading ? (
         <p className="text-center text-muted-foreground py-8">Cargando…</p>

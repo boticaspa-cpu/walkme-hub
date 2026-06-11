@@ -21,7 +21,10 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { CheckCircle, Plus, Pencil, Trash2 } from "lucide-react";
+import { CheckCircle, Plus, Pencil, Trash2, Clock, AlertCircle, Wallet } from "lucide-react";
+import { PeriodFilter } from "@/components/shared/PeriodFilter";
+import { usePeriodFilter } from "@/hooks/usePeriodFilter";
+import { KpiCard } from "@/components/dashboard/KpiCard";
 
 const fmt = (n: number) => n.toLocaleString("es-MX", { style: "currency", currency: "MXN" });
 const fmtDate = (s: string) => new Date(s + "T12:00:00").toLocaleDateString("es-MX");
@@ -206,15 +209,36 @@ export default function CuentasPorPagar() {
     return <div className="p-8 text-muted-foreground">Acceso restringido a administradores.</div>;
   }
 
-  const filtered = payables.filter((p) => {
+  const { period, setPeriod, fromDate, toDate } = usePeriodFilter("this_month");
+  const todayStr = today;
+
+  const inPeriod = (p: Payable) => {
+    if (!p.sale_date) return false;
+    return p.sale_date >= fromDate && p.sale_date <= toDate;
+  };
+
+  const periodPayables = payables.filter(inPeriod);
+
+  const filtered = periodPayables.filter((p) => {
     if (filterStatus !== "all" && p.status !== filterStatus) return false;
     if (filterOperator !== "all" && p.operator_id !== filterOperator) return false;
     return true;
   });
 
-  const totalPending = payables
+  const totalPending = periodPayables
     .filter((p) => p.status === "pending")
-    .reduce((a, p) => a + Number(p.equivalent_mxn ?? 0), 0);
+    .reduce((a, p) => a + Number(p.equivalent_mxn ?? p.amount_value ?? 0), 0);
+  const totalPaid = periodPayables
+    .filter((p) => p.status === "paid")
+    .reduce((a, p) => a + Number(p.equivalent_mxn ?? p.amount_value ?? 0), 0);
+  const overduePayables = periodPayables.filter((p) => {
+    if (p.status === "paid") return false;
+    // due_date computed as sale_date + 15 days
+    const due = new Date(p.sale_date + "T12:00:00");
+    due.setDate(due.getDate() + 15);
+    return due.toISOString().slice(0, 10) < todayStr;
+  });
+  const totalOverdue = overduePayables.reduce((a, p) => a + Number(p.equivalent_mxn ?? p.amount_value ?? 0), 0);
 
   return (
     <div className="space-y-4">
@@ -223,15 +247,22 @@ export default function CuentasPorPagar() {
           <h1 className="text-2xl font-bold font-display">Cuentas por Pagar</h1>
           <p className="text-sm text-muted-foreground">Pagos pendientes a operadores</p>
         </div>
-        <div className="flex items-center gap-3">
-          <Card className="px-4 py-2">
-            <p className="text-xs text-muted-foreground">Total pendiente</p>
-            <p className="text-xl font-bold text-primary">{fmt(totalPending)}</p>
-          </Card>
-          <Button onClick={openNewDialog}>
-            <Plus className="h-4 w-4 mr-1" /> Nuevo Pago
-          </Button>
-        </div>
+        <Button onClick={openNewDialog}>
+          <Plus className="h-4 w-4 mr-1" /> Nuevo Pago
+        </Button>
+      </div>
+
+      {/* Period filter */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <PeriodFilter value={period} onChange={setPeriod} align="start" />
+        <p className="text-xs text-muted-foreground">Filtrando por fecha del servicio</p>
+      </div>
+
+      {/* KPIs */}
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+        <KpiCard title="Pendiente" value={fmt(totalPending)} subtitle={`${periodPayables.filter((p) => p.status === "pending").length} por pagar`} icon={Clock} />
+        <KpiCard title="Pagado" value={fmt(totalPaid)} subtitle={`${periodPayables.filter((p) => p.status === "paid").length} pago${periodPayables.filter((p) => p.status === "paid").length !== 1 ? "s" : ""}`} icon={CheckCircle} />
+        <KpiCard title="Vencido" value={fmt(totalOverdue)} subtitle={`${overduePayables.length} atrasado${overduePayables.length !== 1 ? "s" : ""}`} icon={AlertCircle} />
       </div>
 
       {/* Filters */}
@@ -254,6 +285,7 @@ export default function CuentasPorPagar() {
           </SelectContent>
         </Select>
       </div>
+
 
       <Card>
         <CardContent className="p-0">

@@ -1,87 +1,72 @@
-# Plan: Filtro de periodo unificado para toda la app
+# Auditoría — Filtros por periodo
 
-## Objetivo
-Crear un componente único de filtro de periodo (`PeriodFilter`) reutilizable, con presets rápidos, navegación mes anterior/siguiente y rango personalizado, y aplicarlo en todas las pantallas con datos por fecha.
+Solo diagnóstico. No se modifica nada hasta tu aprobación.
 
-## 1. Nuevo componente `src/components/shared/PeriodFilter.tsx`
+## 1. Componente actual
 
-Componente controlado que expone un rango `{ from: Date, to: Date }` siempre normalizado (inicio/fin de día).
+- `src/components/shared/PeriodFilter.tsx` — bien construido: presets (Hoy, Semana, Mes, Mes anterior, Últimos 7/30, Año, Personalizado), navegación `‹ ›` entre meses, popover de rango. Default = `this_month`. Reglas `startOfDay` / `endOfDay` correctas.
+- `src/hooks/usePeriodFilter.ts` — expone `period`, `setPeriod`, `fromISO`, `toISO`, `fromDate`, `toDate`. Reutilizable.
+- `src/components/shared/DateRangeFilter.tsx` — legacy, ya no se usa en ninguna pantalla. Candidato a eliminar.
 
-**UI compacta (una sola fila, mobile-friendly):**
+## 2. Estado por pantalla
 
-```
-[ ‹ ]  [ Junio 2026 ▾ ]  [ › ]   [ Hoy ▾ ]
-```
+| Pantalla | ¿Usa PeriodFilter? | Campo de fecha | Estado |
+|---|---|---|---|
+| Reservas | Sí | `reservation_date` (cliente) | Filtra en memoria, no en query — OK funcional, pero pierde reservas fuera de página si crecen los datos |
+| POS | Sí | `reservation_date` (cliente) | Filtra reservas pendientes en memoria. **Ambigüedad**: no se aclara al usuario si es fecha del tour |
+| Cierre Diario | No | `sold_at`, `paid_at`, `created_at`, `closing_date` | Tiene su propio selector Día/Semana/Mes (tabs). **Correcto que sea distinto** (operación del día). Pero mezcla criterios (commissions/expenses fijos a "hoy", sales por periodo) |
+| Reportes | Sí | sales `sold_at`, payables `sale_date`, commissions `created_at`, expenses `due_date` | OK, filtro real en query |
+| Gastos | **No** (usa su propio `monthOptions` + `period_month`) | `period_month` (texto YYYY-MM) | Inconsistente con el resto. Es la fuente principal del "se ve raro" |
+| Cuentas por Pagar | **No** | ninguno — muestra todo | Falta totalmente. Origen de "se ve raro" |
+| Comisiones | Sí | `created_at` (filtro en memoria) + cálculos KPI usan `monthStart/monthEnd` hardcoded | KPIs no respetan el `PeriodFilter` seleccionado |
+| Dashboard | **No** (hardcoded "hoy" + "mes actual") | varios | Intencional (vista operativa). Solo agregar etiqueta del mes |
 
-- **Flechas ‹ ›**: navegan mes anterior/siguiente cuando el preset es mensual.
-- **Etiqueta central**: muestra el periodo actual con formato dinámico:
-  - Mes: `"Junio 2026"`
-  - Día: `"8 de junio de 2026"`
-  - Rango: `"Del 1 al 8 de junio de 2026"` (o con meses distintos si aplica)
-  - Click abre `Popover` con calendario de rango (`react-day-picker` mode="range").
-- **Selector de preset** (dropdown a la derecha):
-  - Hoy
-  - Esta semana (lun–dom, locale es)
-  - Este mes ← default
-  - Mes anterior
-  - Últimos 7 días
-  - Últimos 30 días
-  - Este año
-  - Personalizado (abre el calendario de rango)
+## 3. Causas de "datos raros"
 
-**API:**
-```ts
-type Period = { from: Date; to: Date; preset: PresetKey; label: string };
-<PeriodFilter value={period} onChange={setPeriod} />
-```
+1. **Gastos** usa `period_month` (string `YYYY-MM`) y un dropdown propio → no se sincroniza con el resto y "Junio 2026" en Reportes no muestra los mismos números que Gastos.
+2. **Cuentas por Pagar** no filtra por periodo → muestra histórico completo, parece "inflado".
+3. **Comisiones**: las tarjetas KPI ("pagado este mes", etc.) están calculadas con `monthStart/monthEnd` fijos al mes calendario actual, ignoran el `PeriodFilter` del usuario.
+4. **Reservas / POS** filtran en memoria sobre los registros ya traídos (sin paginar). Si crece la BD verán datos truncados.
+5. **POS** no indica al usuario si filtra por fecha del tour o de pago → confusión.
+6. **Cierre Diario** mezcla rangos: sales por periodo Día/Semana/Mes, pero commissions y expenses siempre "hoy". Inconsistente dentro de la misma pantalla.
 
-**Hook helper** `usePeriodFilter(defaultPreset = "this_month")` que devuelve `{ period, setPeriod, fromISO, toISO }` para usar directo en queries.
+## 4. Cambios recomendados (en fases, sin tocar BD)
 
-**Reglas:**
-- `from` = `startOfDay`, `to` = `endOfDay` (inclusivo).
-- Default = mes actual.
-- Flechas ‹ › solo visibles cuando `preset === "this_month" | "last_month"` (navegan mes a mes y cambian preset a "custom_month").
-- Etiqueta siempre visible — el usuario sabe qué periodo está viendo.
+### Fase A — Unificación crítica (alto impacto, bajo riesgo)
+- **Gastos** (`src/pages/Gastos.tsx`): reemplazar `monthOptions`/`period_month` dropdown por `PeriodFilter`. Para presets mensuales seguir filtrando por `period_month` (derivar del `period.from`). Para rangos personalizados filtrar por `due_date BETWEEN from AND to`. Exponer KPIs claros: Estimado, Pagado, Pendiente, Vencido del periodo.
+- **Cuentas por Pagar** (`src/pages/CuentasPorPagar.tsx`): agregar `PeriodFilter` filtrando por `due_date` (o `service_date`). KPIs: Pendiente, Pagado, Vencido. Mostrar etiqueta del mes actual.
 
-## 2. Pantallas a actualizar
+### Fase B — Coherencia de KPIs
+- **Comisiones**: recalcular tarjetas KPI usando `period.from/to` en lugar de `monthStart/monthEnd` hardcoded.
+- **POS**: añadir leyenda "Filtrando por fecha del tour" debajo del filtro para quitar ambigüedad.
 
-Reemplazar el filtro actual o agregarlo donde no existe:
+### Fase C — Robustez (opcional)
+- **Reservas / POS**: mover el filtro de memoria a query Supabase (`.gte("reservation_date", fromDate).lte("reservation_date", toDate)`) para escalar.
+- **Cierre Diario**: dejar como está (operación diaria), pero hacer que las queries de commissions y expenses de la tarjeta superior usen también el rango Día/Semana/Mes del tab activo en lugar de "hoy" fijo.
+- **Dashboard**: agregar etiqueta visible del mes actual (sin filtro interactivo) para alinear lenguaje.
+- Eliminar `src/components/shared/DateRangeFilter.tsx` (huérfano).
 
-| Pantalla | Acción |
-|---|---|
-| `Reportes.tsx` | Sustituir el `Select` de "últimos 6 meses" por `PeriodFilter`. Reescribir queries para usar `from`/`to` en vez de `period_month`. |
-| `Reservas.tsx` | Sustituir `DateRangeFilter` por `PeriodFilter`. |
-| `Cotizaciones.tsx` | Sustituir `DateRangeFilter` por `PeriodFilter`. |
-| `POS.tsx` | Sustituir `DateRangeFilter` por `PeriodFilter`. |
-| `Comisiones.tsx` | Agregar `PeriodFilter` filtrando por `created_at`. |
-| `CierreDiario.tsx` | Agregar `PeriodFilter` filtrando por `closing_date`. |
-| `Gastos.tsx` | Agregar `PeriodFilter` filtrando por `due_date` / `period_month`. |
-| `Transfers.tsx` | Agregar `PeriodFilter` filtrando por `service_date`. |
-| `CuentasPorPagar.tsx` | Agregar `PeriodFilter` filtrando por `sale_date`. |
-| `Dashboard.tsx` | Agregar `PeriodFilter` para KPIs (hoy por defecto). |
+## 5. Archivos que se tocarían
 
-`Gastos` seguirá usando `period_month` cuando el preset sea "este mes/mes anterior" para preservar la lógica de items mensuales; en otros casos filtra por `due_date BETWEEN from AND to`.
+- `src/pages/Gastos.tsx` (Fase A)
+- `src/pages/CuentasPorPagar.tsx` (Fase A)
+- `src/pages/Comisiones.tsx` (Fase B)
+- `src/pages/POS.tsx` (Fase B — solo etiqueta)
+- `src/pages/Reservas.tsx` (Fase C)
+- `src/pages/POS.tsx` (Fase C)
+- `src/pages/CierreDiario.tsx` (Fase C)
+- `src/pages/Dashboard.tsx` (Fase C, opcional)
+- `src/components/shared/DateRangeFilter.tsx` (eliminar, Fase C)
 
-## 3. Detalles técnicos
+## 6. Riesgos / lo que NO se tocaría
 
-- Dependencias ya presentes: `date-fns`, `react-day-picker`, `@/components/ui/popover`, `calendar`, `dropdown-menu`, `button`. No se instala nada nuevo.
-- Locale `es` de `date-fns` para todas las etiquetas.
-- `DateRangeFilter.tsx` queda como deprecated y se elimina al final cuando ya no haya referencias.
-- Mantener la altura `h-9` y look consistente con el resto de filtros (Tailwind tokens semánticos).
+- **No se modifica BD**: Gastos seguirá usando la columna `period_month` para presets mensuales. Solo cambia el control visual y la lógica de rangos personalizados.
+- **No se borran datos** en ningún caso.
+- **Cierre Diario** mantiene su lógica diaria/semanal/mensual propia (no se reemplaza por PeriodFilter completo), porque es operación de día.
+- **Dashboard** no recibe filtro interactivo para no romper la "vista de hoy".
 
-## 4. UX mobile (viewport <640px)
+## 7. Recomendación
 
-- Flechas ‹ › y etiqueta en una fila.
-- Selector de preset colapsa a icono (ícono de calendario + chevron).
-- El popover de rango abre como bottom-sheet en mobile (consistente con el patrón actual del proyecto).
+Empezar por **Fase A** (Gastos + Cuentas por Pagar), que es la causa real de que "los datos se vean raros entre pantallas". Validar resultados y luego avanzar a Fase B.
 
-## 5. Entregables
-
-1. `src/components/shared/PeriodFilter.tsx` (componente + tipos).
-2. `src/hooks/usePeriodFilter.ts` (hook).
-3. Refactor de las 10 pantallas listadas.
-4. Eliminación de `DateRangeFilter.tsx` cuando esté sin uso.
-
-## Fuera de alcance
-- No cambia ninguna lógica de negocio, RLS, ni esquema de DB.
-- No toca el cálculo de KPIs ni de comisiones — solo el rango que reciben las queries.
+¿Apruebas Fase A para implementar, o quieres ajustar el alcance antes?
