@@ -416,7 +416,7 @@ function MesTab({ qc, userId }: { qc: ReturnType<typeof useQueryClient>; userId?
       const { error } = await (supabase as any).from("expense_items").update(update).eq("id", payingItem.id);
       if (error) throw error;
       toast.success("Gasto marcado como pagado");
-      qc.invalidateQueries({ queryKey: ["expense-items", month] });
+      qc.invalidateQueries({ queryKey: ["expense-items"] });
       setPayDialog(false);
     } catch (e: any) { toast.error(e.message ?? "Error"); }
     finally { setPayingSaving(false); }
@@ -439,7 +439,7 @@ function MesTab({ qc, userId }: { qc: ReturnType<typeof useQueryClient>; userId?
       .update({ estimated_amount_mxn: parseFloat(editEstValue) || 0 }).eq("id", editEstItem.id);
     if (error) { toast.error(error.message); return; }
     toast.success("Estimado actualizado");
-    qc.invalidateQueries({ queryKey: ["expense-items", month] });
+    qc.invalidateQueries({ queryKey: ["expense-items"] });
     setEditEstDialog(false);
   };
 
