@@ -443,21 +443,30 @@ function MesTab({ qc, userId }: { qc: ReturnType<typeof useQueryClient>; userId?
     setEditEstDialog(false);
   };
 
+  const todayStr = format(new Date(), "yyyy-MM-dd");
   const totalEstimated = items.reduce((s, i) => s + Number(i.estimated_amount_mxn), 0);
   const totalPaid = items.filter((i) => i.status === "paid").reduce((s, i) => s + Number(i.paid_amount_mxn ?? 0), 0);
+  const pendingItems = items.filter((i) => i.status !== "paid");
+  const totalPending = pendingItems.reduce((s, i) => s + Number(i.estimated_amount_mxn), 0);
+  const overdueItems = pendingItems.filter((i) => i.due_date && i.due_date < todayStr);
+  const totalOverdue = overdueItems.reduce((s, i) => s + Number(i.estimated_amount_mxn), 0);
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <Select value={month} onValueChange={setMonth}>
-          <SelectTrigger className="w-full sm:w-52"><SelectValue /></SelectTrigger>
-          <SelectContent>{months.map((m) => <SelectItem key={m} value={m}>{monthLabel(m)}</SelectItem>)}</SelectContent>
-        </Select>
-        <div className="flex gap-4 text-sm">
-          <span className="text-muted-foreground">Estimado: <strong>{fmtMXN(totalEstimated)}</strong></span>
-          <span className="text-muted-foreground">Pagado: <strong className="text-green-600">{fmtMXN(totalPaid)}</strong></span>
-        </div>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <PeriodFilter value={period} onChange={setPeriod} align="start" />
+        <p className="text-xs text-muted-foreground">
+          {isMonthlyPreset ? "Filtrando por mes contable" : "Filtrando por fecha de vencimiento"}
+        </p>
       </div>
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <KpiCard title="Estimado" value={fmtMXN(totalEstimated)} subtitle={`${items.length} concepto${items.length !== 1 ? "s" : ""}`} icon={Wallet} />
+        <KpiCard title="Pagado" value={fmtMXN(totalPaid)} subtitle={`${items.filter((i) => i.status === "paid").length} pago${items.filter((i) => i.status === "paid").length !== 1 ? "s" : ""}`} icon={CheckCircle} />
+        <KpiCard title="Pendiente" value={fmtMXN(totalPending)} subtitle={`${pendingItems.length} por pagar`} icon={Clock} />
+        <KpiCard title="Vencido" value={fmtMXN(totalOverdue)} subtitle={`${overdueItems.length} atrasado${overdueItems.length !== 1 ? "s" : ""}`} icon={AlertCircle} />
+      </div>
+
 
       {isLoading ? (
         <p className="text-center text-muted-foreground py-8">Cargando…</p>
