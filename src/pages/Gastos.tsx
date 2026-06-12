@@ -427,7 +427,7 @@ function MesTab({ qc, userId }: { qc: ReturnType<typeof useQueryClient>; userId?
             type: "out_cash",
             amount_mxn: parseFloat(payForm.paid_amount_mxn) || 0,
             reference: `Gasto ${payingItem.id.slice(0, 8)}`,
-            created_by: user?.id,
+            created_by: userId,
           });
           qc.invalidateQueries({ queryKey: ["cash-movements"] });
         }
