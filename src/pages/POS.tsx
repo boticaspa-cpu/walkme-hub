@@ -180,7 +180,7 @@ export default function POS() {
             <KpiCard
               title="Mi Comisión"
               value={fmt(myCommission)}
-              subtitle={`${commissionPct}% de ${fmt(mySalesTotal)}`}
+              subtitle={`50% de la ganancia · ${fmt(mySalesTotal)} vendido`}
               icon={Coins}
             />
             <KpiCard
