@@ -415,6 +415,24 @@ function MesTab({ qc, userId }: { qc: ReturnType<typeof useQueryClient>; userId?
 
       const { error } = await (supabase as any).from("expense_items").update(update).eq("id", payingItem.id);
       if (error) throw error;
+
+      // Cuadrar caja: si se paga en efectivo y hay caja abierta, registrar salida
+      const method = payForm.payment_method;
+      if (method === "cash" || method === "cash_mxn") {
+        const { data: openSession } = await (supabase as any)
+          .from("cash_sessions").select("id").eq("status", "open").maybeSingle();
+        if (openSession?.id) {
+          await (supabase as any).from("cash_movements").insert({
+            session_id: openSession.id,
+            type: "out_cash",
+            amount_mxn: parseFloat(payForm.paid_amount_mxn) || 0,
+            reference: `Gasto ${payingItem.id.slice(0, 8)}`,
+            created_by: user?.id,
+          });
+          qc.invalidateQueries({ queryKey: ["cash-movements"] });
+        }
+      }
+
       toast.success("Gasto marcado como pagado");
       qc.invalidateQueries({ queryKey: ["expense-items"] });
       setPayDialog(false);
