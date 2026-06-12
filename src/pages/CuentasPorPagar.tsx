@@ -53,7 +53,7 @@ type Payable = {
 };
 
 export default function CuentasPorPagar() {
-  const { role } = useAuth();
+  const { role, user } = useAuth();
   const qc = useQueryClient();
   const today = new Date().toISOString().split("T")[0];
   const isAdmin = role === "admin";
@@ -107,6 +107,7 @@ export default function CuentasPorPagar() {
   const markPaidMutation = useMutation({
     mutationFn: async (item: Payable) => {
       const parsedAmount = parseFloat(payForm.payment_amount);
+      const finalAmount = isNaN(parsedAmount) ? item.amount_value : parsedAmount;
       const noteParts = [
         payForm.payment_method ? `Método: ${payForm.payment_method}` : "",
         payForm.payment_reference ? `Ref: ${payForm.payment_reference}` : "",
@@ -115,7 +116,7 @@ export default function CuentasPorPagar() {
       const { error } = await (supabase as any)
         .from("operator_payables")
         .update({
-          amount_value: isNaN(parsedAmount) ? item.amount_value : parsedAmount,
+          amount_value: finalAmount,
           status: "paid",
           paid_at: new Date().toISOString(),
           payment_method: payForm.payment_method || null,
@@ -123,9 +124,35 @@ export default function CuentasPorPagar() {
         })
         .eq("id", item.id);
       if (error) throw error;
+
+      // Cuadrar caja: si el pago es en efectivo y hay caja abierta, registrar salida
+      const method = payForm.payment_method;
+      if (method === "cash_mxn" || method === "cash_usd" || method === "cash") {
+        const { data: openSession } = await (supabase as any)
+          .from("cash_sessions")
+          .select("id")
+          .eq("status", "open")
+          .maybeSingle();
+        if (openSession?.id) {
+          // Si la moneda original es USD y se paga cash_usd, convertir a MXN equivalente
+          const isUsdPay = method === "cash_usd" || item.amount_currency === "USD";
+          const fxRate = item.exchange_rate_used || 17.5;
+          const amountMxn = isUsdPay ? finalAmount * fxRate : finalAmount;
+          await (supabase as any).from("cash_movements").insert({
+            session_id: openSession.id,
+            type: "out_cash",
+            amount_mxn: amountMxn,
+            amount_fx: isUsdPay ? finalAmount : null,
+            currency_fx: isUsdPay ? "USD" : null,
+            reference: `Pago operador ${item.id.slice(0, 8)}`,
+            created_by: user?.id,
+          });
+        }
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["operator-payables"] });
+      qc.invalidateQueries({ queryKey: ["cash-movements"] });
       toast.success("Marcado como pagado");
       setPayDialogItem(null);
       setPayForm({ payment_method: "", payment_reference: "", payment_date: today, payment_amount: "" });

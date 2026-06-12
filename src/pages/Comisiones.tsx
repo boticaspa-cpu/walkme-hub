@@ -97,6 +97,24 @@ function PayCommissionDialog({ commission, open, onOpenChange, onPaid }: {
         })
         .eq("id", commission.id);
       if (error) throw error;
+
+      // Si se paga en efectivo y hay caja abierta, descontar de caja
+      if (method === "cash" || method === "cash_mxn") {
+        const { data: openSession } = await (supabase as any)
+          .from("cash_sessions")
+          .select("id")
+          .eq("status", "open")
+          .maybeSingle();
+        if (openSession?.id) {
+          await (supabase as any).from("cash_movements").insert({
+            session_id: openSession.id,
+            type: "out_cash",
+            amount_mxn: amount,
+            reference: `Comisión ${receiptNumber} - ${commission?.seller?.full_name ?? ""}`.trim(),
+            created_by: user?.id,
+          });
+        }
+      }
     },
     onSuccess: () => { toast.success("Comisión pagada correctamente"); onPaid(); onOpenChange(false); },
     onError: (e: Error) => toast.error(e.message),
