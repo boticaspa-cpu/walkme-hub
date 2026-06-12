@@ -1,72 +1,81 @@
-# Auditoría — Filtros por periodo
 
-Solo diagnóstico. No se modifica nada hasta tu aprobación.
+# Plan: Corrección del flujo de dinero
 
-## 1. Componente actual
+## Reglas de negocio confirmadas
 
-- `src/components/shared/PeriodFilter.tsx` — bien construido: presets (Hoy, Semana, Mes, Mes anterior, Últimos 7/30, Año, Personalizado), navegación `‹ ›` entre meses, popover de rango. Default = `this_month`. Reglas `startOfDay` / `endOfDay` correctas.
-- `src/hooks/usePeriodFilter.ts` — expone `period`, `setPeriod`, `fromISO`, `toISO`, `fromDate`, `toDate`. Reutilizable.
-- `src/components/shared/DateRangeFilter.tsx` — legacy, ya no se usa en ninguna pantalla. Candidato a eliminar.
+```
+reporte   = costo_operador          (lo que se le paga al operador)
+ganancia  = precio_venta − reporte − card_fee (si aplica)
+comisión_vendedor = ganancia × 50%   (solo sellers; admins NO generan)
+walkme            = ganancia × 50%
+operator_payable  = reporte          (siempre, pague antes o después del tour)
+```
 
-## 2. Estado por pantalla
+Admins (Maria, Gina) nunca generan comisión: el 100% de la ganancia queda para Walkme.
 
-| Pantalla | ¿Usa PeriodFilter? | Campo de fecha | Estado |
-|---|---|---|---|
-| Reservas | Sí | `reservation_date` (cliente) | Filtra en memoria, no en query — OK funcional, pero pierde reservas fuera de página si crecen los datos |
-| POS | Sí | `reservation_date` (cliente) | Filtra reservas pendientes en memoria. **Ambigüedad**: no se aclara al usuario si es fecha del tour |
-| Cierre Diario | No | `sold_at`, `paid_at`, `created_at`, `closing_date` | Tiene su propio selector Día/Semana/Mes (tabs). **Correcto que sea distinto** (operación del día). Pero mezcla criterios (commissions/expenses fijos a "hoy", sales por periodo) |
-| Reportes | Sí | sales `sold_at`, payables `sale_date`, commissions `created_at`, expenses `due_date` | OK, filtro real en query |
-| Gastos | **No** (usa su propio `monthOptions` + `period_month`) | `period_month` (texto YYYY-MM) | Inconsistente con el resto. Es la fuente principal del "se ve raro" |
-| Cuentas por Pagar | **No** | ninguno — muestra todo | Falta totalmente. Origen de "se ve raro" |
-| Comisiones | Sí | `created_at` (filtro en memoria) + cálculos KPI usan `monthStart/monthEnd` hardcoded | KPIs no respetan el `PeriodFilter` seleccionado |
-| Dashboard | **No** (hardcoded "hoy" + "mes actual") | varios | Intencional (vista operativa). Solo agregar etiqueta del mes |
+---
 
-## 3. Causas de "datos raros"
+## Errores actuales que esto resuelve
 
-1. **Gastos** usa `period_month` (string `YYYY-MM`) y un dropdown propio → no se sincroniza con el resto y "Junio 2026" en Reportes no muestra los mismos números que Gastos.
-2. **Cuentas por Pagar** no filtra por periodo → muestra histórico completo, parece "inflado".
-3. **Comisiones**: las tarjetas KPI ("pagado este mes", etc.) están calculadas con `monthStart/monthEnd` fijos al mes calendario actual, ignoran el `PeriodFilter` del usuario.
-4. **Reservas / POS** filtran en memoria sobre los registros ya traídos (sin paginar). Si crece la BD verán datos truncados.
-5. **POS** no indica al usuario si filtra por fecha del tour o de pago → confusión.
-6. **Cierre Diario** mezcla rangos: sales por periodo Día/Semana/Mes, pero commissions y expenses siempre "hoy". Inconsistente dentro de la misma pantalla.
+1. **Error rojo "operator_payables_payment_method_check"** al pagar a operador — la UI manda `cash_usd / cash_mxn / transfer` y el CHECK de la BD solo acepta `transfer / cash / credit`.
+2. **Comisiones y cuentas por pagar duplicadas** — el trigger `create_commission_and_payable_on_confirm` crea registros al confirmar la reserva, y el checkout vuelve a crearlos al cobrar.
+3. **Cálculo de comisión inconsistente** — el trigger usa 30% del total, el checkout usa `commission_rate` con 10% por defecto, y el KPI del POS lee `commission_percentage` con 30%. Tres fórmulas distintas para lo mismo.
+4. **Admins generando comisión** — hoy cualquier usuario que cobre genera comisión, incluyendo admins.
+5. **Caja descuadrada** — pagar a operador / comisión / gasto en efectivo no descuenta de `cash_movements`.
 
-## 4. Cambios recomendados (en fases, sin tocar BD)
+---
 
-### Fase A — Unificación crítica (alto impacto, bajo riesgo)
-- **Gastos** (`src/pages/Gastos.tsx`): reemplazar `monthOptions`/`period_month` dropdown por `PeriodFilter`. Para presets mensuales seguir filtrando por `period_month` (derivar del `period.from`). Para rangos personalizados filtrar por `due_date BETWEEN from AND to`. Exponer KPIs claros: Estimado, Pagado, Pendiente, Vencido del periodo.
-- **Cuentas por Pagar** (`src/pages/CuentasPorPagar.tsx`): agregar `PeriodFilter` filtrando por `due_date` (o `service_date`). KPIs: Pendiente, Pagado, Vencido. Mostrar etiqueta del mes actual.
+## Fases
 
-### Fase B — Coherencia de KPIs
-- **Comisiones**: recalcular tarjetas KPI usando `period.from/to` en lugar de `monthStart/monthEnd` hardcoded.
-- **POS**: añadir leyenda "Filtrando por fecha del tour" debajo del filtro para quitar ambigüedad.
+### Fase 1 — Migración (parar duplicación y desbloquear)
+- DROP trigger `create_commission_and_payable_on_confirm`. El checkout queda como única fuente.
+- Ampliar CHECK de `operator_payables.payment_method` a `('transfer','cash_mxn','cash_usd','card','credit')`.
+- No se borran datos; los duplicados viejos se reportan en Fase 4.
 
-### Fase C — Robustez (opcional)
-- **Reservas / POS**: mover el filtro de memoria a query Supabase (`.gte("reservation_date", fromDate).lte("reservation_date", toDate)`) para escalar.
-- **Cierre Diario**: dejar como está (operación diaria), pero hacer que las queries de commissions y expenses de la tarjeta superior usen también el rango Día/Semana/Mes del tab activo en lugar de "hoy" fijo.
-- **Dashboard**: agregar etiqueta visible del mes actual (sin filtro interactivo) para alinear lenguaje.
-- Eliminar `src/components/shared/DateRangeFilter.tsx` (huérfano).
+### Fase 2 — Lógica correcta en checkout (`ReservationCheckout.tsx`)
+- Calcular `reporte` desde `tour_price_variants` (adulto + menor × pax).
+- `ganancia = total_venta − reporte − card_fee`.
+- Si `role === "admin"` → **no crear** registro en `commissions`.
+- Si `role === "seller"` → `commission_amount = ganancia × 0.50`, `agency_commission = ganancia × 0.50`.
+- Idempotencia: si ya hay `commissions.sale_id = X` u `operator_payables.sale_id = X`, no duplicar.
+- KPI "Mi Comisión" del POS: misma fórmula (no `total × commission_percentage`).
 
-## 5. Archivos que se tocarían
+### Fase 3 — Caja cuadrada
+Al marcar pagado en efectivo con caja abierta, insertar `cash_movement type='out_cash'`:
+- Pago a operador (CuentasPorPagar) en `cash_mxn` / `cash_usd`
+- Pago de comisión a vendedor (Comisiones) en efectivo
+- Pago de gasto (Gastos) en efectivo
 
-- `src/pages/Gastos.tsx` (Fase A)
-- `src/pages/CuentasPorPagar.tsx` (Fase A)
-- `src/pages/Comisiones.tsx` (Fase B)
-- `src/pages/POS.tsx` (Fase B — solo etiqueta)
-- `src/pages/Reservas.tsx` (Fase C)
-- `src/pages/POS.tsx` (Fase C)
-- `src/pages/CierreDiario.tsx` (Fase C)
-- `src/pages/Dashboard.tsx` (Fase C, opcional)
-- `src/components/shared/DateRangeFilter.tsx` (eliminar, Fase C)
+Agregar KPI "Salidas en efectivo" en POS y Cierre Diario.
 
-## 6. Riesgos / lo que NO se tocaría
+### Fase 4 — Auditoría de duplicados históricos (después de validar)
+Reporte de admin que muestre:
+- `sales` con más de una `commission` o más de un `operator_payable`
+- `commissions` asignadas a usuarios admin (no deberían existir)
 
-- **No se modifica BD**: Gastos seguirá usando la columna `period_month` para presets mensuales. Solo cambia el control visual y la lógica de rangos personalizados.
-- **No se borran datos** en ningún caso.
-- **Cierre Diario** mantiene su lógica diaria/semanal/mensual propia (no se reemplaza por PeriodFilter completo), porque es operación de día.
-- **Dashboard** no recibe filtro interactivo para no romper la "vista de hoy".
+Admin decide caso por caso si cancela los duplicados.
 
-## 7. Recomendación
+### Fase 5 — Mejoras opcionales
+- Card fee 4% se registra automáticamente como `expense_item` (categoría "Comisión bancaria") para visibilidad.
+- Capturar TC real del día al pagar un payable en moneda distinta a la original.
 
-Empezar por **Fase A** (Gastos + Cuentas por Pagar), que es la causa real de que "los datos se vean raros entre pantallas". Validar resultados y luego avanzar a Fase B.
+---
 
-¿Apruebas Fase A para implementar, o quieres ajustar el alcance antes?
+## Archivos afectados
+
+- `supabase/migrations/<nuevo>.sql` — drop trigger + fix CHECK
+- `src/components/reservations/ReservationCheckout.tsx` — fórmula ganancia × 50%, exclusión de admins, idempotencia
+- `src/pages/POS.tsx` — KPI "Mi Comisión" con la fórmula correcta
+- `src/pages/CuentasPorPagar.tsx` — `cash_movement` al pagar en efectivo
+- `src/pages/Comisiones.tsx` — `cash_movement` al pagar en efectivo, ocultar a admins
+- `src/pages/Gastos.tsx` — `cash_movement` al pagar en efectivo
+- `src/pages/Reportes.tsx` y `src/pages/CierreDiario.tsx` — revalidar KPIs tras limpieza
+- `mem://features/commissions-management` — actualizar regla 50/50 y exclusión admin
+- Core memory — actualizar terminología: "Reporte = costo operador"
+
+---
+
+## Pregunta única antes de implementar
+
+¿Arrancamos **Fases 1 + 2 + 3 juntas** (migración + checkout + caja cuadrada)?  
+Las Fases 4 y 5 quedan para una segunda iteración después de validar el flujo nuevo.
