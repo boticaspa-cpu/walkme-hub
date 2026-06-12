@@ -57,17 +57,20 @@ export default function POS() {
   });
 
   // Fetch seller's commission percentage
-  const { data: profile } = useQuery({
-    queryKey: ["pos-profile-commission", user?.id],
-    enabled: !!user?.id,
+  // Comisiones REALES del vendedor en la sesión de caja activa (50/50 sobre ganancia)
+  const { data: myCommissions = [] } = useQuery({
+    queryKey: ["pos-my-commissions", activeSession?.id, user?.id],
+    enabled: !!activeSession?.id && !!user?.id,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("commission_percentage")
-        .eq("id", user!.id)
-        .maybeSingle();
+      const saleIds = sessionSales.map((s: any) => s.id);
+      if (saleIds.length === 0) return [];
+      const { data, error } = await (supabase as any)
+        .from("commissions")
+        .select("commission_amount, sale_id, seller_id")
+        .in("sale_id", saleIds)
+        .eq("seller_id", user!.id);
       if (error) throw error;
-      return data;
+      return data ?? [];
     },
   });
 
@@ -80,10 +83,9 @@ export default function POS() {
   const pendingTotal = pendingReservations.reduce((s: number, r: any) => s + (r.total_mxn || 0), 0);
   const pendingCount = pendingReservations.length;
 
-  const commissionPct = profile?.commission_percentage ?? 30;
   const mySalesToday = sessionSales.filter((s: any) => s.sold_by === user?.id);
   const mySalesTotal = mySalesToday.reduce((s: number, sale: any) => s + (sale.total_mxn || 0), 0);
-  const myCommission = mySalesTotal * (commissionPct / 100);
+  const myCommission = myCommissions.reduce((s: number, c: any) => s + Number(c.commission_amount || 0), 0);
 
   const cashSalesMxn = sessionSales
     .filter((s: any) => s.payment_method === "cash" && s.currency === "MXN")
