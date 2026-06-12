@@ -53,7 +53,7 @@ type Payable = {
 };
 
 export default function CuentasPorPagar() {
-  const { role } = useAuth();
+  const { role, user } = useAuth();
   const qc = useQueryClient();
   const today = new Date().toISOString().split("T")[0];
   const isAdmin = role === "admin";
