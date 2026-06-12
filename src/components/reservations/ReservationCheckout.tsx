@@ -327,69 +327,73 @@ export default function ReservationCheckout({ reservation, open, onOpenChange, o
         }
       }
 
-      // 6. Auto-generate seller commission based on PROFIT
-      if (user?.id) {
-        const { data: sellerProfile } = await (supabase as any)
-          .from("profiles")
-          .select("commission_rate")
-          .eq("id", user.id)
-          .single();
-        const rate = sellerProfile?.commission_rate ?? 0.10;
-        if (rate > 0) {
-          let totalNetCost = 0;
-          let totalTaxFee = 0;
+      // 6. Auto-generate seller commission (50/50 split of ganancia)
+      //    Regla: ganancia = venta - reporte (costo operador) - card_fee
+      //           comisión_vendedor = ganancia * 0.50
+      //           walkme           = ganancia * 0.50
+      //    Admins NO generan comisión (100% para Walkme).
+      if (user?.id && !isAdmin) {
+        // Compute reporte (costo operador) desde variants
+        let totalNetCost = 0;
+        let totalTaxFee = 0;
 
-          if (isPartialMode && netCostData) {
-            // For partial, net cost goes to operator via client — profit = deposit
-            totalNetCost = 0;
-            totalTaxFee = 0;
-          } else if (reservation.tour_id) {
-            const zone = reservation.zone || "";
-            const nationality = reservation.nationality || "";
-            const commPkgName = reservation.package_name || "";
-            const { data: adultVariant } = await (supabase as any)
-              .from("tour_price_variants")
-              .select("net_cost, tax_fee")
-              .eq("tour_id", reservation.tour_id)
-              .eq("zone", zone)
-              .eq("nationality", nationality)
-              .eq("pax_type", "Adulto")
-              .eq("package_name", commPkgName)
-              .eq("active", true)
-              .limit(1)
-              .maybeSingle();
-            const { data: childVariant } = await (supabase as any)
-              .from("tour_price_variants")
-              .select("net_cost, tax_fee")
-              .eq("tour_id", reservation.tour_id)
-              .eq("zone", zone)
-              .eq("nationality", nationality)
-              .eq("pax_type", "Menor")
-              .eq("package_name", commPkgName)
-              .eq("active", true)
-              .limit(1)
-              .maybeSingle();
-            const adultCost = adultVariant?.net_cost ?? 0;
-            const childCost = childVariant?.net_cost ?? 0;
-            const adultTax = adultVariant?.tax_fee ?? 0;
-            const childTax = childVariant?.tax_fee ?? 0;
-            totalNetCost = (adultCost * (reservation.pax_adults || 1)) + (childCost * (reservation.pax_children || 0));
-            totalTaxFee = (adultTax * (reservation.pax_adults || 1)) + (childTax * (reservation.pax_children || 0));
-          }
+        if (isPartialMode) {
+          // En partial el cliente paga el costo del operador en sitio; lo que entra es solo el depósito
+          totalNetCost = 0;
+          totalTaxFee = 0;
+        } else if (reservation.tour_id) {
+          const zone = reservation.zone || "";
+          const nationality = reservation.nationality || "";
+          const commPkgName = reservation.package_name || "";
+          const { data: adultVariant } = await (supabase as any)
+            .from("tour_price_variants")
+            .select("net_cost, tax_fee")
+            .eq("tour_id", reservation.tour_id)
+            .eq("zone", zone)
+            .eq("nationality", nationality)
+            .eq("pax_type", "Adulto")
+            .eq("package_name", commPkgName)
+            .eq("active", true)
+            .limit(1)
+            .maybeSingle();
+          const { data: childVariant } = await (supabase as any)
+            .from("tour_price_variants")
+            .select("net_cost, tax_fee")
+            .eq("tour_id", reservation.tour_id)
+            .eq("zone", zone)
+            .eq("nationality", nationality)
+            .eq("pax_type", "Menor")
+            .eq("package_name", commPkgName)
+            .eq("active", true)
+            .limit(1)
+            .maybeSingle();
+          const adultCost = adultVariant?.net_cost ?? 0;
+          const childCost = childVariant?.net_cost ?? 0;
+          const adultTax = adultVariant?.tax_fee ?? 0;
+          const childTax = childVariant?.tax_fee ?? 0;
+          totalNetCost = (adultCost * (reservation.pax_adults || 1)) + (childCost * (reservation.pax_children || 0));
+          totalTaxFee = (adultTax * (reservation.pax_adults || 1)) + (childTax * (reservation.pax_children || 0));
+        }
 
-          const profit = isPartialMode
-            ? Math.max(0, parsedDeposit - cardFeeAmount)
-            : Math.max(0, baseTotalMxn - totalNetCost - totalTaxFee - cardFeeAmount);
-          const commissionAmount = profit * rate;
-          if (commissionAmount > 0) {
-            await (supabase as any).from("commissions").insert({
-              seller_id: user.id,
-              sale_id: sale.id,
-              rate,
-              amount_mxn: commissionAmount,
-              card_fee_mxn: cardFeeAmount,
-            });
-          }
+        const ventaBase = isPartialMode ? parsedDeposit : baseTotalMxn;
+        const ganancia = Math.max(0, ventaBase - totalNetCost - totalTaxFee - cardFeeAmount);
+        const sellerShare = ganancia * 0.50;
+        const agencyShare = ganancia * 0.50;
+
+        if (ganancia > 0) {
+          await (supabase as any).from("commissions").insert({
+            reservation_id: reservation.id,
+            sale_id: sale.id,
+            seller_id: user.id,
+            commission_rate: 50,
+            gross_profit: ganancia,
+            net_profit: ganancia,
+            commission_amount: sellerShare,
+            agency_commission: agencyShare,
+            card_fee_applied: cardFeeAmount > 0,
+            card_fee_amount: cardFeeAmount,
+            status: "pending",
+          });
         }
       }
     },
