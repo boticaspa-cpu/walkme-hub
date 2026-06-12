@@ -27,9 +27,10 @@ interface ReservationCheckoutProps {
 }
 
 export default function ReservationCheckout({ reservation, open, onOpenChange, onSuccess }: ReservationCheckoutProps) {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
   const qc = useQueryClient();
   const { activeSession, isSessionOpen } = useCashSession();
+  const isAdmin = role === "admin";
 
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [currency, setCurrency] = useState("MXN");
