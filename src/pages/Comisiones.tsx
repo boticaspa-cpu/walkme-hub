@@ -98,18 +98,23 @@ function PayCommissionDialog({ commission, open, onOpenChange, onPaid }: {
         .eq("id", commission.id);
       if (error) throw error;
 
-      // Si se paga en efectivo y hay caja abierta, descontar de caja
-      if (method === "cash" || method === "cash_mxn") {
+      // Si se paga en efectivo y hay caja abierta, descontar de caja (cualquier divisa)
+      if (method === "cash" || method === "cash_mxn" || method === "cash_usd") {
         const { data: openSession } = await (supabase as any)
           .from("cash_sessions")
           .select("id")
           .eq("status", "open")
           .maybeSingle();
         if (openSession?.id) {
+          const isUsd = method === "cash_usd";
+          const fxRate = isUsd ? 17.5 : 1; // TODO: leer de settings
+          const amountMxn = isUsd ? amount * fxRate : amount;
           await (supabase as any).from("cash_movements").insert({
             session_id: openSession.id,
             type: "out_cash",
-            amount_mxn: amount,
+            amount_mxn: amountMxn,
+            amount_fx: isUsd ? amount : null,
+            currency_fx: isUsd ? "USD" : null,
             reference: `Comisión ${receiptNumber} - ${commission?.seller?.full_name ?? ""}`.trim(),
             created_by: user?.id,
           });

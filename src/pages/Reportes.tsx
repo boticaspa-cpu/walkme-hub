@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import {
@@ -12,21 +13,22 @@ import { usePeriodFilter } from "@/hooks/usePeriodFilter";
 const COLORS = ["hsl(190, 82%, 40%)", "hsl(175, 60%, 45%)", "hsl(38, 92%, 50%)", "hsl(340, 65%, 50%)", "hsl(260, 60%, 55%)"];
 
 export default function Reportes() {
+  const { role, user } = useAuth();
+  const isAdmin = role === "admin";
+  const sellerId = user?.id;
   const { period, setPeriod, fromISO, toISO, fromDate, toDate } = usePeriodFilter("this_month");
-  const periodKey = `${fromISO}_${toISO}`;
+  const periodKey = `${fromISO}_${toISO}_${isAdmin ? "all" : sellerId}`;
   const from = fromISO;
   const to = toISO;
 
 
-  // KPI: Sales
+  // KPI: Sales (scoped by seller for non-admin)
   const { data: salesKpi } = useQuery({
     queryKey: ["kpi-sales", periodKey],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("sales")
-        .select("total_mxn")
-        .gte("sold_at", from)
-        .lte("sold_at", to);
+      let q = supabase.from("sales").select("total_mxn").gte("sold_at", from).lte("sold_at", to);
+      if (!isAdmin && sellerId) q = q.eq("sold_by", sellerId);
+      const { data, error } = await q;
       if (error) throw error;
       const total = (data ?? []).reduce((s, r) => s + Number(r.total_mxn), 0);
       return { total, count: data?.length ?? 0 };
@@ -175,8 +177,10 @@ export default function Reportes() {
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div>
-          <h1 className="text-2xl font-bold font-display">Reportes</h1>
-          <p className="text-sm text-muted-foreground">Métricas y análisis — Solo Admin</p>
+          <h1 className="text-2xl font-bold font-display">{isAdmin ? "Reportes" : "Mis Reportes"}</h1>
+          <p className="text-sm text-muted-foreground">
+            {isAdmin ? "Métricas globales de la agencia" : "Tu desempeño personal"}
+          </p>
         </div>
         <PeriodFilter value={period} onChange={setPeriod} />
       </div>

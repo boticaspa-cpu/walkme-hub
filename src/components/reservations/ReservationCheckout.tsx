@@ -168,7 +168,6 @@ export default function ReservationCheckout({ reservation, open, onOpenChange, o
   }, [reservation, toursForPricing, variantsForPricing]);
 
   const baseTotalMxn = recalculatedTotal ?? reservation?.total_mxn ?? 0;
-  const cardFeeAmount = paymentMethod === "card" ? Math.round(baseTotalMxn * cardFeePercent) / 100 : 0;
   const needsCashSession = paymentMethod === "cash";
 
   // Initialize deposit/balance when on_site and we have net cost data
@@ -187,10 +186,17 @@ export default function ReservationCheckout({ reservation, open, onOpenChange, o
   // The amount the agency actually charges
   const isPartialMode = isOnSite && splitMode === "partial";
   const chargeAmount = isPartialMode ? parsedDeposit : baseTotalMxn;
+  // Card fee is calculated on the amount actually charged (not the full reservation total)
+  const cardFeeAmount = paymentMethod === "card" ? Math.round(chargeAmount * cardFeePercent) / 100 : 0;
   const balanceCurrency = operatorInfo?.base_currency || "MXN";
 
   const checkoutMutation = useMutation({
     mutationFn: async () => {
+      // IDEMPOTENCY: prevent double-charge on double-click or retry
+      if (reservation.payment_status && reservation.payment_status !== "unpaid") {
+        throw new Error("Esta reserva ya fue cobrada");
+      }
+
       if (paymentMethod !== "cash" && currency !== "MXN") {
         throw new Error("Pagos con tarjeta/transferencia solo aceptan MXN");
       }
@@ -219,8 +225,9 @@ export default function ReservationCheckout({ reservation, open, onOpenChange, o
         ? resItems.reduce((s: number, i: any) => s + (i.subtotal_mxn || 0), 0)
         : baseTotalMxn + resDiscount;
 
-      // 1. Create sale — total = deposit (what the agency actually collects)
+      // 1. Create sale — total includes card_fee when paying by card (real cash that came in)
       const saleTotal = isPartialMode ? parsedDeposit : baseTotalMxn;
+      const saleTotalWithFee = saleTotal + cardFeeAmount;
       const { data: sale, error: saleErr } = await (supabase as any).from("sales").insert({
         reservation_id: reservation.id,
         client_id: reservation.client_id || null,
@@ -229,7 +236,8 @@ export default function ReservationCheckout({ reservation, open, onOpenChange, o
         exchange_rate: er,
         subtotal_mxn: isPartialMode ? saleTotal : itemsSubtotal,
         discount_mxn: isPartialMode ? 0 : resDiscount,
-        total_mxn: saleTotal,
+        total_mxn: saleTotalWithFee,
+        card_fee_mxn: cardFeeAmount,
         sold_by: user?.id,
         cash_session_id: activeSession?.id || null,
       }).select("id").single();
@@ -262,14 +270,14 @@ export default function ReservationCheckout({ reservation, open, onOpenChange, o
         });
       }
 
-      // 3. Create cash_movement if session open — only for what the agency charges
+      // 3. Create cash_movement if session open — record the full amount actually received
       if (activeSession?.id) {
         const movType = paymentMethod === "card" ? "sale_card" : paymentMethod === "transfer" ? "sale_transfer" : "sale_cash";
         await (supabase as any).from("cash_movements").insert({
           session_id: activeSession.id,
           type: movType,
-          amount_mxn: saleTotal,
-          amount_fx: currency !== "MXN" ? saleTotal / er : null,
+          amount_mxn: saleTotalWithFee,
+          amount_fx: currency !== "MXN" ? saleTotalWithFee / er : null,
           currency_fx: currency !== "MXN" ? currency : null,
           reference: `Reserva ${reservation.folio || reservation.id.slice(0, 8)}`,
           created_by: user?.id,
@@ -297,33 +305,32 @@ export default function ReservationCheckout({ reservation, open, onOpenChange, o
           .single();
 
         if (operator && !isPartialMode) {
-          // Compute net cost in operator currency
-          let operatorCostMxn = 0;
-          if (netCostData) {
-            operatorCostMxn = netCostData.totalNetCost;
+          // Compute net cost from configured variants — NO arbitrary fallback
+          const operatorCostMxn = netCostData?.totalNetCost ?? 0;
+          if (operatorCostMxn === 0) {
+            console.warn(`[checkout] Missing tour_price_variants net_cost for tour ${reservation.tour_id} zone=${reservation.zone}. Operator payable NOT created.`);
           } else {
-            // Fallback: estimate from variants
-            operatorCostMxn = baseTotalMxn * 0.70;
+            const opExRate = operator.exchange_rate || 17.5;
+            const amountInCurrency = operator.base_currency !== "MXN"
+              ? operatorCostMxn / opExRate
+              : operatorCostMxn;
+
+            const tourTitle = reservation.tours?.title || "";
+            const folio = reservation.folio || reservation.id.slice(0, 8);
+            const today = new Date().toISOString().split("T")[0];
+
+            await (supabase as any).from("operator_payables").insert({
+              operator_id: operator.id,
+              sale_id: sale.id,
+              sale_date: today, // fecha de la venta, no del tour
+              amount_currency: operator.base_currency || "USD",
+              amount_value: parseFloat(amountInCurrency.toFixed(2)),
+              equivalent_mxn: parseFloat(operatorCostMxn.toFixed(2)),
+              exchange_rate_used: opExRate,
+              notes: `Reserva ${folio} - ${tourTitle}`.trim(),
+              status: "pending",
+            });
           }
-          const opExRate = operator.exchange_rate || 17.5;
-          const amountInCurrency = operator.base_currency !== "MXN"
-            ? operatorCostMxn / opExRate
-            : operatorCostMxn;
-
-          const tourTitle = reservation.tours?.title || "";
-          const folio = reservation.folio || reservation.id.slice(0, 8);
-
-          await (supabase as any).from("operator_payables").insert({
-            operator_id: operator.id,
-            sale_id: sale.id,
-            sale_date: reservation.reservation_date,
-            amount_currency: operator.base_currency || "USD",
-            amount_value: parseFloat(amountInCurrency.toFixed(2)),
-            equivalent_mxn: parseFloat(operatorCostMxn.toFixed(2)),
-            exchange_rate_used: opExRate,
-            notes: `Reserva ${folio} - ${tourTitle}`.trim(),
-            status: "pending",
-          });
         }
       }
 

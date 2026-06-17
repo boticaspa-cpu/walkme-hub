@@ -77,12 +77,14 @@ const App = () => (
                 <Route path="/pos" element={<POS />} />
                 <Route path="/cierre-diario" element={<CierreDiario />} />
                 <Route path="/comisiones" element={<Comisiones />} />
+                {/* Open to sellers (each page filters by ownership / RLS) */}
+                <Route path="/cuentas-por-pagar" element={<CuentasPorPagar />} />
+                <Route path="/gastos" element={<Gastos />} />
+                <Route path="/reportes" element={<Reportes />} />
+                {/* Admin-only */}
                 <Route element={<AdminRoute />}>
                   <Route path="/tours-temporada-alta" element={<ToursTemporadaAlta />} />
-                  <Route path="/cuentas-por-pagar" element={<CuentasPorPagar />} />
-                  <Route path="/reportes" element={<Reportes />} />
                   <Route path="/configuracion" element={<Configuracion />} />
-                  <Route path="/gastos" element={<Gastos />} />
                 </Route>
               </Route>
               <Route path="*" element={<NotFound />} />

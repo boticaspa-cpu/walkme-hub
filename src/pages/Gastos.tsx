@@ -115,26 +115,24 @@ export default function Gastos() {
   const isAdmin = role === "admin";
   const qc = useQueryClient();
 
-  if (!isAdmin) {
-    return <p className="p-8 text-muted-foreground">Acceso restringido a administradores.</p>;
-  }
-
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-bold font-display">Gastos</h1>
-        <p className="text-sm text-muted-foreground">Control de gastos operativos</p>
+        <h1 className="text-2xl font-bold font-display">{isAdmin ? "Gastos" : "Mis Gastos"}</h1>
+        <p className="text-sm text-muted-foreground">
+          {isAdmin ? "Control de gastos operativos" : "Tus gastos registrados"}
+        </p>
       </div>
       <Tabs defaultValue="mes" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="conceptos"><Receipt className="h-4 w-4 mr-1" />Conceptos</TabsTrigger>
+          {isAdmin && <TabsTrigger value="conceptos"><Receipt className="h-4 w-4 mr-1" />Conceptos</TabsTrigger>}
           <TabsTrigger value="mes"><BarChart3 className="h-4 w-4 mr-1" />Mes</TabsTrigger>
-          <TabsTrigger value="reportes"><TrendingUp className="h-4 w-4 mr-1" />Reportes</TabsTrigger>
+          {isAdmin && <TabsTrigger value="reportes"><TrendingUp className="h-4 w-4 mr-1" />Reportes</TabsTrigger>}
         </TabsList>
 
-        <TabsContent value="conceptos"><ConceptosTab qc={qc} /></TabsContent>
-        <TabsContent value="mes"><MesTab qc={qc} userId={user?.id} /></TabsContent>
-        <TabsContent value="reportes"><ReportesTab /></TabsContent>
+        {isAdmin && <TabsContent value="conceptos"><ConceptosTab qc={qc} /></TabsContent>}
+        <TabsContent value="mes"><MesTab qc={qc} userId={user?.id} isAdmin={isAdmin} /></TabsContent>
+        {isAdmin && <TabsContent value="reportes"><ReportesTab /></TabsContent>}
       </Tabs>
     </div>
   );
@@ -302,7 +300,7 @@ function ConceptosTab({ qc }: { qc: ReturnType<typeof useQueryClient> }) {
    TAB: MES
    ═══════════════════════════════════════════════════════ */
 
-function MesTab({ qc, userId }: { qc: ReturnType<typeof useQueryClient>; userId?: string }) {
+function MesTab({ qc, userId, isAdmin }: { qc: ReturnType<typeof useQueryClient>; userId?: string; isAdmin: boolean }) {
   const { period, setPeriod, fromDate, toDate } = usePeriodFilter("this_month");
 
   // A preset is "monthly" when it spans exactly one calendar month — in that case
@@ -313,9 +311,10 @@ function MesTab({ qc, userId }: { qc: ReturnType<typeof useQueryClient>; userId?
     period.preset === "custom_month";
   const month = format(period.from, "yyyy-MM");
 
-  // concepts
+  // concepts (admin only; auto-generation only for admin)
   const { data: concepts = [] } = useQuery({
     queryKey: ["expense-concepts"],
+    enabled: isAdmin,
     queryFn: async () => {
       const { data, error } = await (supabase as any).from("expense_concepts").select("*").order("name");
       if (error) throw error;
@@ -323,9 +322,9 @@ function MesTab({ qc, userId }: { qc: ReturnType<typeof useQueryClient>; userId?
     },
   });
 
-  // items for selected period
+  // items for selected period — RLS already filters to own rows for sellers
   const { data: items = [], isLoading, refetch } = useQuery({
-    queryKey: ["expense-items", isMonthlyPreset ? `m:${month}` : `r:${fromDate}_${toDate}`],
+    queryKey: ["expense-items", isMonthlyPreset ? `m:${month}` : `r:${fromDate}_${toDate}`, isAdmin, userId],
     queryFn: async () => {
       let q = (supabase as any).from("expense_items").select("*, expense_concepts(*)");
       if (isMonthlyPreset) {
@@ -339,8 +338,9 @@ function MesTab({ qc, userId }: { qc: ReturnType<typeof useQueryClient>; userId?
     },
   });
 
-  // auto-generate missing monthly items — only for monthly presets
+  // auto-generate missing monthly items — only for admin & monthly presets
   useEffect(() => {
+    if (!isAdmin) return;
     if (!isMonthlyPreset) return;
     if (!concepts.length) return;
     const activeMonthlyConcepts = concepts.filter((c) => c.active && c.frequency === "monthly");
@@ -365,7 +365,7 @@ function MesTab({ qc, userId }: { qc: ReturnType<typeof useQueryClient>; userId?
       const { error } = await (supabase as any).from("expense_items").insert(toInsert);
       if (!error) refetch();
     })();
-  }, [concepts, items, month, userId, refetch, isMonthlyPreset]);
+  }, [concepts, items, month, userId, refetch, isMonthlyPreset, isAdmin]);
 
   // pay dialog
   const [payDialog, setPayDialog] = useState(false);

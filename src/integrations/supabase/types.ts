@@ -1340,6 +1340,7 @@ export type Database = {
       }
       sales: {
         Row: {
+          card_fee_mxn: number
           cash_session_id: string | null
           client_id: string | null
           currency: string
@@ -1355,6 +1356,7 @@ export type Database = {
           total_mxn: number
         }
         Insert: {
+          card_fee_mxn?: number
           cash_session_id?: string | null
           client_id?: string | null
           currency?: string
@@ -1370,6 +1372,7 @@ export type Database = {
           total_mxn?: number
         }
         Update: {
+          card_fee_mxn?: number
           cash_session_id?: string | null
           client_id?: string | null
           currency?: string
@@ -1958,6 +1961,7 @@ export type Database = {
       }
       owns_quote: { Args: { _quote_id: string }; Returns: boolean }
       owns_reservation: { Args: { _reservation_id: string }; Returns: boolean }
+      owns_sale: { Args: { _sale_id: string }; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "seller"

@@ -147,8 +147,8 @@ export default function CierreDiario() {
     queryKey: ["cierre-commissions", todayStr],
     enabled: isAdmin,
     queryFn: async () => {
-      const { data, error } = await supabase.from("commissions")
-        .select("amount_mxn, rate, profiles:seller_id(full_name)")
+      const { data, error } = await (supabase as any).from("commissions")
+        .select("commission_amount, commission_rate, profiles:seller_id(full_name)")
         .gte("created_at", `${todayStr}T00:00:00`)
         .lte("created_at", `${todayStr}T23:59:59`);
       if (error) throw error;
@@ -170,8 +170,8 @@ export default function CierreDiario() {
     },
   });
 
-  const totalDailyPayables = dailyPayables.reduce((a: number, p: any) => a + Number(p.amount_mxn), 0);
-  const totalDailyCommissions = dailyCommissions.reduce((a: number, c: any) => a + Number(c.amount_mxn), 0);
+  const totalDailyPayables = dailyPayables.reduce((a: number, p: any) => a + Number(p.equivalent_mxn ?? 0), 0);
+  const totalDailyCommissions = dailyCommissions.reduce((a: number, c: any) => a + Number(c.commission_amount ?? 0), 0);
   const totalDailyExpenses = dailyExpenses.reduce((a: number, e: any) => a + Number(e.paid_amount_mxn || 0), 0);
 
   // Upsert daily_closings on close
@@ -501,7 +501,7 @@ export default function CierreDiario() {
                   ) : dailyPayables.map((p: any, i: number) => (
                     <div key={i} className="flex justify-between text-sm">
                       <span>{(p as any).operators?.name ?? "—"}</span>
-                      <span className="font-medium">{fmt(Number(p.amount_mxn))}</span>
+                      <span className="font-medium">{fmt(Number(p.equivalent_mxn ?? 0))}</span>
                     </div>
                   ))}
                   {dailyPayables.length > 0 && (
@@ -521,8 +521,8 @@ export default function CierreDiario() {
                     <p className="text-xs text-muted-foreground">Sin comisiones hoy</p>
                   ) : dailyCommissions.map((c: any, i: number) => (
                     <div key={i} className="flex justify-between text-sm">
-                      <span>{(c as any).profiles?.full_name ?? "—"} ({Math.round(c.rate * 100)}%)</span>
-                      <span className="font-medium">{fmt(Number(c.amount_mxn))}</span>
+                      <span>{(c as any).profiles?.full_name ?? "—"} ({Number(c.commission_rate ?? 0)}%)</span>
+                      <span className="font-medium">{fmt(Number(c.commission_amount ?? 0))}</span>
                     </div>
                   ))}
                   {dailyCommissions.length > 0 && (

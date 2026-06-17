@@ -134,8 +134,8 @@ export default function CuentasPorPagar() {
           .eq("status", "open")
           .maybeSingle();
         if (openSession?.id) {
-          // Si la moneda original es USD y se paga cash_usd, convertir a MXN equivalente
-          const isUsdPay = method === "cash_usd" || item.amount_currency === "USD";
+          // Solo convertir si el MÉTODO de pago es cash_usd; cash_mxn siempre es MXN literal
+          const isUsdPay = method === "cash_usd";
           const fxRate = item.exchange_rate_used || 17.5;
           const amountMxn = isUsdPay ? finalAmount * fxRate : finalAmount;
           await (supabase as any).from("cash_movements").insert({
@@ -162,10 +162,17 @@ export default function CuentasPorPagar() {
 
   const upsertPayableMutation = useMutation({
     mutationFn: async () => {
+      const amt = parseFloat(editForm.amount_value);
+      const isUsd = editForm.amount_currency === "USD";
+      const fxRate = isUsd ? 17.5 : 1; // TODO: leer de settings
+      const equivalentMxn = isUsd ? amt * fxRate : amt;
+
       const payload = {
         operator_id: editForm.operator_id,
-        amount_value: parseFloat(editForm.amount_value),
+        amount_value: amt,
         amount_currency: editForm.amount_currency,
+        equivalent_mxn: equivalentMxn,
+        exchange_rate_used: fxRate,
         sale_date: editForm.sale_date,
         notes: editForm.notes || null,
         status: editForm.status,
@@ -232,9 +239,7 @@ export default function CuentasPorPagar() {
     setEditingItem(null);
   }
 
-  if (!isAdmin) {
-    return <div className="p-8 text-muted-foreground">Acceso restringido a administradores.</div>;
-  }
+  // Vendedores ven solo sus propios payables (filtrado por RLS via owns_sale)
 
   const { period, setPeriod, fromDate, toDate } = usePeriodFilter("this_month");
   const todayStr = today;
@@ -271,12 +276,16 @@ export default function CuentasPorPagar() {
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold font-display">Cuentas por Pagar</h1>
-          <p className="text-sm text-muted-foreground">Pagos pendientes a operadores</p>
+          <h1 className="text-2xl font-bold font-display">{isAdmin ? "Cuentas por Pagar" : "Mis Cuentas por Pagar"}</h1>
+          <p className="text-sm text-muted-foreground">
+            {isAdmin ? "Pagos pendientes a operadores" : "Pagos al operador derivados de tus ventas"}
+          </p>
         </div>
-        <Button onClick={openNewDialog}>
-          <Plus className="h-4 w-4 mr-1" /> Nuevo Pago
-        </Button>
+        {isAdmin && (
+          <Button onClick={openNewDialog}>
+            <Plus className="h-4 w-4 mr-1" /> Nuevo Pago
+          </Button>
+        )}
       </div>
 
       {/* Period filter */}
