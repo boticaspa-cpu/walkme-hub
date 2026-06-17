@@ -83,7 +83,10 @@ const sellerNav = [
   { title: "Calendario", url: "/calendario", icon: CalendarDays },
   { title: "POS", url: "/pos", icon: ShoppingCart },
   { title: "Cierre Diario", url: "/cierre-diario", icon: ClipboardCheck },
-  { title: "Mis Comisiones", url: "/comisiones", icon: BadgeDollarSign },
+  { title: "Mis Reportes", url: "/reportes", icon: BarChart3 },
+  { title: "Mis Cuentas por Pagar", url: "/cuentas-por-pagar", icon: BadgeDollarSign },
+  { title: "Mis Gastos", url: "/gastos", icon: Receipt },
+  { title: "Mis Comisiones", url: "/comisiones", icon: BadgePercent },
 ];
 
 export function AppSidebar() {
