@@ -12,6 +12,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { computeTourPrice, computeTotal, TourPackageRow } from "@/lib/tour-pricing";
 import VoucherPrintView from "@/components/reservations/VoucherPrintView";
+import OperatorVoucherDialog from "@/components/reservations/OperatorVoucherDialog";
 import ReservationCheckout from "@/components/reservations/ReservationCheckout";
 import { buildWhatsAppMessage, openWhatsApp } from "@/components/reservations/whatsapp-message";
 import SendConfirmationDialog from "@/components/reservations/SendConfirmationDialog";
