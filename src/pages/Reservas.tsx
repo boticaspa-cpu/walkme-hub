@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Plus, Search, FileText, Printer, Send, Pencil, DollarSign, CheckCircle, MoreVertical, Trash2, Tag, Calendar } from "lucide-react";
+import { Plus, Search, FileText, Printer, Send, Pencil, DollarSign, CheckCircle, MoreVertical, Trash2, Tag, Calendar, Building2 } from "lucide-react";
 import { TableSkeleton } from "@/components/ui/table-skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PeriodFilter } from "@/components/shared/PeriodFilter";
@@ -12,6 +12,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { computeTourPrice, computeTotal, TourPackageRow } from "@/lib/tour-pricing";
 import VoucherPrintView from "@/components/reservations/VoucherPrintView";
+import OperatorVoucherDialog from "@/components/reservations/OperatorVoucherDialog";
 import ReservationCheckout from "@/components/reservations/ReservationCheckout";
 import { buildWhatsAppMessage, openWhatsApp } from "@/components/reservations/whatsapp-message";
 import SendConfirmationDialog from "@/components/reservations/SendConfirmationDialog";
@@ -150,6 +151,7 @@ export default function Reservas() {
   const [shared, setShared] = useState(emptyShared);
   const [items, setItems] = useState<ResItem[]>([emptyResItem()]);
   const [voucherReservation, setVoucherReservation] = useState<any>(null);
+  const [operatorVoucherRes, setOperatorVoucherRes] = useState<any>(null);
   const voucherRef = useRef<HTMLDivElement>(null);
   const [checkoutReservation, setCheckoutReservation] = useState<any>(null);
   const [highlightId, setHighlightId] = useState<string | null>(null);
@@ -940,6 +942,7 @@ export default function Reservas() {
                               <Button variant="ghost" size="icon" className="h-7 w-7" title="Folio operador" onClick={() => { setFolioDialogRes(r); setFolioInput((r as any).operator_folio ?? ""); setCancFolioInput((r as any).cancellation_folio ?? ""); }}><Tag className="h-3.5 w-3.5" /></Button>
                             )}
                             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleVoucherWithCheck(r)}><FileText className="h-3.5 w-3.5" /></Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7" title="Cupón Operador" onClick={() => setOperatorVoucherRes(r)}><Building2 className="h-3.5 w-3.5" /></Button>
                             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handlePrint(r)}><Printer className="h-3.5 w-3.5" /></Button>
                             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleSendConfirmation(r)}><Send className="h-3.5 w-3.5" /></Button>
                             {isAdmin && (
@@ -961,6 +964,7 @@ export default function Reservas() {
                                 {isAdmin && <DropdownMenuItem onClick={() => openEdit(r)}><Pencil className="mr-2 h-4 w-4" />Editar</DropdownMenuItem>}
                                 {isAdmin && <DropdownMenuItem onClick={() => { setFolioDialogRes(r); setFolioInput((r as any).operator_folio ?? ""); setCancFolioInput((r as any).cancellation_folio ?? ""); }}><Tag className="mr-2 h-4 w-4" />Folio Op.</DropdownMenuItem>}
                                 <DropdownMenuItem onClick={() => handleVoucherWithCheck(r)}><FileText className="mr-2 h-4 w-4" />Ver Voucher</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setOperatorVoucherRes(r)}><Building2 className="mr-2 h-4 w-4" />Cupón Operador</DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => handlePrint(r)}><Printer className="mr-2 h-4 w-4" />Imprimir</DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => handleSendConfirmation(r)}><Send className="mr-2 h-4 w-4" />Enviar</DropdownMenuItem>
                                 {cStatus === "confirmed" && pStatus === "paid" && (
@@ -1450,6 +1454,10 @@ export default function Reservas() {
           </div>
         </div>
       )}
+
+      {/* ── Cupón Operador ── */}
+      <OperatorVoucherDialog reservation={operatorVoucherRes} onClose={() => setOperatorVoucherRes(null)} />
+
 
       {/* ── Mini-dialog Folio Operador ── */}
       <Dialog open={!!folioDialogRes} onOpenChange={(open) => { if (!open) { setFolioDialogRes(null); setFolioInput(""); setCancFolioInput(""); } }}>
