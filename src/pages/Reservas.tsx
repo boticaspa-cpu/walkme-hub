@@ -964,6 +964,7 @@ export default function Reservas() {
                                 {isAdmin && <DropdownMenuItem onClick={() => openEdit(r)}><Pencil className="mr-2 h-4 w-4" />Editar</DropdownMenuItem>}
                                 {isAdmin && <DropdownMenuItem onClick={() => { setFolioDialogRes(r); setFolioInput((r as any).operator_folio ?? ""); setCancFolioInput((r as any).cancellation_folio ?? ""); }}><Tag className="mr-2 h-4 w-4" />Folio Op.</DropdownMenuItem>}
                                 <DropdownMenuItem onClick={() => handleVoucherWithCheck(r)}><FileText className="mr-2 h-4 w-4" />Ver Voucher</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setOperatorVoucherRes(r)}><Building2 className="mr-2 h-4 w-4" />Cupón Operador</DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => handlePrint(r)}><Printer className="mr-2 h-4 w-4" />Imprimir</DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => handleSendConfirmation(r)}><Send className="mr-2 h-4 w-4" />Enviar</DropdownMenuItem>
                                 {cStatus === "confirmed" && pStatus === "paid" && (
