@@ -1455,6 +1455,10 @@ export default function Reservas() {
         </div>
       )}
 
+      {/* ── Cupón Operador ── */}
+      <OperatorVoucherDialog reservation={operatorVoucherRes} onClose={() => setOperatorVoucherRes(null)} />
+
+
       {/* ── Mini-dialog Folio Operador ── */}
       <Dialog open={!!folioDialogRes} onOpenChange={(open) => { if (!open) { setFolioDialogRes(null); setFolioInput(""); setCancFolioInput(""); } }}>
         <DialogContent className="sm:max-w-sm">
