@@ -151,6 +151,7 @@ export default function Reservas() {
   const [shared, setShared] = useState(emptyShared);
   const [items, setItems] = useState<ResItem[]>([emptyResItem()]);
   const [voucherReservation, setVoucherReservation] = useState<any>(null);
+  const [operatorVoucherRes, setOperatorVoucherRes] = useState<any>(null);
   const voucherRef = useRef<HTMLDivElement>(null);
   const [checkoutReservation, setCheckoutReservation] = useState<any>(null);
   const [highlightId, setHighlightId] = useState<string | null>(null);
