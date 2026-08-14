@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Plus, Search, FileText, Printer, Send, Pencil, DollarSign, CheckCircle, MoreVertical, Trash2, Tag, Calendar } from "lucide-react";
+import { Plus, Search, FileText, Printer, Send, Pencil, DollarSign, CheckCircle, MoreVertical, Trash2, Tag, Calendar, Building2 } from "lucide-react";
 import { TableSkeleton } from "@/components/ui/table-skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PeriodFilter } from "@/components/shared/PeriodFilter";
