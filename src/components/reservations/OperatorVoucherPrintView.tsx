@@ -1,5 +1,6 @@
 import walkMeLogo from "@/assets/walkme-logo.png";
-import { Phone, Mail, Building2, MapPin, Users, Calendar, Clock, Globe } from "lucide-react";
+import { Phone, Mail, Building2, MapPin, Calendar, Clock, Globe, Send } from "lucide-react";
+import { ageNotes, groupPax, infantsAreFree, isDatePending, paxSummary, type VoucherLine } from "@/lib/voucher-lines";
 
 export interface OperatorVoucherData {
   clientName: string;
@@ -10,6 +11,7 @@ export interface OperatorVoucherData {
   pickupPoint: string;
   notes: string;
   language: string;
+  sendTo: string;
   showPhone: boolean;
   showEmail: boolean;
   showHotel: boolean;
@@ -25,11 +27,14 @@ export interface OperatorVoucherData {
 interface Props {
   reservation: any;
   data: OperatorVoucherData;
+  /** Tours of this booking that belong to the operator receiving the request. */
+  lines: VoucherLine[];
 }
 
 const DARK_GREEN = "#1B3D2F";
 const LIGHT_GRAY = "#f7f6f3";
 const LIGHT_GREEN = "#E1F5EE";
+const ORANGE = "#E8943A";
 
 const labelStyle: React.CSSProperties = {
   color: "#9ca3af",
@@ -53,17 +58,25 @@ const METHOD_LABELS: Record<string, string> = {
   prepaid: "Prepagado",
 };
 
-export default function OperatorVoucherPrintView({ reservation: r, data }: Props) {
-  const tourTitle = r?.tours?.title ?? "—";
-  const operatorName = r?.tours?.operators?.name ?? r?.operator_name ?? "—";
-  const amount = Number(data.payAmount || 0);
+const LINE_COLS = "2fr 1fr 0.8fr 2fr";
 
-  const Field = ({ label, value }: { label: string; value: string }) => (
+const formatDate = (date: string) =>
+  new Date(`${date}T12:00:00`).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" });
+
+function Field({ label, value }: { label: string; value: string }) {
+  return (
     <div>
       <div style={labelStyle}>{label}</div>
       <div style={valueStyle}>{value || "—"}</div>
     </div>
   );
+}
+
+export default function OperatorVoucherPrintView({ reservation: r, data, lines }: Props) {
+  const operatorName = lines[0]?.operatorName ?? r?.tours?.operators?.name ?? r?.operator_name ?? "—";
+  const amount = Number(data.payAmount || 0);
+  const folios = lines.map((l) => l.folio).filter((f): f is string => !!f);
+  const uniqueFolios = [...new Set(folios.length > 0 ? folios : [r?.folio ?? "—"])];
 
   return (
     <div
@@ -77,7 +90,7 @@ export default function OperatorVoucherPrintView({ reservation: r, data }: Props
           <img src={walkMeLogo} alt="WalkMe Tours" style={{ height: "36px", width: "auto", background: "white", borderRadius: "6px", padding: "3px" }} />
           <div>
             <div style={{ color: "white", fontWeight: "bold", fontSize: "15px", letterSpacing: "1px" }}>WALKME TOURS</div>
-            <div style={{ color: "rgba(255,255,255,0.7)", fontSize: "8px", letterSpacing: "2px" }}>CUPÓN PARA EL OPERADOR</div>
+            <div style={{ color: "rgba(255,255,255,0.7)", fontSize: "8px", letterSpacing: "2px" }}>SOLICITUD DE RESERVA · PROVEEDOR</div>
           </div>
         </div>
         <span style={{ backgroundColor: "#0f766e", color: "white", padding: "3px 10px", borderRadius: "20px", fontSize: "9px", fontWeight: "bold", letterSpacing: "1px" }}>
@@ -89,47 +102,35 @@ export default function OperatorVoucherPrintView({ reservation: r, data }: Props
       <div style={{ backgroundColor: LIGHT_GRAY, display: "grid", gridTemplateColumns: "1fr 1fr 1fr", padding: "6px 12px", gap: "6px", borderBottom: "1px solid #e5e7eb" }}>
         <div>
           <div style={labelStyle}>FOLIO WALKME</div>
-          <div style={{ color: DARK_GREEN, fontWeight: "bold", fontSize: "13px", fontFamily: "monospace", marginTop: "2px" }}>{r?.folio ?? "—"}</div>
+          <div style={{ color: DARK_GREEN, fontWeight: "bold", fontSize: "13px", fontFamily: "monospace", marginTop: "2px" }}>
+            {uniqueFolios.join(" · ")}
+          </div>
         </div>
         <Field label="Folio operador" value={r?.operator_folio ?? ""} />
         <Field label="Confirmación" value={r?.operator_confirmation_code ?? ""} />
       </div>
 
-      {/* OPERADOR + TOUR */}
+      {/* OPERADOR + PEDIDO */}
       <div style={{ padding: "8px 12px", borderBottom: "1px solid #f3f4f6" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
           <Building2 size={12} color="#6b7280" />
           <span style={{ fontSize: "11px", color: "#6b7280" }}>{operatorName}</span>
         </div>
-        <div style={{ fontWeight: "bold", fontSize: "15px", color: DARK_GREEN, marginTop: "3px" }}>{tourTitle}</div>
-        {r?.package_name ? (
-          <div style={{ fontSize: "10px", color: "#6b7280", marginTop: "1px" }}>Paquete: {r.package_name}</div>
-        ) : null}
+        <div style={{ fontWeight: "bold", fontSize: "13px", color: DARK_GREEN, marginTop: "3px" }}>
+          Favor de confirmar esta reserva y enviarnos nuestro cupón.
+        </div>
+        {data.sendTo && (
+          <div style={{ display: "flex", alignItems: "center", gap: "5px", marginTop: "3px", fontSize: "11px", color: "#374151" }}>
+            <Send size={11} color="#6b7280" />
+            Enviar cupón a: <strong>{data.sendTo}</strong>
+          </div>
+        )}
       </div>
 
-      {/* SERVICIO */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "8px", padding: "8px 12px", borderBottom: "1px solid #f3f4f6" }}>
-        <div>
-          <div style={labelStyle}><Calendar size={9} style={{ display: "inline", marginRight: 3 }} />Fecha</div>
-          <div style={valueStyle}>{r?.reservation_date ? new Date(`${r.reservation_date}T12:00:00`).toLocaleDateString("es-MX") : "—"}</div>
-        </div>
-        <div>
-          <div style={labelStyle}><Clock size={9} style={{ display: "inline", marginRight: 3 }} />Hora</div>
-          <div style={valueStyle}>{r?.reservation_time || "—"}</div>
-        </div>
-        <div>
-          <div style={labelStyle}><Users size={9} style={{ display: "inline", marginRight: 3 }} />Pax</div>
-          <div style={valueStyle}>{r?.pax_adults ?? 0} adultos · {r?.pax_children ?? 0} menores</div>
-        </div>
-        <div>
-          <div style={labelStyle}>Modalidad</div>
-          <div style={valueStyle}>{r?.modality === "private" ? "Privado" : "Compartido"}</div>
-        </div>
-      </div>
-
-      {/* PAX + LOGISTICA */}
+      {/* PASAJERO + LOGISTICA */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", padding: "8px 12px", borderBottom: "1px solid #f3f4f6" }}>
-        <Field label="Pasajero" value={data.clientName} />
+        <Field label="Pasajero titular" value={data.clientName} />
+        <Field label="Pasajeros" value={paxSummary(groupPax(lines), "es")} />
         <Field label="Zona / Nacionalidad" value={`${r?.zone ?? "—"} · ${r?.nationality ?? "—"}`} />
         {data.showHotel && <Field label="Hotel" value={[data.hotel, data.room ? `Hab. ${data.room}` : ""].filter(Boolean).join(" · ")} />}
         {data.showPickup && (
@@ -156,6 +157,46 @@ export default function OperatorVoucherPrintView({ reservation: r, data }: Props
             <div style={valueStyle}>{data.email || "—"}</div>
           </div>
         )}
+      </div>
+
+      {/* SERVICIOS A RESERVAR */}
+      <div style={{ borderBottom: "1px solid #f3f4f6" }}>
+        <div style={{ ...labelStyle, backgroundColor: LIGHT_GREEN, color: DARK_GREEN, fontWeight: "bold", padding: "5px 12px" }}>
+          Servicios a reservar
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: LINE_COLS, gap: "8px", padding: "4px 12px", borderBottom: "1px solid #e5e7eb" }}>
+          <div style={labelStyle}>Servicio</div>
+          <div style={labelStyle}><Calendar size={9} style={{ display: "inline", marginRight: 3 }} />Fecha</div>
+          <div style={labelStyle}><Clock size={9} style={{ display: "inline", marginRight: 3 }} />Hora</div>
+          <div style={labelStyle}>Pasajeros</div>
+        </div>
+        {lines.map((line) => {
+          const notes = ageNotes(line, "es");
+          return (
+            <div
+              key={line.id}
+              style={{ display: "grid", gridTemplateColumns: LINE_COLS, gap: "8px", padding: "6px 12px", borderBottom: "1px solid #f3f4f6", alignItems: "start", breakInside: "avoid" }}
+            >
+              <div>
+                <div style={{ fontWeight: "bold", fontSize: "11px", color: DARK_GREEN }}>{line.title}</div>
+                {line.packageName && <div style={{ fontSize: "9px", color: "#6b7280" }}>Paquete: {line.packageName}</div>}
+              </div>
+              <div style={{ fontSize: "11px", fontWeight: 600, color: isDatePending(line) ? "#b45309" : "inherit" }}>
+                {isDatePending(line) ? "POR CONFIRMAR" : formatDate(line.date)}
+              </div>
+              <div style={{ fontSize: "11px", fontWeight: 600 }}>{line.time || "—"}</div>
+              <div style={{ fontSize: "11px" }}>
+                <div style={{ fontWeight: 600 }}>{paxSummary({ adults: line.adults, children: line.children, infants: line.infants }, "es")}</div>
+                {notes.map((note) => (
+                  <div key={note} style={{ fontSize: "9px", color: ORANGE }}>{note}</div>
+                ))}
+                {line.infants > 0 && infantsAreFree(line) && (
+                  <div style={{ fontSize: "8px", color: "#6b7280" }}>Infante sin costo; debe ir en el manifiesto.</div>
+                )}
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       {/* PAGO AL OPERADOR */}

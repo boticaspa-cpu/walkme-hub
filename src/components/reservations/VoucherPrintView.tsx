@@ -6,6 +6,11 @@ import {
   CheckCircle, MapPin, Users, Calendar, Clock, CreditCard,
   AlertTriangle, Phone, Mail, Globe, Building2,
 } from "lucide-react";
+import {
+  ageNotes, freeInfantNote, groupPax, hasConsistentUnitPrices, hasMinors,
+  isDatePending, paxSummary, totalsOf,
+  type VoucherGroup, type VoucherLine,
+} from "@/lib/voucher-lines";
 
 interface OnSiteFees {
   amountPerAdult: number;
@@ -45,6 +50,10 @@ interface VoucherProps {
     pax_email?: string;
     tours?: { title: string; includes: string[]; meeting_point: string; short_description: string } | null;
     clients?: { name: string; phone: string; email: string | null } | null;
+    /** Every tour of the booking; built by loadVoucherGroup. */
+    voucher_group?: VoucherGroup | null;
+    /** Amount already taken off total_mxn for on-site fees. */
+    _total_adjust_mxn?: number;
   };
   lang?: "es" | "en";
   onSiteFees?: OnSiteFees;
@@ -90,6 +99,25 @@ const t = {
     perChild: "por menor",
     deposit: "DEPÓSITO PAGADO",
     balanceDue: "PENDIENTE AL ABORDAR",
+    copy: "COPIA CLIENTE",
+    passengers: "PASAJEROS",
+    breakdown: "DESGLOSE DE COMPRA",
+    experience: "EXPERIENCIA",
+    pickup: "PICK-UP",
+    pricePerson: "PRECIO / PERSONA",
+    amount: "IMPORTE",
+    datePending: "FECHA POR CONFIRMAR",
+    regularAmount: "Importe regular",
+    promoDiscount: "Descuento promocional",
+    importantInfo: "INFORMACIÓN IMPORTANTE",
+    childIncluded: "INFANTE INCLUIDO",
+    dateTitle: "Fecha por confirmar",
+    dateText: "El horario de pick-up se confirmará al definir la fecha.",
+    pickupTitle: "Pick-up",
+    pickupText: "Presentarse 10-15 minutos antes de la salida en el punto de pick-up del hotel.",
+    childVerifTitle: "Verificación de menores",
+    childVerifText: "Lleve el pasaporte original del menor o un comprobante de edad válido.",
+    infantWord: "Infante",
   },
   en: {
     title: "RESERVATION VOUCHER",
@@ -124,11 +152,37 @@ const t = {
     perChild: "per minor",
     deposit: "DEPOSIT PAID",
     balanceDue: "BALANCE DUE AT BOARDING",
+    copy: "CLIENT COPY",
+    passengers: "PASSENGERS",
+    breakdown: "PURCHASE BREAKDOWN",
+    experience: "EXPERIENCE",
+    pickup: "PICK-UP",
+    pricePerson: "PRICE / PERSON",
+    amount: "AMOUNT",
+    datePending: "DATE PENDING",
+    regularAmount: "Regular amount",
+    promoDiscount: "Promotional discount",
+    importantInfo: "IMPORTANT INFORMATION",
+    childIncluded: "CHILD INCLUDED",
+    dateTitle: "Date pending",
+    dateText: "The pick-up time will be confirmed once the date is set.",
+    pickupTitle: "Pick-up",
+    pickupText: "Please be ready 10-15 minutes before departure at the hotel pick-up point.",
+    childVerifTitle: "Child verification",
+    childVerifText: "Please carry the child's original passport or valid proof of age.",
+    infantWord: "Infant",
   },
 };
 
 const fmtMXN = (n: number) =>
   `$${n.toLocaleString("es-MX", { minimumFractionDigits: 2 })} MXN`;
+
+const formatDate = (date: string, lang: "es" | "en") =>
+  new Date(`${date}T12:00:00`).toLocaleDateString(lang === "es" ? "es-MX" : "en-US", {
+    day: "2-digit", month: "short", year: "numeric",
+  });
+
+const BREAKDOWN_COLS = "2.3fr 1fr 0.8fr 1.2fr 1fr";
 
 const DARK_GREEN = "#1B3D2F";
 const LIGHT_GREEN = "#E1F5EE";
@@ -183,6 +237,50 @@ export default function VoucherPrintView({
   const statusBg = isCancelled ? "#dc2626" : isConfirmed ? "#16a34a" : "#d97706";
 
   const pickupDisplay = r.pickup_point || r.pickup_notes;
+
+  // Older callers may not have loaded the group; fall back to this reservation alone.
+  const lines: VoucherLine[] = r.voucher_group?.lines?.length
+    ? r.voucher_group.lines
+    : [{
+        id: r.id,
+        reservationId: r.id,
+        tourId: null,
+        folio: r.folio,
+        title: tour?.title ?? "—",
+        packageName: null,
+        includes: tour?.includes ?? [],
+        date: r.reservation_date,
+        time: r.reservation_time,
+        adults: r.pax_adults,
+        children: r.pax_children,
+        infants: 0,
+        childAges: [],
+        infantAges: [],
+        unitAdult: r.unit_price_mxn ?? 0,
+        unitChild: r.unit_price_child_mxn ?? 0,
+        unitInfant: 0,
+        amount: r.total_mxn,
+        discount: 0,
+        operatorId: null,
+        operatorName: r.operator_name ?? null,
+      }];
+  const totals = totalsOf(lines);
+  const displayTotal = Math.max(0, totals.total - (r._total_adjust_mxn ?? 0));
+  const pax = groupPax(lines);
+  const folios = r.voucher_group?.folios?.length ? r.voucher_group.folios : [r.folio ?? "—"];
+  const operatorNames = [...new Set(lines.map((x) => x.operatorName).filter((n): n is string => !!n))];
+  const deposit = r.voucher_group ? r.voucher_group.deposit : r.deposit_mxn ?? 0;
+  const balance = r.voucher_group ? r.voucher_group.balance : r.balance_mxn ?? 0;
+  const freeInfants = freeInfantNote(lines, lang);
+  const pendingTours = lines.filter(isDatePending).map((x) => x.title);
+
+  const importantItems: { title: string; text: string }[] = [];
+  if (freeInfants) importantItems.push({ title: l.childIncluded, text: freeInfants });
+  if (pendingTours.length > 0) {
+    importantItems.push({ title: `${pendingTours.join(", ")}:`, text: l.dateText });
+  }
+  importantItems.push({ title: `${l.pickupTitle}:`, text: l.pickupText });
+  if (hasMinors(lines)) importantItems.push({ title: `${l.childVerifTitle}:`, text: l.childVerifText });
 
   return (
     <div
@@ -241,7 +339,7 @@ export default function VoucherPrintView({
               WALKME TOURS
             </div>
             <div style={{ color: "rgba(255,255,255,0.7)", fontSize: "8px", letterSpacing: "2px" }}>
-              {l.title}
+              {l.title} · {l.copy}
             </div>
           </div>
         </div>
@@ -274,13 +372,18 @@ export default function VoucherPrintView({
         <div>
           <div style={labelStyle}>{l.folio}</div>
           <div style={{ color: DARK_GREEN, fontWeight: "bold", fontSize: "13px", fontFamily: "monospace", marginTop: "2px" }}>
-            {r.folio ?? "—"}
+            {folios[0]}
           </div>
+          {folios.length > 1 && (
+            <div style={{ color: "#6b7280", fontSize: "8px", fontFamily: "monospace" }}>
+              + {folios.slice(1).join(", ")}
+            </div>
+          )}
         </div>
         <div>
           <div style={labelStyle}>{l.operator}</div>
           <div style={{ fontWeight: "600", fontSize: "11px", marginTop: "2px" }}>
-            {r.operator_name ?? "—"}
+            {operatorNames.length > 0 ? operatorNames.join(", ") : r.operator_name ?? "—"}
           </div>
         </div>
         <div>
@@ -324,6 +427,10 @@ export default function VoucherPrintView({
               <span style={{ color: "#6b7280", fontSize: "10px" }}>{r.pax_email || client?.email}</span>
             </div>
           )}
+          <div style={{ marginTop: "3px", fontSize: "10px", color: DARK_GREEN }}>
+            <span style={{ ...labelStyle, marginRight: "4px" }}>{l.passengers}</span>
+            {paxSummary(pax, lang)}
+          </div>
         </div>
         <div style={{ display: "flex", gap: "6px", flexShrink: 0 }}>
           <div
@@ -337,8 +444,9 @@ export default function VoucherPrintView({
             }}
           >
             <div style={{ fontSize: "7px", letterSpacing: "1px", opacity: 0.75 }}>{l.adults}</div>
-            <div style={{ fontWeight: "bold", fontSize: "14px", lineHeight: 1 }}>{r.pax_adults}</div>
+            <div style={{ fontWeight: "bold", fontSize: "14px", lineHeight: 1 }}>{pax.adults}</div>
           </div>
+          {(pax.children > 0 || pax.infants === 0) && (
           <div
             style={{
               backgroundColor: ORANGE,
@@ -350,8 +458,24 @@ export default function VoucherPrintView({
             }}
           >
             <div style={{ fontSize: "7px", letterSpacing: "1px", opacity: 0.75 }}>{l.minors}</div>
-            <div style={{ fontWeight: "bold", fontSize: "14px", lineHeight: 1 }}>{r.pax_children}</div>
+            <div style={{ fontWeight: "bold", fontSize: "14px", lineHeight: 1 }}>{pax.children}</div>
           </div>
+          )}
+          {pax.infants > 0 && (
+            <div
+              style={{
+                backgroundColor: "#6b7280",
+                color: "white",
+                borderRadius: "6px",
+                padding: "5px 10px",
+                textAlign: "center",
+                minWidth: "44px",
+              }}
+            >
+              <div style={{ fontSize: "7px", letterSpacing: "1px", opacity: 0.75 }}>{l.infantWord.toUpperCase()}</div>
+              <div style={{ fontWeight: "bold", fontSize: "14px", lineHeight: 1 }}>{pax.infants}</div>
+            </div>
+          )}
           {r.tour_language && (
             <div
               style={{
@@ -373,51 +497,6 @@ export default function VoucherPrintView({
               <div style={{ fontWeight: "bold", fontSize: "9px", lineHeight: 1, color: "white" }}>{r.tour_language}</div>
             </div>
           )}
-        </div>
-      </div>
-
-      {/* ── TOUR SECTION ── */}
-      <div
-        style={{
-          backgroundColor: LIGHT_GREEN,
-          padding: "6px 12px",
-          borderBottom: "1px solid #c8ead8",
-        }}
-      >
-        <div style={{ fontWeight: "bold", fontSize: "12px", color: DARK_GREEN, marginBottom: "4px" }}>
-          {tour?.title ?? "—"}
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "8px" }}>
-          <div>
-            <div style={{ ...labelStyle, display: "flex", alignItems: "center", gap: "3px" }}>
-              <Calendar size={9} />
-              {l.tourDate}
-            </div>
-            <div style={{ fontWeight: "600", fontSize: "11px", marginTop: "2px" }}>
-              {r.reservation_date}
-            </div>
-          </div>
-          <div>
-            <div style={{ ...labelStyle, display: "flex", alignItems: "center", gap: "3px" }}>
-              <Clock size={9} />
-              {l.tourTime}
-            </div>
-            <div style={{ fontWeight: "600", fontSize: "11px", marginTop: "2px" }}>
-              {r.reservation_time || "—"}
-            </div>
-          </div>
-          <div>
-            <div style={labelStyle}>{l.modality}</div>
-            <div style={{ fontWeight: "600", fontSize: "11px", marginTop: "2px" }}>
-              {r.modality === "shared" ? l.shared : l.private}
-            </div>
-          </div>
-          <div>
-            <div style={labelStyle}>{l.zone}</div>
-            <div style={{ fontWeight: "600", fontSize: "11px", marginTop: "2px" }}>
-              {r.zone || "—"}
-            </div>
-          </div>
         </div>
       </div>
 
@@ -473,73 +552,110 @@ export default function VoucherPrintView({
         </div>
       )}
 
-      {/* ── INCLUDES SECTION ── */}
-      {tour?.includes && tour.includes.length > 0 && (
-        <div style={{ padding: "5px 12px", borderBottom: "1px solid #f3f4f6" }}>
-          <div
-            style={{
-              ...labelStyle,
-              display: "flex",
-              alignItems: "center",
-              gap: "4px",
-              marginBottom: "3px",
-            }}
-          >
-            <CheckCircle size={9} color={DARK_GREEN} />
-            {l.includes}
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1px 12px" }}>
-            {tour.includes.map((item, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "11px" }}>
-                <span style={{ color: DARK_GREEN, fontWeight: "bold", fontSize: "11px", lineHeight: 1 }}>+</span>
-                <span>{item}</span>
-              </div>
-            ))}
-          </div>
+      {/* ── PURCHASE BREAKDOWN ── */}
+      <div style={{ borderBottom: "1px solid #f3f4f6" }}>
+        <div
+          style={{
+            ...labelStyle,
+            backgroundColor: LIGHT_GREEN,
+            color: DARK_GREEN,
+            fontWeight: "bold",
+            padding: "5px 12px",
+          }}
+        >
+          {l.breakdown}
         </div>
-      )}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: BREAKDOWN_COLS,
+            gap: "8px",
+            padding: "4px 12px",
+            borderBottom: "1px solid #e5e7eb",
+          }}
+        >
+          <div style={labelStyle}>{l.experience}</div>
+          <div style={labelStyle}>{l.tourDate}</div>
+          <div style={labelStyle}>{l.pickup}</div>
+          <div style={labelStyle}>{l.pricePerson}</div>
+          <div style={{ ...labelStyle, textAlign: "right" }}>{l.amount}</div>
+        </div>
+
+        {lines.map((line) => {
+          const notes = ageNotes(line, lang);
+          const showUnits = hasConsistentUnitPrices(line);
+          return (
+            <div
+              key={line.id}
+              style={{
+                display: "grid",
+                gridTemplateColumns: BREAKDOWN_COLS,
+                gap: "8px",
+                padding: "6px 12px",
+                borderBottom: "1px solid #f3f4f6",
+                alignItems: "start",
+                breakInside: "avoid",
+              }}
+            >
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontWeight: "bold", fontSize: "11px", color: DARK_GREEN }}>{line.title}</div>
+                {line.packageName && (
+                  <div style={{ fontSize: "9px", color: "#6b7280" }}>{line.packageName}</div>
+                )}
+                {line.includes.length > 0 && (
+                  <div style={{ fontSize: "8px", color: "#9ca3af", marginTop: "1px" }}>
+                    {line.includes.join(" · ")}
+                  </div>
+                )}
+                {notes.map((note) => (
+                  <div key={note} style={{ fontSize: "9px", color: ORANGE, marginTop: "1px" }}>{note}</div>
+                ))}
+              </div>
+              <div
+                style={{
+                  fontSize: "11px",
+                  fontWeight: "600",
+                  color: isDatePending(line) ? "#b45309" : "inherit",
+                }}
+              >
+                {isDatePending(line) ? l.datePending : formatDate(line.date, lang)}
+              </div>
+              <div style={{ fontSize: "11px", fontWeight: "600" }}>{line.time || "—"}</div>
+              <div style={{ fontSize: "10px", fontFamily: "monospace", color: "#4b5563" }}>
+                {showUnits ? (
+                  <>
+                    {line.adults > 0 && <div>{fmtMXN(line.unitAdult)}</div>}
+                    {line.children > 0 && (
+                      <div>{l.priceChild} {fmtMXN(line.unitChild)}</div>
+                    )}
+                    {line.infants > 0 && (
+                      <div>{l.infantWord} {fmtMXN(line.unitInfant)}</div>
+                    )}
+                  </>
+                ) : (
+                  "—"
+                )}
+              </div>
+              <div style={{ fontSize: "11px", fontWeight: "bold", fontFamily: "monospace", textAlign: "right" }}>
+                {fmtMXN(line.amount)}
+              </div>
+            </div>
+          );
+        })}
+      </div>
 
       {/* ── PAYMENT SECTION ── */}
       <div style={{ borderBottom: "1px solid #f3f4f6" }}>
-        {r.unit_price_mxn !== undefined && r.unit_price_mxn > 0 && (
+        {totals.discount > 0 && (
           <div style={{ padding: "4px 12px" }}>
-            {r.pax_adults > 0 && (
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  fontSize: "11px",
-                  padding: "2px 0",
-                  borderBottom: r.pax_children > 0 ? "1px solid #f9fafb" : "none",
-                  color: "#4b5563",
-                }}
-              >
-                <span>{r.pax_adults} × {l.priceAdult}</span>
-                <span style={{ fontFamily: "monospace" }}>
-                  {fmtMXN(r.unit_price_mxn!)} × {r.pax_adults} ={" "}
-                  <strong>{fmtMXN(r.pax_adults * r.unit_price_mxn!)}</strong>
-                </span>
-              </div>
-            )}
-            {r.pax_children > 0 &&
-              r.unit_price_child_mxn !== undefined &&
-              r.unit_price_child_mxn > 0 && (
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    fontSize: "11px",
-                    padding: "2px 0",
-                    color: "#4b5563",
-                  }}
-                >
-                  <span>{r.pax_children} × {l.priceChild}</span>
-                  <span style={{ fontFamily: "monospace" }}>
-                    {fmtMXN(r.unit_price_child_mxn!)} × {r.pax_children} ={" "}
-                    <strong>{fmtMXN(r.pax_children * r.unit_price_child_mxn!)}</strong>
-                  </span>
-                </div>
-              )}
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", padding: "2px 0", color: "#4b5563" }}>
+              <span>{l.regularAmount}</span>
+              <span style={{ fontFamily: "monospace" }}>{fmtMXN(totals.regular)}</span>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", padding: "2px 0", color: "#b91c1c" }}>
+              <span>{l.promoDiscount}</span>
+              <span style={{ fontFamily: "monospace" }}>-{fmtMXN(totals.discount)}</span>
+            </div>
           </div>
         )}
         <div
@@ -558,12 +674,12 @@ export default function VoucherPrintView({
             </span>
           </div>
           <span style={{ color: "white", fontWeight: "bold", fontSize: "15px" }}>
-            {fmtMXN(r.total_mxn)}
+            {fmtMXN(displayTotal)}
           </span>
         </div>
 
         {/* ── DEPOSIT / BALANCE BREAKDOWN ── */}
-        {r.deposit_mxn != null && r.deposit_mxn > 0 && r.balance_mxn != null && r.balance_mxn > 0 && (
+        {deposit > 0 && balance > 0 && (
           <div style={{ padding: "0" }}>
             <div
               style={{
@@ -578,7 +694,7 @@ export default function VoucherPrintView({
             >
               <span style={{ color: "#065f46", fontWeight: "600" }}>✓ {l.deposit}</span>
               <span style={{ color: "#065f46", fontWeight: "bold", fontFamily: "monospace" }}>
-                {fmtMXN(r.deposit_mxn)}
+                {fmtMXN(deposit)}
               </span>
             </div>
             <div
@@ -598,8 +714,8 @@ export default function VoucherPrintView({
               </div>
               <span style={{ color: "#991b1b", fontWeight: "bold", fontFamily: "monospace" }}>
                 {r.balance_currency && r.balance_currency !== "MXN"
-                  ? `$${r.balance_mxn.toLocaleString("es-MX", { minimumFractionDigits: 2 })} ${r.balance_currency}`
-                  : fmtMXN(r.balance_mxn)
+                  ? `$${balance.toLocaleString("es-MX", { minimumFractionDigits: 2 })} ${r.balance_currency}`
+                  : fmtMXN(balance)
                 }
               </span>
             </div>
@@ -631,6 +747,18 @@ export default function VoucherPrintView({
           </p>
         </div>
       )}
+
+      {/* ── IMPORTANT INFORMATION ── */}
+      <div style={{ padding: "5px 12px", borderBottom: "1px solid #f3f4f6", breakInside: "avoid" }}>
+        <div style={{ ...labelStyle, color: DARK_GREEN, fontWeight: "bold", marginBottom: "3px" }}>
+          {l.importantInfo}
+        </div>
+        {importantItems.map((item) => (
+          <p key={item.title} style={{ fontSize: "9px", color: "#4b5563", margin: "0 0 2px 0", lineHeight: 1.35 }}>
+            <strong style={{ color: "#111827" }}>{item.title}</strong> {item.text}
+          </p>
+        ))}
+      </div>
 
       {/* ── NOTES ── */}
       {r.notes && (

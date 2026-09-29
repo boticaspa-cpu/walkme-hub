@@ -10,6 +10,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Printer, RotateCcw } from "lucide-react";
 import OperatorVoucherPrintView, { type OperatorVoucherData } from "./OperatorVoucherPrintView";
+import { loadVoucherGroup } from "@/lib/reservation-group";
+import { operatorCostOf, type NetCostVariant, type VoucherLine } from "@/lib/voucher-lines";
+
+// WhatsApp of the agency, the same one printed on quotes.
+const DEFAULT_SEND_TO = "+52 56 3974 8122";
 
 interface Props {
   reservation: any | null;
@@ -25,6 +30,7 @@ const buildInitial = (r: any): OperatorVoucherData => ({
   pickupPoint: r?.pickup_point || r?.pickup_notes || "",
   notes: r?.notes ?? "",
   language: r?.tour_language ?? "",
+  sendTo: DEFAULT_SEND_TO,
   showPhone: false,
   showEmail: false,
   showHotel: true,
@@ -44,36 +50,40 @@ export default function OperatorVoucherDialog({ reservation, onClose }: Props) {
 
   const operatorId = reservation?.tours?.operator_id ?? null;
 
+  // Every tour of this booking that the same operator has to reserve.
   const { data: prefill } = useQuery({
     queryKey: ["operator-voucher-prefill", reservation?.id],
     enabled: !!reservation?.id,
     queryFn: async () => {
+      const group = await loadVoucherGroup(reservation);
+      const lines = group.lines.filter((l) => !operatorId || l.operatorId === operatorId);
+      const tourIds = [...new Set(lines.map((l) => l.tourId).filter((id): id is string => !!id))];
+
       const [{ data: variants }, { data: op }] = await Promise.all([
-        supabase
-          .from("tour_price_variants")
-          .select("pax_type, net_cost, package_name, zone, nationality")
-          .eq("tour_id", reservation.tour_id ?? "")
-          .eq("zone", reservation.zone ?? "")
-          .eq("nationality", reservation.nationality ?? ""),
+        tourIds.length > 0
+          ? supabase
+              .from("tour_price_variants")
+              .select("tour_id, pax_type, net_cost, package_name")
+              .in("tour_id", tourIds)
+              .eq("zone", reservation.zone ?? "")
+              .eq("nationality", reservation.nationality ?? "")
+          : Promise.resolve({ data: [] as NetCostVariant[] }),
         operatorId
           ? supabase.from("operators").select("base_currency, preferred_payment_method").eq("id", operatorId).maybeSingle()
           : Promise.resolve({ data: null } as any),
       ]);
-      const pkg = reservation.package_name || null;
-      const pick = (paxType: string) => {
-        const list = (variants ?? []).filter((v: any) => v.pax_type === paxType);
-        return list.find((v: any) => v.package_name === pkg) ?? list.find((v: any) => !v.package_name) ?? list[0];
-      };
-      const adult = Number(pick("adult")?.net_cost ?? 0);
-      const child = Number(pick("child")?.net_cost ?? 0);
-      const amount = adult * (reservation.pax_adults ?? 0) + child * (reservation.pax_children ?? 0);
+
+      const amount = lines.reduce((sum, l) => sum + operatorCostOf(l, (variants ?? []) as NetCostVariant[]), 0);
       return {
+        lines,
         amount,
         currency: (op as any)?.base_currency || "MXN",
         method: (op as any)?.preferred_payment_method || "cash",
       };
     },
   });
+
+  const lines: VoucherLine[] = prefill?.lines ?? [];
 
   useEffect(() => {
     setData(buildInitial(reservation));
@@ -97,7 +107,7 @@ export default function OperatorVoucherDialog({ reservation, onClose }: Props) {
     const styles = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
       .map((el) => el.outerHTML)
       .join("\n");
-    w.document.write(`<!DOCTYPE html><html><head><title>Cupón Operador ${reservation?.folio ?? ""}</title>
+    w.document.write(`<!DOCTYPE html><html><head><title>Solicitud proveedor ${reservation?.folio ?? ""}</title>
       ${styles}
       <style>
         body { font-family: Arial, sans-serif; padding: 24px; margin: 0; background: white; }
@@ -124,9 +134,9 @@ export default function OperatorVoucherDialog({ reservation, onClose }: Props) {
     <Dialog open={!!reservation} onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent className="sm:max-w-3xl max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Cupón Operador — {reservation?.folio ?? ""}</DialogTitle>
+          <DialogTitle>Solicitud al proveedor — {reservation?.folio ?? ""}</DialogTitle>
           <DialogDescription>
-            Sin precios de venta ni "incluye". Elige qué datos mostrar y captura el monto a pagar al operador.
+            Sin precios de venta. Incluye los datos para que el proveedor reserve y te envíe tu cupón. Elige qué datos mostrar.
           </DialogDescription>
         </DialogHeader>
 
@@ -176,6 +186,10 @@ export default function OperatorVoucherDialog({ reservation, onClose }: Props) {
                 <Input value={data.pickupPoint} onChange={(e) => set("pickupPoint", e.target.value)} />
               </div>
               <div className="space-y-1.5 sm:col-span-2">
+                <Label className="text-xs">Enviar cupón a (WhatsApp o correo)</Label>
+                <Input value={data.sendTo} onChange={(e) => set("sendTo", e.target.value)} />
+              </div>
+              <div className="space-y-1.5 sm:col-span-2">
                 <Label className="text-xs">Notas operativas</Label>
                 <Textarea rows={2} value={data.notes} onChange={(e) => set("notes", e.target.value)} />
               </div>
@@ -221,7 +235,7 @@ export default function OperatorVoucherDialog({ reservation, onClose }: Props) {
 
             {/* Preview */}
             <div className="rounded-lg border border-border p-2 overflow-x-auto">
-              <OperatorVoucherPrintView reservation={reservation} data={data} />
+              <OperatorVoucherPrintView reservation={reservation} data={data} lines={lines} />
             </div>
           </div>
         )}
@@ -231,7 +245,7 @@ export default function OperatorVoucherDialog({ reservation, onClose }: Props) {
             <RotateCcw className="mr-2 h-4 w-4" /> Restablecer
           </Button>
           <Button variant="outline" onClick={onClose}>Cerrar</Button>
-          <Button onClick={handlePrint}>
+          <Button onClick={handlePrint} disabled={!prefill}>
             <Printer className="mr-2 h-4 w-4" /> Imprimir
           </Button>
         </DialogFooter>
