@@ -441,6 +441,32 @@ export default function Reservas() {
         const { error } = await supabase.from("reservations").update(payload).eq("id", editingId);
         if (error) throw error;
 
+        const result = computeTourPrice(form.tour_id, form.zone, form.nationality, allVariants as any, tours as any, form.package_name || undefined, allTourPackages);
+        const itemPayload = {
+          tour_id: form.tour_id || null,
+          tour_date: form.reservation_date,
+          qty_adults: form.pax_adults,
+          qty_children: form.pax_children,
+          qty_infants: form.pax_infants,
+          child_ages: form.child_ages,
+          infant_ages: form.infant_ages,
+          unit_price_mxn: result.adultPrice,
+          unit_price_child_mxn: result.childPrice,
+          unit_price_infant_mxn: form.unit_price_infant_mxn,
+          subtotal_mxn: form.total_mxn,
+          zone: form.zone,
+          nationality: form.nationality,
+          package_name: form.package_name || null,
+        };
+        const { data: currentItem } = await supabase.from("reservation_items").select("id").eq("reservation_id", editingId).limit(1).maybeSingle();
+        if (currentItem) {
+          const { error: itemError } = await supabase.from("reservation_items").update(itemPayload).eq("id", currentItem.id);
+          if (itemError) throw itemError;
+        } else {
+          const { error: itemError } = await supabase.from("reservation_items").insert({ ...itemPayload, reservation_id: editingId });
+          if (itemError) throw itemError;
+        }
+
         // Auto-create payable and commission when status → confirmed
         if (form.status === "confirmed") {
           try {
@@ -553,8 +579,33 @@ export default function Reservas() {
           operator_confirmation_code: shared.operator_confirmation_code || "",
           package_name: item.package_name || "",
         } as any));
-        const { error } = await supabase.from("reservations").insert(inserts);
+        const { data: createdReservations, error } = await supabase.from("reservations").insert(inserts).select("id");
         if (error) throw error;
+        const detailRows = (createdReservations ?? []).map((reservation, index) => {
+          const item = items[index];
+          const price = computeTourPrice(item.tour_id, shared.zone, shared.nationality, allVariants as any, tours as any, item.package_name || undefined, allTourPackages);
+          return {
+            reservation_id: reservation.id,
+            tour_id: item.tour_id,
+            tour_date: item.reservation_date,
+            qty_adults: item.pax_adults,
+            qty_children: item.pax_children,
+            qty_infants: item.pax_infants,
+            child_ages: item.child_ages,
+            infant_ages: item.infant_ages,
+            unit_price_mxn: price.adultPrice,
+            unit_price_child_mxn: price.childPrice,
+            unit_price_infant_mxn: item.unit_price_infant_mxn,
+            subtotal_mxn: item.total_mxn,
+            zone: shared.zone,
+            nationality: shared.nationality,
+            package_name: item.package_name || null,
+          };
+        });
+        if (detailRows.length > 0) {
+          const { error: itemError } = await supabase.from("reservation_items").insert(detailRows);
+          if (itemError) throw itemError;
+        }
       }
     },
     onSuccess: () => {
@@ -1179,7 +1230,15 @@ export default function Reservas() {
                 </div>
                 <div className="space-y-1.5">
                    <Label>Menores</Label>
-                   <Input type="number" min={0} value={form.pax_children} onChange={(e) => setForm((p) => ({ ...p, pax_children: parseInt(e.target.value) || 0 }))} />
+                   <Input type="number" min={0} value={form.pax_children} onChange={(e) => { const count = parseInt(e.target.value) || 0; setForm((p) => ({ ...p, pax_children: count, child_ages: Array.from({ length: count }, (_, i) => p.child_ages[i] ?? 0) })); }} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Infantes</Label>
+                  <Input type="number" min={0} value={form.pax_infants} onChange={(e) => { const count = parseInt(e.target.value) || 0; setForm((p) => ({ ...p, pax_infants: count, infant_ages: Array.from({ length: count }, (_, i) => p.infant_ages[i] ?? 0) })); }} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Precio por infante</Label>
+                  <Input type="number" min={0} step="0.01" value={form.unit_price_infant_mxn} onChange={(e) => setForm((p) => ({ ...p, unit_price_infant_mxn: parseFloat(e.target.value) || 0 }))} />
                 </div>
                 <div className="space-y-1.5">
                   <Label>Subtotal MXN</Label>
@@ -1193,6 +1252,12 @@ export default function Reservas() {
                   />
                 </div>
               </div>
+              {(form.pax_children > 0 || form.pax_infants > 0) && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {form.pax_children > 0 && <div className="space-y-1.5"><Label>Edades de menores</Label><div className="flex flex-wrap gap-2">{form.child_ages.map((age, i) => <Input key={i} aria-label={`Edad menor ${i + 1}`} className="w-20" type="number" min={0} value={age || ""} placeholder={`M${i + 1}`} onChange={(e) => setForm((p) => ({ ...p, child_ages: p.child_ages.map((v, j) => j === i ? parseInt(e.target.value) || 0 : v) }))} />)}</div></div>}
+                  {form.pax_infants > 0 && <div className="space-y-1.5"><Label>Edades de infantes</Label><div className="flex flex-wrap gap-2">{form.infant_ages.map((age, i) => <Input key={i} aria-label={`Edad infante ${i + 1}`} className="w-20" type="number" min={0} value={age || ""} placeholder={`I${i + 1}`} onChange={(e) => setForm((p) => ({ ...p, infant_ages: p.infant_ages.map((v, j) => j === i ? parseInt(e.target.value) || 0 : v) }))} />)}</div></div>}
+                </div>
+              )}
               {form.discount_mxn > 0 && (
                 <p className="text-sm font-semibold text-right">Total: {fmt(Math.max(0, form.total_mxn - form.discount_mxn))}</p>
               )}
@@ -1365,8 +1430,8 @@ export default function Reservas() {
                       </div>
                     </div>
 
-                    {/* Adultos + Niños + Total */}
-                    <div className="grid grid-cols-3 gap-2">
+                    {/* Adultos + menores + infantes + total */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                       <div className="space-y-1">
                         <Label className="text-xs">Adultos</Label>
                         <Input type="number" min={0} value={item.pax_adults} onChange={(e) => updateItem(item.id, "pax_adults", parseInt(e.target.value) || 0)} />
@@ -1376,10 +1441,19 @@ export default function Reservas() {
                         <Input type="number" min={0} value={item.pax_children} onChange={(e) => updateItem(item.id, "pax_children", parseInt(e.target.value) || 0)} />
                       </div>
                       <div className="space-y-1">
+                        <Label className="text-xs">Infantes</Label>
+                        <Input type="number" min={0} value={item.pax_infants} onChange={(e) => updateItem(item.id, "pax_infants", parseInt(e.target.value) || 0)} />
+                      </div>
+                      <div className="space-y-1">
                         <Label className="text-xs">Total MXN</Label>
                         <Input type="number" min={0} step="0.01" value={item.total_mxn} onChange={(e) => updateItem(item.id, "total_mxn", parseFloat(e.target.value) || 0)} />
                       </div>
                     </div>
+                    {item.pax_infants > 0 && <div className="space-y-1"><Label className="text-xs">Precio por infante</Label><Input type="number" min={0} step="0.01" value={item.unit_price_infant_mxn} onChange={(e) => updateItem(item.id, "unit_price_infant_mxn", parseFloat(e.target.value) || 0)} /></div>}
+                    {(item.pax_children > 0 || item.pax_infants > 0) && <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {item.pax_children > 0 && <div className="space-y-1"><Label className="text-xs">Edades de menores</Label><div className="flex flex-wrap gap-2">{item.child_ages.map((age, ageIndex) => <Input key={ageIndex} aria-label={`Edad menor ${ageIndex + 1}`} className="w-20" type="number" min={0} value={age || ""} placeholder={`M${ageIndex + 1}`} onChange={(e) => updateItem(item.id, "child_ages", item.child_ages.map((v, i) => i === ageIndex ? parseInt(e.target.value) || 0 : v))} />)}</div></div>}
+                      {item.pax_infants > 0 && <div className="space-y-1"><Label className="text-xs">Edades de infantes</Label><div className="flex flex-wrap gap-2">{item.infant_ages.map((age, ageIndex) => <Input key={ageIndex} aria-label={`Edad infante ${ageIndex + 1}`} className="w-20" type="number" min={0} value={age || ""} placeholder={`I${ageIndex + 1}`} onChange={(e) => updateItem(item.id, "infant_ages", item.infant_ages.map((v, i) => i === ageIndex ? parseInt(e.target.value) || 0 : v))} />)}</div></div>}
+                    </div>}
                   </div>
                 ))}
 
@@ -1408,8 +1482,8 @@ export default function Reservas() {
               disabled={
                 saveMutation.isPending ||
                 (editingId
-                  ? !form.tour_id || !form.client_id || !form.reservation_date || !form.reservation_time || !form.nationality || !form.pickup_point || !form.tour_language || form.pax_adults < 1
-                  : !shared.client_id || !shared.nationality || !shared.pickup_point || !shared.tour_language || items.some((i) => !i.tour_id || !i.reservation_date || !i.reservation_time || i.pax_adults < 1))
+                  ? !form.tour_id || !form.client_id || !form.reservation_date || !form.reservation_time || !form.nationality || !form.pickup_point || !form.tour_language || form.pax_adults < 1 || form.child_ages.some((age) => age <= 0) || form.infant_ages.some((age) => age < 0)
+                  : !shared.client_id || !shared.nationality || !shared.pickup_point || !shared.tour_language || items.some((i) => !i.tour_id || !i.reservation_date || !i.reservation_time || i.pax_adults < 1 || i.child_ages.some((age) => age <= 0) || i.infant_ages.some((age) => age < 0)))
               }
             >
               {saveMutation.isPending ? "Guardando…" : editingId ? "Actualizar" : items.length > 1 ? `Crear ${items.length} Reservas` : "Crear Reserva"}
