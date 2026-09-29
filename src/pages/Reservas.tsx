@@ -12,6 +12,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { computeTourPrice, computeTotal, TourPackageRow } from "@/lib/tour-pricing";
 import VoucherPrintView from "@/components/reservations/VoucherPrintView";
+import { loadVoucherGroup } from "@/lib/reservation-group";
 import OperatorVoucherDialog from "@/components/reservations/OperatorVoucherDialog";
 import ReservationCheckout from "@/components/reservations/ReservationCheckout";
 import { buildWhatsAppMessage, openWhatsApp } from "@/components/reservations/whatsapp-message";
@@ -819,10 +820,19 @@ export default function Reservas() {
       unitChild = result.childPrice;
     }
 
+    // All tours of the same booking, so one voucher can list them together.
+    let voucherGroup = null;
+    try {
+      voucherGroup = await loadVoucherGroup(r);
+    } catch (e) {
+      console.warn("No se pudo cargar el grupo de la reserva:", e);
+    }
+
     return {
       ...r,
       unit_price_mxn: unitAdult,
       unit_price_child_mxn: unitChild,
+      voucher_group: voucherGroup,
       voucher_items: voucherItems.length > 0 ? voucherItems : [{
         tour_id: r.tour_id,
         tour_date: r.reservation_date,
@@ -1547,16 +1557,20 @@ export default function Reservas() {
 
           {voucherReservation && (() => {
             const onSiteFees = !taxIncluded ? computeOnSiteFees(voucherReservation) : null;
-            const displayReservation = !taxIncluded && onSiteFees
-              ? {
-                  ...voucherReservation,
-                  total_mxn: Math.max(0,
-                    voucherReservation.total_mxn
-                    - (onSiteFees.amountPerAdult * voucherReservation.pax_adults * (voucherReservation._exchange_rate || 1))
-                    - (onSiteFees.amountPerChild * voucherReservation.pax_children * (voucherReservation._exchange_rate || 1))
-                  ),
-                }
-              : voucherReservation;
+            const adjustedTotal = !taxIncluded && onSiteFees
+              ? Math.max(0,
+                  voucherReservation.total_mxn
+                  - (onSiteFees.amountPerAdult * voucherReservation.pax_adults * (voucherReservation._exchange_rate || 1))
+                  - (onSiteFees.amountPerChild * voucherReservation.pax_children * (voucherReservation._exchange_rate || 1))
+                )
+              : voucherReservation.total_mxn;
+            const displayReservation = {
+              ...voucherReservation,
+              total_mxn: adjustedTotal,
+              // The voucher lists every tour of the booking, so it needs the amount
+              // taken off for on-site fees rather than the adjusted total itself.
+              _total_adjust_mxn: voucherReservation.total_mxn - adjustedTotal,
+            };
             return (
               <div ref={voucherRef}>
                 <VoucherPrintView reservation={displayReservation} onSiteFees={onSiteFees ?? undefined} />
