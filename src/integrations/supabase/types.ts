@@ -1053,47 +1053,59 @@ export type Database = {
       }
       reservation_items: {
         Row: {
+          child_ages: number[]
           created_at: string | null
           id: string
+          infant_ages: number[]
           nationality: string | null
           package_name: string | null
           qty_adults: number
           qty_children: number
+          qty_infants: number
           reservation_id: string
           subtotal_mxn: number
           tour_date: string | null
           tour_id: string | null
           unit_price_child_mxn: number
+          unit_price_infant_mxn: number
           unit_price_mxn: number
           zone: string | null
         }
         Insert: {
+          child_ages?: number[]
           created_at?: string | null
           id?: string
+          infant_ages?: number[]
           nationality?: string | null
           package_name?: string | null
           qty_adults?: number
           qty_children?: number
+          qty_infants?: number
           reservation_id: string
           subtotal_mxn?: number
           tour_date?: string | null
           tour_id?: string | null
           unit_price_child_mxn?: number
+          unit_price_infant_mxn?: number
           unit_price_mxn?: number
           zone?: string | null
         }
         Update: {
+          child_ages?: number[]
           created_at?: string | null
           id?: string
+          infant_ages?: number[]
           nationality?: string | null
           package_name?: string | null
           qty_adults?: number
           qty_children?: number
+          qty_infants?: number
           reservation_id?: string
           subtotal_mxn?: number
           tour_date?: string | null
           tour_id?: string | null
           unit_price_child_mxn?: number
+          unit_price_infant_mxn?: number
           unit_price_mxn?: number
           zone?: string | null
         }
@@ -1119,6 +1131,7 @@ export type Database = {
           balance_currency: string
           balance_mxn: number
           cancellation_folio: string | null
+          child_ages: number[]
           client_id: string | null
           confirmation_status: string
           confirmed_at: string | null
@@ -1129,6 +1142,7 @@ export type Database = {
           folio: string | null
           hotel_name: string
           id: string
+          infant_ages: number[]
           modality: string
           nationality: string
           notes: string | null
@@ -1139,6 +1153,7 @@ export type Database = {
           pax_adults: number
           pax_children: number
           pax_email: string
+          pax_infants: number
           payment_status: string
           pickup_notes: string
           pickup_point: string
@@ -1150,6 +1165,7 @@ export type Database = {
           total_mxn: number
           tour_id: string | null
           tour_language: string
+          unit_price_infant_mxn: number
           updated_at: string
           zone: string
         }
@@ -1157,6 +1173,7 @@ export type Database = {
           balance_currency?: string
           balance_mxn?: number
           cancellation_folio?: string | null
+          child_ages?: number[]
           client_id?: string | null
           confirmation_status?: string
           confirmed_at?: string | null
@@ -1167,6 +1184,7 @@ export type Database = {
           folio?: string | null
           hotel_name?: string
           id?: string
+          infant_ages?: number[]
           modality?: string
           nationality?: string
           notes?: string | null
@@ -1177,6 +1195,7 @@ export type Database = {
           pax_adults?: number
           pax_children?: number
           pax_email?: string
+          pax_infants?: number
           payment_status?: string
           pickup_notes?: string
           pickup_point?: string
@@ -1188,6 +1207,7 @@ export type Database = {
           total_mxn?: number
           tour_id?: string | null
           tour_language?: string
+          unit_price_infant_mxn?: number
           updated_at?: string
           zone?: string
         }
@@ -1195,6 +1215,7 @@ export type Database = {
           balance_currency?: string
           balance_mxn?: number
           cancellation_folio?: string | null
+          child_ages?: number[]
           client_id?: string | null
           confirmation_status?: string
           confirmed_at?: string | null
@@ -1205,6 +1226,7 @@ export type Database = {
           folio?: string | null
           hotel_name?: string
           id?: string
+          infant_ages?: number[]
           modality?: string
           nationality?: string
           notes?: string | null
@@ -1215,6 +1237,7 @@ export type Database = {
           pax_adults?: number
           pax_children?: number
           pax_email?: string
+          pax_infants?: number
           payment_status?: string
           pickup_notes?: string
           pickup_point?: string
@@ -1226,6 +1249,7 @@ export type Database = {
           total_mxn?: number
           tour_id?: string | null
           tour_language?: string
+          unit_price_infant_mxn?: number
           updated_at?: string
           zone?: string
         }
