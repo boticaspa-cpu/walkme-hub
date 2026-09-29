@@ -4,14 +4,29 @@ interface ReservationData {
   reservation_time: string;
   pax_adults: number;
   pax_children: number;
+  pax_infants?: number;
   total_mxn: number;
   zone: string;
   modality: string;
+  discount_mxn?: number;
   notes: string | null;
   hotel_name?: string;
   pickup_notes?: string;
   operator_confirmation_code?: string;
-  tours?: { title: string; includes: string[]; meeting_point: string } | null;
+  tours?: { title: string; meeting_point: string; service_type?: string } | null;
+  voucher_items?: Array<{
+    qty_adults: number;
+    qty_children: number;
+    qty_infants?: number;
+    child_ages?: number[];
+    infant_ages?: number[];
+    unit_price_mxn: number;
+    unit_price_child_mxn: number;
+    unit_price_infant_mxn?: number;
+    subtotal_mxn: number;
+    package_name?: string | null;
+    tours?: { title: string; service_type?: string } | null;
+  }>;
   clients?: { name: string; phone: string; email: string | null } | null;
 }
 
@@ -27,6 +42,11 @@ function capitalize(s: string) {
 
 export function buildWhatsAppMessage(r: ReservationData, lang: "es" | "en" = "es", onSiteFees?: OnSiteFees): string {
   const SEP = "━━━━━━━━━━━━━━━━━━━━";
+  const items = r.voucher_items ?? [];
+  const money = (value: number) => `$${Number(value || 0).toLocaleString(lang === "en" ? "en-US" : "es-MX", { minimumFractionDigits: 2 })} MXN`;
+  const subtotal = items.length > 0 ? items.reduce((sum, item) => sum + Number(item.subtotal_mxn || 0), 0) : r.total_mxn + Number(r.discount_mxn || 0);
+  const discount = Number(r.discount_mxn || 0);
+  const discountPct = subtotal > 0 ? discount / subtotal * 100 : 0;
 
   if (lang === "en") {
     const dateStr = capitalize(
@@ -50,20 +70,26 @@ export function buildWhatsAppMessage(r: ReservationData, lang: "es" | "en" = "es
       `🕐 *Time:* ${r.reservation_time || "—"}`,
       `📍 *Pickup zone:* ${r.zone || "—"}`,
       `🚐 *Modality:* ${r.modality === "shared" ? "Shared" : "Private"}`,
-      `👥 *Passengers:* ${r.pax_adults} adult(s), ${r.pax_children} child(ren)`,
+      `👥 *Passengers:* ${r.pax_adults} adult(s), ${r.pax_children} minor(s), ${r.pax_infants ?? 0} infant(s)`,
       ``,
-      `💰 *Total paid: $${r.total_mxn.toLocaleString("en-US", { minimumFractionDigits: 2 })} MXN*`,
+      `💰 *Tour breakdown:*`,
     ];
+
+    items.forEach((item) => {
+      const service = item.tours?.service_type === "with_transport" ? "With transportation" : "Without transportation";
+      lines.push(`• *${item.tours?.title ?? r.tours?.title ?? "Tour"}*${item.package_name ? ` — ${item.package_name}` : ""} · ${service}`);
+      if (item.qty_adults > 0) lines.push(`  ${item.qty_adults} adult(s) × ${money(item.unit_price_mxn)} = ${money(item.qty_adults * item.unit_price_mxn)}`);
+      if (item.qty_children > 0) lines.push(`  ${item.qty_children} minor(s)${item.child_ages?.length ? ` (ages: ${item.child_ages.join(", ")})` : ""} × ${money(item.unit_price_child_mxn)} = ${money(item.qty_children * item.unit_price_child_mxn)}`);
+      if ((item.qty_infants ?? 0) > 0) lines.push(`  ${item.qty_infants} infant(s)${item.infant_ages?.length ? ` (ages: ${item.infant_ages.join(", ")})` : ""} × ${money(item.unit_price_infant_mxn ?? 0)} = ${money((item.qty_infants ?? 0) * (item.unit_price_infant_mxn ?? 0))}`);
+      if (r.modality === "private") lines.push(`  Private service total: ${money(item.subtotal_mxn)}`);
+    });
+    if (discount > 0) lines.push(``, `🏷️ *Discount (${discountPct.toFixed(2)}%):* -${money(discount)}`);
+    lines.push(`💳 *Total: ${money(r.total_mxn)}*`);
 
     if (r.hotel_name) lines.push(``, `🏨 *Hotel:* ${r.hotel_name}`);
     if (r.tours?.meeting_point) lines.push(`📌 *Meeting point:* ${r.tours.meeting_point}`);
     if (r.pickup_notes) lines.push(`🚏 *Pickup notes:* ${r.pickup_notes}`);
     if (r.operator_confirmation_code) lines.push(`🔑 *Confirmation code:* ${r.operator_confirmation_code}`);
-
-    if (r.tours?.includes?.length) {
-      lines.push(``, `✅ *Includes:*`);
-      r.tours.includes.forEach((item) => lines.push(`  • ${item}`));
-    }
 
     if (r.notes) lines.push(``, `📝 *Notes:* ${r.notes}`);
 
@@ -109,20 +135,26 @@ export function buildWhatsAppMessage(r: ReservationData, lang: "es" | "en" = "es
     `🕐 *Hora:* ${r.reservation_time || "—"}`,
     `📍 *Zona:* ${r.zone || "—"}`,
     `🚐 *Modalidad:* ${r.modality === "shared" ? "Compartido" : "Privado"}`,
-    `👥 *Pasajeros:* ${r.pax_adults} adulto(s), ${r.pax_children} menor(es)`,
+      `👥 *Pasajeros:* ${r.pax_adults} adulto(s), ${r.pax_children} menor(es), ${r.pax_infants ?? 0} infante(s)`,
     ``,
-    `💰 *Total pagado: $${r.total_mxn.toLocaleString("es-MX", { minimumFractionDigits: 2 })} MXN*`,
+      `💰 *Desglose de tours:*`,
   ];
+
+  items.forEach((item) => {
+    const service = item.tours?.service_type === "with_transport" ? "Con transporte" : "Sin transporte";
+    lines.push(`• *${item.tours?.title ?? r.tours?.title ?? "Tour"}*${item.package_name ? ` — ${item.package_name}` : ""} · ${service}`);
+    if (item.qty_adults > 0) lines.push(`  ${item.qty_adults} adulto(s) × ${money(item.unit_price_mxn)} = ${money(item.qty_adults * item.unit_price_mxn)}`);
+    if (item.qty_children > 0) lines.push(`  ${item.qty_children} menor(es)${item.child_ages?.length ? ` (edades: ${item.child_ages.join(", ")})` : ""} × ${money(item.unit_price_child_mxn)} = ${money(item.qty_children * item.unit_price_child_mxn)}`);
+    if ((item.qty_infants ?? 0) > 0) lines.push(`  ${item.qty_infants} infante(s)${item.infant_ages?.length ? ` (edades: ${item.infant_ages.join(", ")})` : ""} × ${money(item.unit_price_infant_mxn ?? 0)} = ${money((item.qty_infants ?? 0) * (item.unit_price_infant_mxn ?? 0))}`);
+    if (r.modality === "private") lines.push(`  Total servicio privado: ${money(item.subtotal_mxn)}`);
+  });
+  if (discount > 0) lines.push(``, `🏷️ *Descuento (${discountPct.toFixed(2)}%):* -${money(discount)}`);
+  lines.push(`💳 *Total: ${money(r.total_mxn)}*`);
 
   if (r.hotel_name) lines.push(``, `🏨 *Hotel:* ${r.hotel_name}`);
   if (r.tours?.meeting_point) lines.push(`📌 *Punto de encuentro:* ${r.tours.meeting_point}`);
   if (r.pickup_notes) lines.push(`🚏 *Notas de pickup:* ${r.pickup_notes}`);
   if (r.operator_confirmation_code) lines.push(`🔑 *Código de confirmación:* ${r.operator_confirmation_code}`);
-
-  if (r.tours?.includes?.length) {
-    lines.push(``, `✅ *Incluye:*`);
-    r.tours.includes.forEach((item) => lines.push(`  • ${item}`));
-  }
 
   if (r.notes) lines.push(``, `📝 *Notas:* ${r.notes}`);
 
