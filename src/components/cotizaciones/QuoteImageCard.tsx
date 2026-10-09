@@ -18,7 +18,7 @@ interface Props {
 
 const QuoteImageCard = forwardRef<HTMLDivElement, Props>(({ quote, client, items, lang = "es" }, ref) => {
   const en = lang === "en";
-  const fmt = (n: number, currency = "MXN") => `${n.toLocaleString(en ? "en-US" : "es-MX", { style: "currency", currency, minimumFractionDigits: 2 })} ${currency}`;
+  const fmt = (n: number, currency = "MXN") => `$${n.toLocaleString(en ? "en-US" : "es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${currency}`;
   const date = (d: string) => new Date(d.length === 10 ? `${d}T12:00:00` : d).toLocaleDateString(en ? "en-US" : "es-MX", { day: "numeric", month: "short", year: "numeric" });
   const subtotal = items.reduce((sum, it) => sum + it.qty_adults * it.unit_price_mxn + it.qty_children * it.unit_price_child_mxn, 0);
   const discount = Number(quote?.discount_mxn ?? 0);
