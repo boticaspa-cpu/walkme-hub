@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { MessageSquare, Mail, Copy, Globe, Download, Share2 } from "lucide-react";
+import { MessageSquare, Mail, Copy, Globe, Download, Share2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import QuoteImageCard from "./QuoteImageCard";
 import { downloadImage, shareImage } from "@/lib/generate-share-image";
@@ -22,10 +22,13 @@ export default function SendQuoteDialog({ open, onOpenChange, quote }: Props) {
   const qc = useQueryClient();
   const [contactForm, setContactForm] = useState({ name: "", phone: "", email: "" });
   const [needsContact, setNeedsContact] = useState(false);
+  const [view, setView] = useState<"coupon" | "message">("coupon");
+  const [imageBusy, setImageBusy] = useState(false);
+  const [linkedClient, setLinkedClient] = useState<any>(null);
   const [lang, setLang] = useState<"es" | "en">("es");
 
   // Fetch client if quote has client_id
-  const { data: client } = useQuery({
+  const { data: fetchedClient, isLoading: clientLoading, isError: clientError } = useQuery({
     queryKey: ["client-send", quote?.client_id],
     queryFn: async () => {
       if (!quote?.client_id) return null;
@@ -35,11 +38,14 @@ export default function SendQuoteDialog({ open, onOpenChange, quote }: Props) {
     enabled: !!quote?.client_id,
   });
 
+  const client = linkedClient || fetchedClient;
+
   // Fetch items for message body
-  const { data: items = [] } = useQuery({
+  const { data: items = [], isLoading: itemsLoading, isError: itemsError } = useQuery({
     queryKey: ["quote-items-send", quote?.id],
     queryFn: async () => {
-      const { data } = await supabase.from("quote_items").select("*, tours(title)").eq("quote_id", quote.id);
+      const { data, error } = await supabase.from("quote_items").select("*, tours(title, service_type, tax_adult_usd, tax_child_usd)").eq("quote_id", quote.id);
+      if (error) throw error;
       return data ?? [];
     },
     enabled: !!quote?.id,
@@ -50,6 +56,8 @@ export default function SendQuoteDialog({ open, onOpenChange, quote }: Props) {
       setNeedsContact(!quote?.client_id);
       setContactForm({ name: "", phone: "", email: "" });
       setLang("es");
+      setView("coupon");
+      setLinkedClient(null);
     }
   }, [open, quote]);
 
@@ -58,14 +66,16 @@ export default function SendQuoteDialog({ open, onOpenChange, quote }: Props) {
       const { data, error } = await supabase
         .from("clients")
         .insert({ name: contactForm.name, phone: contactForm.phone, email: contactForm.email || null, created_by: user?.id })
-        .select("id")
+        .select("id, name, phone, email")
         .single();
       if (error) throw error;
       // Link to quote
-      await supabase.from("quotes").update({ client_id: data.id, client_name: contactForm.name }).eq("id", quote.id);
+      const { error: linkError } = await supabase.from("quotes").update({ client_id: data.id, client_name: contactForm.name }).eq("id", quote.id);
+      if (linkError) throw linkError;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      setLinkedClient(data);
       qc.invalidateQueries({ queryKey: ["quotes"] });
       setNeedsContact(false);
       toast.success("Cliente creado y vinculado");
@@ -83,22 +93,28 @@ export default function SendQuoteDialog({ open, onOpenChange, quote }: Props) {
   const imageRef = useRef<HTMLDivElement>(null);
   const [editableMessage, setEditableMessage] = useState("");
 
+  const imageUnavailable = imageBusy || itemsLoading || clientLoading || itemsError || clientError || items.length === 0;
   const handleDownloadImage = async () => {
-    if (!imageRef.current) return;
-    await downloadImage(imageRef.current, `cotizacion-${quote?.folio ?? "walkme"}`);
-    toast.success("Imagen descargada");
-    await markSent();
+    if (!imageRef.current || imageUnavailable) return;
+    setImageBusy(true);
+    try {
+      await downloadImage(imageRef.current, `cotizacion-${quote?.folio ?? "walkme"}`);
+      toast.success("Cupón descargado");
+      await markSent();
+    } catch {
+      toast.error("No se pudo descargar el cupón. Intenta nuevamente.");
+    } finally { setImageBusy(false); }
   };
 
   const handleShareImage = async () => {
-    if (!imageRef.current) return;
+    if (!imageRef.current || imageUnavailable) return;
+    setImageBusy(true);
     try {
-      await shareImage(imageRef.current, `cotizacion-${quote?.folio ?? "walkme"}`, `Cotización ${quote?.folio ?? ""} — WalkMe Tours`);
+      await shareImage(imageRef.current, `cotizacion-${quote?.folio ?? "walkme"}`, `${lang === "en" ? "Quote" : "Cotización"} ${quote?.folio ?? ""} — WalkMe Tours`);
       await markSent();
-      onOpenChange(false);
-    } catch {
-      toast.error("No se pudo compartir");
-    }
+    } catch (error) {
+      if (!(error instanceof Error && error.name === "AbortError")) toast.error("No se pudo compartir el cupón");
+    } finally { setImageBusy(false); }
   };
 
   const fmt = (n: number) => `$${n.toLocaleString("es-MX", { minimumFractionDigits: 2 })}`;
@@ -214,7 +230,7 @@ export default function SendQuoteDialog({ open, onOpenChange, quote }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Enviar Cotización</DialogTitle>
           <DialogDescription>{quote?.folio ?? ""} — {fmt(quote?.total_mxn ?? 0)} MXN</DialogDescription>
@@ -246,24 +262,37 @@ export default function SendQuoteDialog({ open, onOpenChange, quote }: Props) {
             <div className="flex items-center gap-2">
               <Globe className="h-4 w-4 text-muted-foreground" />
               <div className="flex rounded-md border overflow-hidden">
-                <button
+                <Button
                   type="button"
-                  className={`px-3 py-1 text-xs font-medium transition-colors ${lang === "es" ? "bg-primary text-primary-foreground" : "bg-muted/50 text-muted-foreground hover:bg-muted"}`}
+                  variant="ghost"
+                   className={`h-9 rounded-none px-3 py-1 text-xs font-medium transition-colors ${lang === "es" ? "bg-primary text-primary-foreground" : "bg-muted/50 text-muted-foreground hover:bg-muted"}`}
                   onClick={() => setLang("es")}
                 >
                   🇲🇽 Español
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
-                  className={`px-3 py-1 text-xs font-medium transition-colors ${lang === "en" ? "bg-primary text-primary-foreground" : "bg-muted/50 text-muted-foreground hover:bg-muted"}`}
+                  variant="ghost"
+                   className={`h-9 rounded-none px-3 py-1 text-xs font-medium transition-colors ${lang === "en" ? "bg-primary text-primary-foreground" : "bg-muted/50 text-muted-foreground hover:bg-muted"}`}
                   onClick={() => setLang("en")}
                 >
                   🇺🇸 English
-                </button>
+                </Button>
               </div>
             </div>
 
-            <>
+            <div className="grid grid-cols-2 gap-2">
+              <Button variant={view === "coupon" ? "default" : "outline"} onClick={() => setView("coupon")} aria-pressed={view === "coupon"}>Cupón</Button>
+              <Button variant={view === "message" ? "default" : "outline"} onClick={() => setView("message")} aria-pressed={view === "message"}>Mensaje</Button>
+            </div>
+            {view === "coupon" && <div className="space-y-3">
+              {itemsLoading || clientLoading ? <div className="flex justify-center p-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div> : itemsError || clientError ? <p role="alert" className="text-sm text-destructive">No se pudo cargar la cotización. Cierra y vuelve a intentar.</p> : items.length === 0 ? <p className="text-sm text-muted-foreground">Esta cotización no tiene tours.</p> : <QuoteImageCard ref={imageRef} quote={quote} client={client} items={items} lang={lang} />}
+              <div className="grid grid-cols-2 gap-3">
+                <Button variant="outline" disabled={imageUnavailable} onClick={handleDownloadImage}><Download /> Descargar</Button>
+                <Button disabled={imageUnavailable} onClick={handleShareImage}>{imageBusy ? <Loader2 className="animate-spin" /> : <Share2 />} Compartir</Button>
+              </div>
+            </div>}
+            {view === "message" && <>
                 {/* Preview del mensaje */}
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
@@ -273,7 +302,8 @@ export default function SendQuoteDialog({ open, onOpenChange, quote }: Props) {
                     </Button>
                   </div>
                   <textarea
-                    className="text-xs bg-green-50 border border-green-200 rounded-md p-3 whitespace-pre-wrap font-sans leading-relaxed max-h-52 overflow-y-auto w-full resize-none min-h-[200px]"
+                    aria-label="Mensaje de cotización"
+                     className="text-xs bg-muted text-foreground border border-border rounded-md p-3 whitespace-pre-wrap font-sans leading-relaxed max-h-52 overflow-y-auto w-full resize-none min-h-[200px]"
                     value={editableMessage}
                     onChange={(e) => setEditableMessage(e.target.value)}
                   />
@@ -294,30 +324,7 @@ export default function SendQuoteDialog({ open, onOpenChange, quote }: Props) {
                   </Button>
                 </div>
 
-                {/* Separador */}
-                <div className="flex items-center gap-2 mt-2">
-                  <div className="flex-1 border-t" />
-                  <span className="text-xs text-muted-foreground">o enviar como imagen</span>
-                  <div className="flex-1 border-t" />
-                </div>
-
-                {/* Botones de imagen */}
-                <div className="grid grid-cols-2 gap-3">
-                  <Button variant="outline" className="h-14 flex-col gap-1" onClick={handleDownloadImage}>
-                    <Download className="h-5 w-5 text-purple-600" />
-                    <span className="text-xs">Descargar Imagen</span>
-                  </Button>
-                  <Button variant="outline" className="h-14 flex-col gap-1" onClick={handleShareImage}>
-                    <Share2 className="h-5 w-5 text-orange-600" />
-                    <span className="text-xs">Compartir</span>
-                  </Button>
-                </div>
-
-                {/* Hidden image card for capture */}
-                <div style={{ position: "absolute", left: "-9999px", top: 0 }}>
-                  <QuoteImageCard ref={imageRef} quote={quote} client={client} items={items} />
-                </div>
-            </>
+            </>}
           </div>
         )}
       </DialogContent>
