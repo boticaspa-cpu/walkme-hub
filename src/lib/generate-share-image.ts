@@ -1,14 +1,25 @@
 import html2canvas from "html2canvas";
 
 export async function generateImage(element: HTMLElement): Promise<Blob> {
+  await document.fonts?.ready;
+  await Promise.all(Array.from(element.querySelectorAll("img")).map(async (image) => {
+    if (image.complete && image.naturalWidth > 0) return;
+    await image.decode();
+  }));
   const canvas = await html2canvas(element, {
     scale: 2,
     useCORS: true,
     backgroundColor: "#ffffff",
     logging: false,
   });
-  return new Promise((resolve) => {
-    canvas.toBlob((blob) => resolve(blob!), "image/png", 1.0);
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (!blob) {
+        reject(new Error("No se pudo generar la imagen"));
+        return;
+      }
+      resolve(blob);
+    }, "image/png", 1.0);
   });
 }
 
